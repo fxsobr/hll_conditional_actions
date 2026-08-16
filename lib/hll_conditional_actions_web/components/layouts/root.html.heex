@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang={String.replace(Gettext.get_locale(HllConditionalActionsWeb.Gettext), "_", "-")}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title
+      default="HLL Conditional Actions"
+      suffix=" · HLL Conditional Actions"
+      phx-no-format
+    >{assigns[:page_title]}</.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <%!-- Applies the light/dark scheme before first paint and keeps every
+          <.color_scheme_switch> in sync across tabs. --%>
+    <PetalComponents.ColorSchemeSwitch.color_scheme_script />
+  </head>
+  <body>
+    {@inner_content}
+  </body>
+</html>

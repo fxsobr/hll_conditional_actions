@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+cd -P -- "$(dirname -- "$0")"
+exec ./hll_conditional_actions eval HllConditionalActions.Release.migrate

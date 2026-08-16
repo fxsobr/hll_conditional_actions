@@ -1,0 +1,867 @@
+/* See the Tailwind configuration guide for advanced usage
+   https://tailwindcss.com/docs/configuration */
+
+@import "tailwindcss" source(none);
+@import "phoenix-colocated/hll_conditional_actions/colocated.css";
+@source "../css";
+@source "../js";
+@source "../../lib/hll_conditional_actions_web";
+@source "../../deps/petal_components/**/*.*ex";
+/* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
+@source "../../_build/dev/phoenix-colocated/hll_conditional_actions/*/";
+
+/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
+   The heroicons installation itself is managed by your mix.exs */
+@plugin "../vendor/heroicons";
+
+/* Petal Components: token fallbacks + every pc-* component style. Our own
+   @theme below overrides the soft defaults with the VTIX palette. */
+@import "../../deps/petal_components/assets/default.css";
+
+/* Dark mode follows the .dark class that Petal's colour-scheme script
+   toggles on <html> before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────────────────────────────────
+   VTIX design system — ported from the mono-repo's
+   `frontend/src/index.css` (branch `development`) and
+   `design-system-overview.md`.
+
+   Emerald primary on white, cool-gray neutrals, Geist type, soft elevation,
+   pill CTAs. Full 50–950 ramps feed Petal's components; the single-tone
+   aliases underneath keep this app's semantic utilities (bg-base-100,
+   text-primary, border-base-300, text-error …) working and scheme-aware.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Emerald — VTIX brand. 600/700 are the exact VTIX primary/primary-dark. */
+  --color-primary-50: oklch(97.9% 0.021 166.1);
+  --color-primary-100: oklch(95% 0.052 163.1);
+  --color-primary-200: oklch(90.5% 0.093 164.2);
+  --color-primary-300: oklch(84.5% 0.143 165);
+  --color-primary-400: oklch(76.5% 0.177 163.2);
+  --color-primary-500: oklch(69.6% 0.17 162.5);
+  --color-primary-600: oklch(55% 0.13 166);
+  --color-primary-700: oklch(48% 0.12 166);
+  --color-primary-800: oklch(43.2% 0.095 166.9);
+  --color-primary-900: oklch(37.8% 0.077 168.9);
+  --color-primary-950: oklch(26.2% 0.051 172.6);
+
+  /* Fuchsia — the VTIX accent (#D946EF), a categorical colour, not the brand. */
+  --color-secondary-50: oklch(97.7% 0.017 320.1);
+  --color-secondary-100: oklch(95.2% 0.037 318.9);
+  --color-secondary-200: oklch(90.3% 0.076 319.6);
+  --color-secondary-300: oklch(83.3% 0.145 321.4);
+  --color-secondary-400: oklch(74% 0.238 322.2);
+  --color-secondary-500: oklch(64.9% 0.295 328.4);
+  --color-secondary-600: oklch(59.1% 0.293 328.4);
+  --color-secondary-700: oklch(51.8% 0.253 323.9);
+  --color-secondary-800: oklch(45.2% 0.211 324.6);
+  --color-secondary-900: oklch(40.1% 0.17 325.6);
+  --color-secondary-950: oklch(29.3% 0.136 325.7);
+
+  /* Cool gray — VTIX neutrals: border is gray-200, foreground gray-900. */
+  --color-gray-50: oklch(98.5% 0.002 247.8);
+  --color-gray-100: oklch(96.8% 0.003 264.5);
+  --color-gray-200: oklch(92.8% 0.006 264.5);
+  --color-gray-300: oklch(87.2% 0.01 258.3);
+  --color-gray-400: oklch(70.7% 0.022 261.3);
+  --color-gray-500: oklch(55.1% 0.027 264.4);
+  --color-gray-600: oklch(44.6% 0.014 256.8);
+  --color-gray-700: oklch(37.2% 0.013 257.3);
+  --color-gray-800: oklch(27.8% 0.033 256.8);
+  --color-gray-900: oklch(20.8% 0.013 255.9);
+  --color-gray-950: oklch(13% 0.028 261.7);
+
+  /* Type: Geist, self-hosted (see the @font-face rules below). */
+  --font-sans:
+    "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+
+  /* Semantic single-tone aliases, flipped per scheme by the vars below. */
+  --color-base-100: var(--tone-base-100);
+  --color-base-200: var(--tone-base-200);
+  --color-base-300: var(--tone-base-300);
+  --color-base-content: var(--tone-base-content);
+  --color-primary: var(--tone-primary);
+  --color-primary-content: var(--tone-primary-content);
+  --color-secondary: var(--tone-secondary);
+  --color-secondary-content: var(--tone-primary-content);
+  --color-accent: var(--tone-accent);
+  --color-accent-content: var(--tone-primary-content);
+  --color-neutral: var(--tone-neutral);
+  --color-neutral-content: var(--tone-neutral-content);
+  --color-info: var(--tone-info);
+  --color-info-content: var(--tone-primary-content);
+  --color-success: var(--tone-success);
+  --color-success-content: var(--tone-primary-content);
+  --color-warning: var(--tone-warning);
+  --color-warning-content: var(--tone-primary-content);
+  --color-error: var(--tone-error);
+  --color-error-content: var(--tone-primary-content);
+
+  /* VTIX --muted-foreground: the one secondary-text colour. */
+  --color-muted: var(--text-tertiary-tone);
+  --color-subtle: var(--text-secondary-tone);
+
+  /* Radius — the VTIX scale. box = radius-lg (6px) is the card corner,
+     field = radius-md (4px) controls, selector = radius-sm (2px). */
+  --radius-box: 0.375rem;
+  --radius-field: 0.25rem;
+  --radius-selector: 0.125rem;
+  --radius-pill: 20rem;
+
+  /* Typography scale (VTIX) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.75rem;
+}
+
+/* Geist, self-hosted to avoid a CDN request (the same reason VTIX uses
+   @fontsource). 400/500/600 are the only weights the system uses. */
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/geist-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/geist-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/geist-600.woff2") format("woff2");
+}
+
+:root {
+  /* Tells the browser which way to paint what the page cannot: the open list
+     of a <select>, scrollbars, date pickers, spinners. Left unset it assumes
+     light and renders them unreadable over the dark theme. */
+  color-scheme: light;
+
+  /* Petal control radius follows the field radius */
+  --pc-radius: 0.25rem;
+
+  --tone-base-100: oklch(1 0 0);
+  --tone-base-200: var(--color-gray-100);
+  --tone-base-300: var(--color-gray-200);
+  --tone-base-content: oklch(20.8% 0.013 255.9);
+  --tone-primary: oklch(55% 0.13 166);
+  --tone-primary-content: oklch(1 0 0);
+  --tone-primary-dark: oklch(48% 0.12 166);
+  --tone-secondary: var(--color-gray-100);
+  --tone-accent: oklch(64.9% 0.295 328.4);
+  --tone-neutral: var(--color-gray-700);
+  --tone-neutral-content: var(--color-gray-50);
+  --tone-info: oklch(55% 0.2 264);
+  --tone-success: oklch(69.6% 0.17 162.5);
+  --tone-warning: oklch(79.5% 0.184 86);
+  --tone-error: oklch(62.8% 0.258 29.2);
+
+  /* Text levels (VTIX) */
+  --text-secondary-tone: oklch(37.2% 0.013 257.3);
+  --text-tertiary-tone: oklch(44.6% 0.014 256.8);
+
+  /* Elevation (VTIX) */
+  --shadow-elevation-1:
+    0px 1px 4px rgba(0, 0, 0, 0.12), 0px 0px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card-medium:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card-large:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Motion (VTIX) */
+  --motion-instantly: 0.05s;
+  --motion-quickly: 0.1s;
+  --motion-promptly: 0.3s;
+  --motion-slowly: 0.5s;
+
+  /* Icon-box gradients (VTIX) */
+  --gradient-primary: linear-gradient(
+    135deg,
+    oklch(0.55 0.13 166 / 0.15),
+    oklch(0.55 0.13 166 / 0.05)
+  );
+  --gradient-success: linear-gradient(
+    135deg,
+    oklch(0.696 0.17 162.5 / 0.15),
+    oklch(0.696 0.17 162.5 / 0.05)
+  );
+  --gradient-warning: linear-gradient(
+    135deg,
+    oklch(0.795 0.184 86 / 0.15),
+    oklch(0.795 0.184 86 / 0.05)
+  );
+  --gradient-destructive: linear-gradient(
+    135deg,
+    oklch(0.628 0.258 29.2 / 0.15),
+    oklch(0.628 0.258 29.2 / 0.05)
+  );
+  --gradient-accent: linear-gradient(
+    135deg,
+    oklch(0.649 0.295 328.4 / 0.15),
+    oklch(0.649 0.295 328.4 / 0.05)
+  );
+  --gradient-info: linear-gradient(
+    135deg,
+    oklch(0.55 0.2 264 / 0.15),
+    oklch(0.55 0.2 264 / 0.05)
+  );
+  --gradient-sidebar: linear-gradient(
+    to right,
+    var(--tone-primary),
+    var(--tone-primary-dark)
+  );
+}
+
+/* VTIX ships light only; this is the same identity after dark, so the
+   scheme switch keeps working: emerald lifted to stay legible on ink. */
+.dark {
+  color-scheme: dark;
+
+  --tone-base-100: oklch(23% 0.014 258);
+  --tone-base-200: oklch(17.5% 0.013 258);
+  --tone-base-300: oklch(32% 0.016 258);
+  --tone-base-content: oklch(96% 0.003 264.5);
+  --tone-primary: oklch(69.6% 0.17 162.5);
+  --tone-primary-content: oklch(16% 0.02 166);
+  --tone-primary-dark: oklch(59.6% 0.145 163.2);
+  --tone-secondary: oklch(28% 0.015 258);
+  --tone-accent: oklch(74% 0.238 322.2);
+  --tone-neutral: var(--color-gray-600);
+  --tone-neutral-content: var(--color-gray-50);
+  --tone-info: oklch(70% 0.16 264);
+  --tone-success: oklch(76.5% 0.177 163.2);
+  --tone-warning: oklch(85% 0.16 86);
+  --tone-error: oklch(70.4% 0.19 27.3);
+
+  --text-secondary-tone: oklch(87.2% 0.01 258.3);
+  --text-tertiary-tone: oklch(70.7% 0.022 261.3);
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card-medium:
+    0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-card-large:
+    0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.35);
+}
+
+/* Add variants based on LiveView classes */
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
+
+/* Make LiveView wrapper divs transparent for layout */
+[data-phx-session], [data-phx-teleported-src] { display: contents }
+
+/* Alpine.js: hide elements until Alpine has initialized them */
+[x-cloak] { display: none !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Application styles
+   ───────────────────────────────────────────────────────────────────────── */
+
+html,
+body {
+  background-color: var(--color-base-200);
+  color: var(--color-base-content);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── VTIX typography utilities ───────────────────────────────────────────
+   The named roles from design-system-overview.md. Use these instead of
+   ad-hoc size/weight pairs. */
+@layer utilities {
+  .text-headline-large {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 2.5rem;
+  }
+
+  .text-headline-medium {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.875rem;
+  }
+
+  .text-title-large {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.5rem;
+  }
+
+  .text-title-medium {
+    font-size: var(--text-base);
+    font-weight: 500;
+    line-height: 1.5rem;
+  }
+
+  .text-body-large {
+    font-size: var(--text-lg);
+    font-weight: 400;
+    line-height: 1.5rem;
+  }
+
+  .text-body-medium {
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.5rem;
+  }
+
+  .text-body-small {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: 1.5rem;
+  }
+
+  .text-label-large {
+    font-size: var(--text-base);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.5rem;
+  }
+
+  .text-label-medium {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.5rem;
+  }
+
+  .text-label-small {
+    font-size: var(--text-xs);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.25rem;
+  }
+
+  /* Elevation utilities (VTIX shadow-figma-*) */
+  .shadow-figma-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-figma-card-medium {
+    box-shadow: var(--shadow-card-medium);
+  }
+
+  .shadow-figma-card-large {
+    box-shadow: var(--shadow-card-large);
+  }
+
+  /* Icon-box gradients (VTIX bg-gradient-*) */
+  .bg-gradient-primary { background: var(--gradient-primary); }
+  .bg-gradient-success { background: var(--gradient-success); }
+  .bg-gradient-warning { background: var(--gradient-warning); }
+  .bg-gradient-destructive { background: var(--gradient-destructive); }
+  .bg-gradient-accent { background: var(--gradient-accent); }
+  .bg-gradient-info { background: var(--gradient-info); }
+
+  .rounded-pill {
+    border-radius: var(--radius-pill);
+  }
+}
+
+/* The eyebrow: the small label above a section or a stat. */
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Section and page titles. */
+.heading {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Buttons are pills, matching the figma-* variants. */
+.pc-button {
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+}
+
+/* Petal styles `.pc-text-input` on top of @tailwindcss/forms, which this app
+   does not ship — that plugin is what normally gives inputs their border
+   width, padding and height. Without it Tailwind's preflight leaves
+   border-width at 0 and a text field renders as an invisible line, so the
+   base geometry is supplied here. Selects looked fine only because browsers
+   still draw their own frame. */
+.pc-text-input,
+.pc-select {
+  border-radius: var(--radius-field);
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  min-height: 2.5rem;
+}
+
+.pc-checkbox,
+.pc-radio {
+  border-radius: var(--radius-selector);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.pc-radio {
+  border-radius: 9999px;
+}
+
+/* Room for the native arrow. */
+select.pc-text-input,
+select.pc-select {
+  padding-right: 2rem;
+}
+
+/* The open list of a <select> is drawn by the browser, not by the page, so it
+   ignores every colour above and follows `color-scheme` instead — declared on
+   :root and .dark. These two rules are the belt to that suspenders: Chrome on
+   Windows still lets the page tint the rows, and without them a dark theme
+   ends up painting dark text on a dark list. */
+option {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+optgroup {
+  background-color: var(--color-base-200);
+  color: var(--color-base-content);
+  font-weight: 600;
+}
+
+textarea.pc-text-input {
+  min-height: 4.5rem;
+}
+
+/* A hairline of emerald down the left of the active sidebar entry. */
+.nav-item {
+  position: relative;
+}
+
+.nav-item::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.375rem;
+  left: -0.75rem;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  opacity: 0;
+  transform: scaleY(0.3);
+  transition:
+    opacity var(--motion-quickly) ease,
+    transform var(--motion-quickly) ease;
+}
+
+.nav-item[data-active="true"]::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Login artwork. The image is dimmed from the form side outwards so the
+   headline stays readable over the brightest part of the key art. */
+.hll-art {
+  background-image: url("/images/hll/login-art.webp");
+  background-size: cover;
+  /* The illustration puts its subject on the right and empty ground on the
+     left, so the panel is anchored right: on a narrow column that keeps the
+     map table in frame instead of cropping to bare floor. */
+  background-position: 100% 50%;
+}
+
+/* The panel carries no text any more, so the scrim only has to settle the
+   illustration into the page — enough to keep it from glowing next to the
+   form, not so much that it goes muddy. */
+.hll-art-scrim {
+  background: linear-gradient(
+    to top,
+    oklch(20% 0.03 166 / 0.55),
+    oklch(20% 0.03 166 / 0.15) 55%,
+    oklch(20% 0.03 166 / 0.35)
+  );
+}
+
+/* The card the sign in form sits in, over the artwork on small screens. */
+.hll-art-mobile {
+  background-image:
+    linear-gradient(to bottom, oklch(20% 0.03 166 / 0.6), oklch(20% 0.03 166 / 0.95)),
+    url("/images/hll/banner.webp");
+  background-size: cover;
+  background-position: center;
+}
+
+/* ── Rule flow ───────────────────────────────────────────────────────────
+   The visual builder draws the rule as a vertical pipeline: node cards on
+   a spine, the way an admin thinks about it — this happens, then this is
+   checked, then this runs. */
+.flow-spine {
+  position: relative;
+}
+
+.flow-spine::before {
+  content: "";
+  position: absolute;
+  left: 1.25rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to bottom,
+    var(--color-primary),
+    var(--color-base-300) 30%,
+    var(--color-base-300)
+  );
+}
+
+.flow-node {
+  position: relative;
+}
+
+/* The connector dot where a node meets the spine. */
+.flow-node::before {
+  content: "";
+  position: absolute;
+  left: -1.61rem;
+  top: 1.4rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  border: 2px solid var(--color-base-300);
+  background: var(--color-base-100);
+}
+
+.flow-node[data-tone="primary"]::before {
+  border-color: var(--color-primary);
+}
+
+.flow-node[data-tone="info"]::before {
+  border-color: var(--color-info);
+}
+
+.flow-node[data-tone="warning"]::before {
+  border-color: var(--color-warning);
+}
+
+.flow-node[data-tone="error"]::before {
+  border-color: var(--color-error);
+}
+
+/* Rows reorganise themselves into a sentence on wide screens and stack into
+   a card on narrow ones. */
+.condition-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 64rem) {
+  .condition-grid {
+    grid-template-columns: minmax(11rem, 1.1fr) minmax(9rem, 0.9fr) minmax(9rem, 1fr) auto;
+    align-items: end;
+  }
+}
+
+/* The builder's summary + try-it panel: a sticky sidebar on xl and a bottom
+   sheet below it, toggled by Alpine through data-preview-open on the
+   wrapper. Plain CSS owns the two layouts so there is no first-paint flash
+   and no utility-order fight. */
+.rule-aside-backdrop {
+  display: none;
+}
+
+@media (max-width: 79.9375rem) {
+  .rule-aside {
+    display: none;
+  }
+
+  [data-preview-open="true"] .rule-aside {
+    display: block;
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 40;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-base-300);
+    border-radius: 0.75rem 0.75rem 0 0;
+    background: var(--color-base-100);
+    padding: 1rem;
+    box-shadow: var(--shadow-card-large);
+  }
+
+  [data-preview-open="true"] .rule-aside-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: color-mix(in oklab, var(--color-gray-950) 45%, transparent);
+  }
+}
+
+/* Cards, rows and panels that appear as you build a rule ease in rather than
+   snapping, which makes "add condition" feel like it did something. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in {
+    animation: rise-in var(--motion-promptly) ease-out;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.375rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── App tables ──────────────────────────────────────────────────────────
+   The one table style the app uses. */
+.app-table {
+  width: 100%;
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.app-table th {
+  padding: 0.75rem 1rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-tertiary-tone);
+}
+
+.app-table td {
+  padding: 0.875rem 1rem;
+  vertical-align: top;
+}
+
+.app-table thead {
+  border-bottom: 1px solid var(--color-base-300);
+}
+
+/* Sticky header for scrolling logs (the live feed). */
+.app-table-pin thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--color-base-100);
+}
+/* ── Native dialogs ──────────────────────────────────────────────────────
+   The app's modals and the mobile navigation drawer are <dialog> elements:
+   focus trap, Escape and focus restoration come from the platform. */
+.app-modal {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  overflow: hidden;
+}
+
+/* Up to `lg` the sheet is the whole screen; past it the width comes from the
+   `max-w-*` the call site passes, so a form and a gallery can differ. */
+@media (max-width: 63.9375rem) {
+  .app-modal {
+    max-width: none;
+  }
+}
+
+/* The sheet slides in from the right edge and the backdrop fades with it.
+   `allow-discrete` is what lets the closing half animate too, so the panel
+   leaves the way it arrived instead of blinking out. */
+@media (prefers-reduced-motion: no-preference) {
+  .app-modal,
+  .app-modal::backdrop {
+    transition:
+      display var(--motion-promptly) allow-discrete,
+      overlay var(--motion-promptly) allow-discrete,
+      opacity var(--motion-promptly) ease,
+      transform var(--motion-promptly) cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .app-modal {
+    transform: translateX(100%);
+  }
+
+  .app-modal::backdrop {
+    opacity: 0;
+  }
+
+  .app-modal[open] {
+    transform: translateX(0);
+  }
+
+  .app-modal[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    .app-modal[open] {
+      transform: translateX(100%);
+    }
+
+    .app-modal[open]::backdrop {
+      opacity: 0;
+    }
+  }
+}
+
+.app-modal::backdrop,
+.app-drawer::backdrop {
+  background: color-mix(in oklab, var(--color-gray-950) 45%, transparent);
+}
+
+.app-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  margin: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 18rem;
+  max-width: 85vw;
+  border: 0;
+  border-right: 1px solid var(--color-base-300);
+  padding: 0;
+  background: var(--color-base-100);
+  color: inherit;
+}
+
+/* ── App tables ──────────────────────────────────────────────────────────
+   The one table style the app uses (daisyUI's table component is gone). */
+.app-table {
+  width: 100%;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.app-table th {
+  padding: 0.625rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+
+.app-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: top;
+}
+
+.app-table thead {
+  border-bottom: 1px solid var(--color-base-300);
+}
+
+/* Sticky header for scrolling logs (the live feed). */
+.app-table-pin thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--color-base-100);
+}
+
+/* ── Responsive tables ───────────────────────────────────────────────────
+   Below `sm`, a .table-collapse table stops being a grid of columns and
+   becomes a stack of label/value cards: each cell shows the header it
+   belongs to (from data-label), and the actions cell becomes a footer row.
+   One DOM, so LiveView streams and row ids keep working at every width. */
+@media (max-width: 40rem) {
+  .table-collapse thead {
+    display: none;
+  }
+
+  .table-collapse tbody,
+  .table-collapse tr,
+  .table-collapse td {
+    display: block;
+  }
+
+  .table-collapse tr {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .table-collapse tr + tr {
+    border-top: 1px solid var(--color-base-300);
+  }
+
+  .table-collapse td {
+    border: none;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .table-collapse td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    text-align: right;
+  }
+
+  .table-collapse td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+    text-align: left;
+  }
+
+  .table-collapse td[data-cell="lead"] {
+    padding-bottom: 0;
+  }
+
+  .table-collapse td[data-cell="actions"] {
+    padding-top: 0.5rem;
+  }
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────────
+   Reduced motion is honoured globally, not class by class: animations stop
+   and transitions become instant, while opacity keeps working so nothing
+   gets stuck invisible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A slim, theme-aware scrollbar; the default light one is jarring against
+   the dark chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300) transparent;
+}

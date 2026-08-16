@@ -1,0 +1,109 @@
+# Caddy in front of the release.
+#
+# It exists for four things the application should not be doing itself:
+#
+#   1. getting and renewing a certificate, so nobody has to remember to
+#   2. refusing floods before they reach a BEAM process
+#   3. compressing responses
+#   4. being the single thing that answers on 80 and 443
+#
+# The app is not published to the host at all in `compose.prod.yaml`; this is
+# the only way in.
+#
+# {$PHX_HOST} and {$ACME_EMAIL} come from the environment, so the same file
+# serves every deployment. Point PHX_HOST at a real hostname that resolves to
+# this machine and Caddy will fetch a Let's Encrypt certificate on first boot;
+# set it to `localhost` and it issues a local one instead, which is what makes
+# a laptop run work without ceremony.
+{
+	email {$ACME_EMAIL:admin@localhost}
+
+	# Caddy is the outermost hop here, so no forwarded header may be believed.
+	# When something else sits in front — Cloudflare, a load balancer — list
+	# its ranges instead, or one client can pretend to be many and walk past
+	# every limit below.
+	#
+	#   servers {
+	#     trusted_proxies static 173.245.48.0/20
+	#   }
+}
+
+{$PHX_HOST:localhost} {
+	encode zstd gzip
+
+	# ── Rate limiting ────────────────────────────────────────────────────────
+	#
+	# Needs the caddy-ratelimit module, which `deploy/caddy/Dockerfile` builds
+	# in. Running stock Caddy instead is a supported choice: comment this block
+	# out and the application's own limiter still counts sign in attempts, by
+	# address and by account. What is lost is refusing them before they reach
+	# the app.
+	rate_limit {
+		zone login {
+			match {
+				method POST
+				path /login
+			}
+			key {remote_host}
+			events 5
+			window 1m
+		}
+
+		zone app {
+			# Everything except the LiveView socket, which is one request that
+			# then stays open — counting the messages inside it would
+			# disconnect anybody who clicks quickly.
+			match {
+				not path /live/*
+			}
+			key {remote_host}
+			events 300
+			window 10s
+		}
+	}
+
+	# ── Headers ──────────────────────────────────────────────────────────────
+	#
+	# The application sets its own Content-Security-Policy, Referrer-Policy and
+	# Permissions-Policy; those belong with the pages and travel even when
+	# Caddy is not in front. What is here is what only the edge can say.
+	header {
+		# One year. Add `preload` only once the certificate is settled and the
+		# whole hostname is meant to be https forever — it is hard to undo.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		# Caddy announces itself by default; there is no reason to.
+		-Server
+	}
+
+	# Digested filenames change with their content, so the browser may keep
+	# them forever.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# An orchestrator polling every few seconds should not fill the log.
+	@health path /health /health/*
+	log_skip @health
+
+	reverse_proxy app:4000 {
+		# X-Forwarded-For is deliberately left to Caddy. It replaces whatever
+		# the client sent with the address it is actually talking to, unless
+		# that address is listed in `trusted_proxies` — so a client that sends
+		# its own `X-Forwarded-For: 1.2.3.4` cannot make the application count
+		# its sign in attempts against somebody else. (nginx does the opposite
+		# by default, which is why the app reads only the first entry.)
+		header_up X-Real-IP {remote_host}
+
+		# A LiveView connection is idle whenever the person is reading.
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+
+	log {
+		output stderr
+		format console
+	}
+}

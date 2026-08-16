@@ -1,0 +1,70 @@
+<Layouts.auth flash={@flash} locale={Gettext.get_locale(HllConditionalActionsWeb.Gettext)}>
+  <div class="space-y-6">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">{gettext("One more step")}</h1>
+
+      <p class="mt-1 text-sm text-muted">
+        {gettext("Open your authenticator app and type the code it is showing.")}
+      </p>
+    </div>
+
+    <.alert :if={@error} color="danger" variant="soft" with_icon label={@error} />
+
+    <.form :let={f} for={%{}} action={~p"/login/code"} id="two-factor-form" class="space-y-4">
+      <%!-- inputmode and one-time-code between them get a phone keyboard to
+            open on digits, and the code offered from the notification. --%>
+      <.input
+        type="text"
+        id="two_factor_code"
+        name={f[:code].name}
+        label={gettext("Code")}
+        placeholder="123456"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        pattern="[0-9a-fA-F\- ]*"
+        class="pc-text-input w-full text-center font-mono text-lg tracking-[0.3em]"
+        autofocus
+        required
+      />
+
+      <div class="flex justify-center pt-1">
+        <.button
+          type="submit"
+          color="primary"
+          icon="hero-arrow-right-end-on-rectangle"
+          label={gettext("Continue")}
+        />
+      </div>
+    </.form>
+
+    <div class="rounded-box border border-base-300 p-4">
+      <p class="flex items-center gap-2 text-sm font-medium">
+        <.icon name="hero-lifebuoy" class="size-4 shrink-0 text-muted" />
+        {gettext("Lost your phone?")}
+      </p>
+
+      <p :if={@recovery_codes_left > 0} class="mt-1 text-sm text-subtle">
+        {ngettext(
+          "Type one of your recovery codes above instead. You have %{count} left.",
+          "Type one of your recovery codes above instead. You have %{count} left.",
+          @recovery_codes_left,
+          count: @recovery_codes_left
+        )}
+      </p>
+
+      <p :if={@recovery_codes_left == 0} class="mt-1 text-sm text-subtle">
+        {gettext(
+          "You have no recovery codes left. Another administrator can switch two factor off for your account."
+        )}
+      </p>
+    </div>
+
+    <.link
+      href={~p"/logout"}
+      method="delete"
+      class="block text-center text-xs text-muted hover:underline"
+    >
+      {gettext("Sign in as somebody else")}
+    </.link>
+  </div>
+</Layouts.auth>

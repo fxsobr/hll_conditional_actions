@@ -1,0 +1,35 @@
+# Development image: the source tree is bind mounted, so this only needs the
+# toolchain. Code reloading, the asset watchers and IEx all work as they do
+# outside Docker.
+#
+# The production image is the separate `Dockerfile`.
+
+ARG ELIXIR_VERSION=1.20.3
+ARG OTP_VERSION=29.0.5
+ARG DEBIAN_VERSION=trixie-20260803-slim
+
+FROM docker.io/hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends build-essential git inotify-tools curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# inotify-tools is what phoenix_live_reload watches the filesystem with on
+# Linux; without it, saving a file changes nothing in the browser.
+
+RUN mix local.hex --force && mix local.rebar --force
+
+ENV MIX_ENV=dev \
+    LANG=C.UTF-8
+
+WORKDIR /app
+
+# Warm the dependency cache so a rebuild after `mix.exs` changes is the only
+# slow one. The bind mount overlays /app at runtime, but _build and deps are
+# named volumes, so this work is not thrown away.
+COPY mix.exs mix.lock ./
+RUN mix deps.get
+
+EXPOSE 4000
+
+CMD ["mix", "phx.server"]

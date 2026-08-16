@@ -1,0 +1,106 @@
+# Production stack.
+#
+#   cp .env.example .env    # then fill in the required secrets
+#   docker compose -f compose.prod.yaml up -d --build
+#
+# Caddy fetches and renews the certificate by itself, so there is nothing to
+# do about TLS beyond pointing PHX_HOST at a hostname that resolves here.
+#
+# Unlike the dev stack this builds the release image (`Dockerfile`), runs
+# migrations before serving traffic, and refuses to start without its secrets.
+#
+# Only Caddy is published. The app and the database are reachable on the
+# compose network and nowhere else, so the sign in form cannot be bypassed by
+# talking to port 4000 directly.
+
+name: hll-conditional-actions
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER in .env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+      POSTGRES_DB: ${POSTGRES_DB:-hll_conditional_actions}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # The database is only reachable from the compose network; nothing outside
+    # needs it, and not publishing a port is the cheapest way to keep it that
+    # way.
+    expose:
+      - "5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PHX_SERVER: "true"
+      PORT: 4000
+      PHX_HOST: "${PHX_HOST:?set PHX_HOST in .env}"
+      DATABASE_URL: "ecto://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB:-hll_conditional_actions}"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE:?generate one with mix phx.gen.secret}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?generate one with openssl rand -base64 32}"
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+      ENGINE_ENABLED: ${ENGINE_ENABLED:-true}
+      EXECUTION_RETENTION_DAYS: ${EXECUTION_RETENTION_DAYS:-30}
+      POOL_SIZE: ${POOL_SIZE:-10}
+    # Reachable from Caddy, never from the host.
+    expose:
+      - "4000"
+    # Migrations run once, in the foreground, before the server starts. Doing
+    # it here rather than at application boot keeps a half-migrated schema from
+    # ever serving requests.
+    command: >
+      sh -c "/app/bin/migrate && /app/bin/server"
+    healthcheck:
+      test: ["CMD", "/app/bin/hll_conditional_actions", "rpc", "1 + 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  caddy:
+    build:
+      context: ./deploy/caddy
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      # Caddy reads both out of the Caddyfile. PHX_HOST doubles as the
+      # certificate's hostname, which is why `localhost` gets a local
+      # certificate and a real name gets a Let's Encrypt one.
+      PHX_HOST: "${PHX_HOST:?set PHX_HOST in .env}"
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      # HTTP/3.
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and account keys. Losing this volume means asking Let's
+      # Encrypt for a new certificate on next boot, which is rate limited, so
+      # it is worth keeping.
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:

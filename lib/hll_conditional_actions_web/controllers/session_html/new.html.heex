@@ -1,0 +1,59 @@
+<Layouts.auth flash={@flash} locale={Gettext.get_locale(HllConditionalActionsWeb.Gettext)}>
+  <div class="space-y-6">
+    <h1 class="text-2xl font-semibold tracking-tight">{gettext("Sign in")}</h1>
+
+    <.alert :if={@error} color="danger" variant="soft" with_icon label={@error} />
+
+    <div
+      :if={@first_run?}
+      id="first-run-hint"
+      class="rounded-box border border-warning/40 bg-warning/10 p-4"
+    >
+      <p class="flex items-center gap-2 text-sm font-medium">
+        <.icon name="hero-key" class="size-4 shrink-0 text-warning" />
+        {gettext("First run")}
+      </p>
+
+      <p class="mt-1 text-sm text-subtle">
+        {gettext("Sign in with the default account and you will be asked to pick a new password.")}
+      </p>
+
+      <div class="mt-3 flex gap-2 font-mono text-xs">
+        <.tone_badge tone="warning">admin</.tone_badge>
+        <.tone_badge tone="warning">admin</.tone_badge>
+      </div>
+    </div>
+
+    <.form :let={f} for={%{}} as={:user} action={~p"/login"} id="login-form" class="space-y-4">
+      <.input
+        type="text"
+        id="user_username"
+        name={f[:username].name}
+        value={@username}
+        label={gettext("Username")}
+        autocomplete="username"
+        autofocus
+        required
+      />
+      <.input
+        type="password"
+        id="user_password"
+        name={f[:password].name}
+        label={gettext("Password")}
+        autocomplete="current-password"
+        required
+      />
+      <%!-- Sized to its label and centred, rather than stretched across the
+            card: the form has one action and it does not need the width to
+            say so. --%>
+      <div class="flex justify-center pt-1">
+        <.button
+          type="submit"
+          color="primary"
+          icon="hero-arrow-right-end-on-rectangle"
+          label={gettext("Sign in")}
+        />
+      </div>
+    </.form>
+  </div>
+</Layouts.auth>

@@ -1,0 +1,5 @@
+# An admin tool for one community's game servers. There is nothing here worth
+# indexing, and the login page turning up in search results only invites
+# people to guess at it.
+User-agent: *
+Disallow: /
