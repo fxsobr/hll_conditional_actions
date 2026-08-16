@@ -5,9 +5,9 @@
 
 ## Menu
 
-- [1. When — the trigger](#1-when-the-trigger)
-- [2. If — the conditions](#2-if-the-conditions)
-- [3. Then — the actions](#3-then-the-actions)
+- [1. When — the trigger](#1-when--the-trigger)
+- [2. If — the conditions](#2-if--the-conditions)
+- [3. Then — the actions](#3-then--the-actions)
 - [4. Scope and limits](#4-scope-and-limits)
 - [Trying a rule before trusting it](#trying-a-rule-before-trusting-it)
 - [Time windows](#time-windows)
