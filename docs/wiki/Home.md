@@ -1,3 +1,8 @@
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home)
+### Use the right-side menu to navigate through the documentation ->
+
+***
+
 # HLL Conditional Actions
 
 Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, built on top of [CRCON](https://github.com/MarechJ/hll_rcon_tool).
@@ -7,13 +12,12 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)  
 ![CRCON Discord](https://img.shields.io/discord/685692524442026020?color=%237289da&label=CRCON%20discord)
+![License](https://img.shields.io/github/license/fxsobr/hll_conditional_actions)
 ![Last commit](https://img.shields.io/github/last-commit/fxsobr/hll_conditional_actions)
 
-![Overview](docs/screenshots/overview.png)
+![Overview](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/overview.png)
 
-*When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Welcome new players, warn team killers, escalate on repeat offenders, reward the people who seed, or post to Discord when something needs a human.
-
-No scripting. A rule is built from dropdowns, reads back as a sentence, and can be tried against a player who is connected right now — or left in simulation, where it records everything it *would* have done without touching the game.
+*When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Rules are built from dropdowns, read back as a sentence, and can be tried against a player who is connected right now — or left in simulation, where everything is recorded and nothing reaches the game.
 
 > [!IMPORTANT]
 > **This app does not talk to Hell Let Loose. It talks to CRCON.**
@@ -60,29 +64,6 @@ No scripting. A rule is built from dropdowns, reads back as a sentence, and can 
   </tbody>
 </table>
 
-## Quick start
-
-```bash
-git clone git@github.com:fxsobr/hll_conditional_actions.git
-cd hll_conditional_actions
-cp .env.example .env          # fill in PHX_HOST, SECRET_KEY_BASE, ENCRYPTION_KEY, POSTGRES_PASSWORD
-docker compose -f compose.prod.yaml up -d --build
-```
-
-Caddy gets the certificate by itself. Sign in with `admin` / `admin` and you are asked to pick a new password immediately.
-
-Full walkthrough: [Installation](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation).
-
-## Screenshots
-
-**The rule builder** — setup, trigger, conditions, actions and limits as steps, with the rule reading back in plain words beside them.
-
-![The rule builder](docs/screenshots/rule-builder.png)
-
-**A rule's own page** — how often it fired, how many players it reached, what failed, and every change ever made to it.
-
-![A rule](docs/screenshots/rule.png)
-
 ## Thanks to CRCON
 
 This project stands entirely on **[CRCON — Hell Let Loose Community RCON](https://github.com/MarechJ/hll_rcon_tool)**, by [MarechJ](https://github.com/MarechJ) and its contributors.
@@ -98,6 +79,6 @@ If you run a Hell Let Loose server, go and use CRCON. It is excellent.
 
 Any contribution is welcome — code, documentation, or a translation.
 
-The interface goes through gettext and ships in **English** and **Brazilian Portuguese**. Adding a language does not require knowing Elixir; see [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
+The interface goes through gettext and ships in **English** and **Brazilian Portuguese**. Adding a language is a `mix gettext.merge` away and does not require knowing Elixir; see [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
 
 Hell Let Loose is a trademark of Team17 / Expression Games. This is an unofficial community tool, not affiliated with either.
