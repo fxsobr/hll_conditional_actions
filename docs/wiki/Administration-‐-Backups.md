@@ -14,7 +14,7 @@ Three things are worth keeping, and they are not the same kind of thing:
 A database dump on a schedule:
 
 ```bash
-docker compose -f compose.prod.yaml exec -T db   pg_dump -U "$POSTGRES_USER" hll_conditional_actions | gzip > backup-$(date +%F).sql.gz
+docker compose exec -T db   pg_dump -U "$POSTGRES_USER" hll_conditional_actions | gzip > backup-$(date +%F).sql.gz
 ```
 
 Keep `.env` somewhere other than the same disk. A dump without its

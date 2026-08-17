@@ -14,8 +14,8 @@
 ```bash
 cp .env.example .env
 # fill in PHX_HOST, SECRET_KEY_BASE, ENCRYPTION_KEY, POSTGRES_PASSWORD
-docker compose -f compose.prod.yaml pull
-docker compose -f compose.prod.yaml up -d
+docker compose pull
+docker compose up -d
 ```
 
 This pulls the images the release workflow published, runs migrations before
@@ -46,7 +46,7 @@ To put TLS in front, either:
   `FORCE_HTTPS=true` in `.env`. That marks the session cookie `secure` and
   redirects plain HTTP.
 - **Let Caddy do it**: set `SITE_ADDRESS` to a hostname that resolves here,
-  publish 80 and 443 instead of 4000 in `compose.prod.yaml` (the lines are
+  publish 80 and 443 instead of 4000 in `compose.yaml` (the lines are
   there, commented), uncomment the HSTS header in the Caddyfile, and set
   `FORCE_HTTPS=true`.
 
@@ -65,7 +65,7 @@ To put TLS in front, either:
 ## Running migrations on their own
 
 ```bash
-docker compose -f compose.prod.yaml run --rm app /app/bin/migrate
+docker compose run --rm app /app/bin/migrate
 ```
 
 ---

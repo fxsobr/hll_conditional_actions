@@ -153,7 +153,7 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
-  # TLS is terminated by Caddy in `compose.prod.yaml`, so the release itself
+  # TLS is terminated by Caddy in `compose.yaml`, so the release itself
   # only ever speaks plain HTTP on the compose network. `force_ssl` in
   # config/prod.exs reads `X-Forwarded-Proto` to redirect anything that
   # somehow arrived unencrypted, and to set HSTS.

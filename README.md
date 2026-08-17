@@ -70,8 +70,8 @@ No scripting. A rule is built from dropdowns, reads back as a sentence, and can 
 git clone git@github.com:fxsobr/hll_conditional_actions.git
 cd hll_conditional_actions
 cp .env.example .env          # fill in PHX_HOST, SECRET_KEY_BASE, ENCRYPTION_KEY, POSTGRES_PASSWORD
-docker compose -f compose.prod.yaml pull
-docker compose -f compose.prod.yaml up -d
+docker compose pull
+docker compose up -d
 ```
 
 It answers on `http://<your machine>:4000`, leaving ports 80 and 443 alone. Sign in with `admin` / `admin` and you are asked to pick a new password immediately.

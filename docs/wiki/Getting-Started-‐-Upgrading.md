@@ -24,14 +24,21 @@
 cd ~/hll_conditional_actions
 git fetch --tags
 git checkout v0.2.0
-docker compose -f compose.prod.yaml pull
-docker compose -f compose.prod.yaml up -d
+docker compose pull
+docker compose up -d
 ```
 
 Replace `v0.2.0` with the version you are moving to. The
 [releases page](https://github.com/fxsobr/hll_conditional_actions/releases)
 lists them, and the **About** dialog in the app tells you when there is a
 newer one.
+
+> [!NOTE]
+> **Coming from v0.1.2 or older**, the commands used to carry
+> `-f compose.prod.yaml`. That file is now just `compose.yaml`, which compose
+> finds on its own, so the flag is gone. Run the `git checkout` first and the
+> rest as written above. Your containers and your database are untouched: the
+> project name did not change, so the same volumes are still there.
 
 Nothing is compiled on your machine. The images are built when a release is
 published and downloaded ready to run, so an upgrade takes about as long as
@@ -63,7 +70,7 @@ instance — or to run a commit that has not been released, build from source:
 
 ```bash
 BUILD_VERSION=$(git describe --tags --always) \
-  docker compose -f compose.prod.yaml up -d --build
+  docker compose up -d --build
 ```
 
 The `build:` section is still in the compose file for exactly this. The
@@ -120,7 +127,7 @@ is accurate again within a minute of the upgrade finishing.
 ## If it will not start
 
 ```bash
-docker compose -f compose.prod.yaml logs --tail 200 app
+docker compose logs --tail 200 app
 ```
 
 A failed migration is the usual cause and says so plainly. The database is
@@ -142,7 +149,7 @@ So the order matters. Undo the schema **first**, while the new version is
 still running:
 
 ```bash
-docker compose -f compose.prod.yaml exec app \
+docker compose exec app \
   /app/bin/hll_conditional_actions eval \
   'HllConditionalActions.Release.rollback(HllConditionalActions.Repo, 20260816223823)'
 ```
@@ -155,8 +162,8 @@ Then switch the code:
 
 ```bash
 git checkout v0.1.0
-docker compose -f compose.prod.yaml pull
-docker compose -f compose.prod.yaml up -d
+docker compose pull
+docker compose up -d
 ```
 
 Older images are not deleted when a new one is published, so going back is

@@ -92,17 +92,23 @@ jobs:
       - name: Compile without warnings
         run: mix compile --warnings-as-errors
 
-      # The image tag in compose.prod.yaml is what `git checkout v0.2.0`
-      # selects. If it drifts from the version this commit calls itself, a
-      # release quietly runs the previous image.
-      - name: The version in mix.exs and compose.prod.yaml agree
+      # Every image tag in compose.yaml is what `git checkout v0.2.0`
+      # selects. There is more than one — the app and Caddy — and a release
+      # that bumps only the first publishes a compose file pointing at an
+      # image that was never built.
+      - name: The versions in mix.exs and compose.yaml agree
         run: |
           mix_version=$(grep -m1 'version: "' mix.exs | sed 's/.*version: "//; s/".*//')
-          compose_version=$(grep -m1 'hll_conditional_actions:' compose.prod.yaml \
-            | sed 's/.*APP_VERSION:-v//; s/}.*//')
-          echo "mix.exs: $mix_version   compose.prod.yaml: $compose_version"
-          test "$mix_version" = "$compose_version" || {
-            echo "::error::These must match. Bump both in the same commit."
+          image_versions=$(grep -o 'APP_VERSION:-v[^}]*' compose.yaml \
+            | sed 's/APP_VERSION:-v//' | sort -u)
+          echo "mix.exs: $mix_version"
+          echo "compose.yaml: $(echo $image_versions)"
+          test "$(echo "$image_versions" | wc -l)" -eq 1 || {
+            echo "::error::The image tags in compose.yaml do not agree with each other."
+            exit 1
+          }
+          test "$mix_version" = "$image_versions" || {
+            echo "::error::Every image tag must be v$mix_version. Bump them in the same commit."
             exit 1
           }
 
