@@ -14,7 +14,9 @@ defmodule HllConditionalActionsWeb.Layouts do
   use HllConditionalActionsWeb, :html
 
   alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Updates
   alias HllConditionalActionsWeb.Plugs.Locale
+  alias HllConditionalActionsWeb.ReleaseNotes
 
   embed_templates "layouts/*"
 
@@ -379,6 +381,8 @@ defmodule HllConditionalActionsWeb.Layouts do
       />
     </nav>
 
+    <.version_line :if={Accounts.can?(@current_user, :manage_users)} id={@id} />
+
     <div :if={@current_user} class="flex shrink-0 items-center gap-2 border-t border-base-300 p-3">
       <.link
         navigate={~p"/account"}
@@ -400,6 +404,170 @@ defmodule HllConditionalActionsWeb.Layouts do
       <.color_scheme_switch id={"scheme-switch-#{@id}"} variant="dropdown" class="shrink-0 sm:hidden" />
     </div>
     """
+  end
+
+  # Which version is running, and a dot when GitHub has a newer one. Only shown
+  # to whoever can manage users: it is the same audience that would act on it,
+  # and an operator has no use for a build stamp.
+  attr :id, :string, required: true
+
+  defp version_line(assigns) do
+    assigns = assign(assigns, :status, Updates.status())
+
+    ~H"""
+    <button
+      type="button"
+      class="flex w-full shrink-0 cursor-pointer items-center gap-2 border-t border-base-300 px-4 py-2 text-label-small text-muted transition-colors hover:bg-base-200 hover:text-base-content"
+      phx-click={show_dialog("about-#{@id}")}
+      aria-haspopup="dialog"
+    >
+      <span
+        :if={@status.update_available?}
+        class="size-1.5 shrink-0 rounded-full bg-warning"
+        aria-hidden="true"
+      />
+
+      <span class="truncate">
+        {gettext("Version:")} {Updates.current_version()}
+      </span>
+
+      <span :if={@status.update_available?} class="ml-auto shrink-0 text-warning">
+        {gettext("Update")}
+      </span>
+    </button>
+
+    <.about_dialog id={"about-#{@id}"} status={@status} />
+    """
+  end
+
+  # The dialog is plain markup rather than the `.modal` component, which renders
+  # itself open off `:if`. This one is opened by a click, like the mobile drawer.
+  attr :id, :string, required: true
+  attr :status, :map, required: true
+
+  defp about_dialog(assigns) do
+    ~H"""
+    <dialog id={@id} class="app-dialog" aria-labelledby={"#{@id}-title"}>
+      <div class="max-h-[85vh] w-[min(42rem,92vw)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-5 shadow-figma-card-large sm:p-6">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 id={"#{@id}-title"} class="text-title-large">{gettext("About")}</h2>
+
+            <p class="mt-0.5 text-label-small text-muted">
+              {gettext("Conditional Actions for Hell Let Loose")}
+            </p>
+          </div>
+
+          <form method="dialog">
+            <button
+              class="flex size-8 cursor-pointer items-center justify-center rounded-field text-muted transition-colors hover:bg-base-200 hover:text-base-content"
+              aria-label={gettext("Close")}
+            >
+              <.icon name="hero-x-mark" class="size-4" />
+            </button>
+          </form>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <.link
+            href="https://github.com/fxsobr/hll_conditional_actions/wiki"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-sm btn-outline"
+          >
+            <.icon name="hero-book-open" class="size-4" /> {gettext("Documentation")}
+          </.link>
+
+          <.link
+            href="https://github.com/fxsobr/hll_conditional_actions/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-sm btn-outline"
+          >
+            <.icon name="hero-bug-ant" class="size-4" /> {gettext("Report an issue")}
+          </.link>
+
+          <.link
+            href="https://discord.com/invite/zpSQQef"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-sm btn-outline"
+          >
+            <.icon name="hero-chat-bubble-left-right" class="size-4" /> {gettext("CRCON Discord")}
+          </.link>
+        </div>
+
+        <dl class="mt-5 space-y-1 text-sm">
+          <div class="flex flex-wrap gap-x-2">
+            <dt class="text-muted">{gettext("Running:")}</dt>
+            <dd class="font-medium">{Updates.current_version()}</dd>
+          </div>
+
+          <div :if={@status.latest} class="flex flex-wrap gap-x-2">
+            <dt class="text-muted">{gettext("Latest release:")}</dt>
+            <dd class="font-medium">{@status.latest.tag}</dd>
+          </div>
+
+          <div :if={@status.checked_at} class="flex flex-wrap gap-x-2">
+            <dt class="text-muted">{gettext("Last checked:")}</dt>
+            <dd>{format_checked_at(@status.checked_at)}</dd>
+          </div>
+        </dl>
+
+        <p :if={@status.update_available?} class="mt-4 rounded-box bg-warning/10 p-3 text-sm">
+          <.icon name="hero-arrow-up-circle" class="size-4 text-warning" />
+          {gettext("A newer release is available.")}
+        </p>
+
+        <p
+          :if={not @status.update_available? and @status.latest}
+          class="mt-4 rounded-box bg-success/10 p-3 text-sm"
+        >
+          <.icon name="hero-check-circle" class="size-4 text-success" />
+          {gettext("You are up to date.")}
+        </p>
+
+        <p :if={@status.error} class="mt-4 text-sm text-muted">
+          {gettext("GitHub could not be reached, so this may be out of date.")}
+        </p>
+
+        <p :if={@status.releases == [] and is_nil(@status.error)} class="mt-4 text-sm text-muted">
+          {gettext("No releases have been published yet.")}
+        </p>
+
+        <section :for={release <- @status.releases} class="mt-6 border-t border-base-300 pt-4">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-title-small">{release.name}</h3>
+
+            <p :if={release.published_at} class="text-label-small text-muted">
+              {format_published_at(release.published_at)}
+            </p>
+          </div>
+
+          <div class="mt-2 text-sm leading-relaxed">
+            {ReleaseNotes.to_html(release.notes)}
+          </div>
+
+          <.link
+            href={release.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="link mt-2 inline-block text-label-small"
+          >
+            {gettext("Read it on GitHub")}
+          </.link>
+        </section>
+      </div>
+    </dialog>
+    """
+  end
+
+  defp format_checked_at(at) do
+    Calendar.strftime(at, "%d/%m/%Y %H:%M UTC")
+  end
+
+  defp format_published_at(at) do
+    Calendar.strftime(at, "%d/%m/%Y")
   end
 
   attr :title, :string, required: true

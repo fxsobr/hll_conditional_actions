@@ -103,6 +103,12 @@ RUN chown nobody /app
 # set runner ENV
 ENV MIX_ENV="prod"
 
+# What the About dialog reports, and what an issue report should quote.
+# Passed in by compose from `git describe`; empty here so a plain
+# `docker build` still works, and the app falls back to the mix.exs version.
+ARG BUILD_VERSION=""
+ENV BUILD_VERSION=${BUILD_VERSION}
+
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/hll_conditional_actions ./
 
