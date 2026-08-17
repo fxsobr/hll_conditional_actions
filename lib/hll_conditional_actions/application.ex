@@ -28,6 +28,7 @@ defmodule HllConditionalActions.Application do
         # show without an external reporter.
         HllConditionalActions.Metrics
       ] ++
+        update_checker() ++
         Runtime.children() ++
         [
           # Serve requests last, so the engine is ready before traffic arrives.
@@ -36,6 +37,16 @@ defmodule HllConditionalActions.Application do
 
     opts = [strategy: :one_for_one, name: HllConditionalActions.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Asks GitHub about newer releases on a timer. Off in test, where nothing
+  # may reach the network.
+  defp update_checker do
+    if Application.get_env(:hll_conditional_actions, :updates_enabled, true) do
+      [HllConditionalActions.Updates]
+    else
+      []
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

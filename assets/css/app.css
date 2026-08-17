@@ -734,8 +734,43 @@ textarea.pc-text-input {
 }
 
 .app-modal::backdrop,
-.app-drawer::backdrop {
+.app-drawer::backdrop,
+.app-dialog::backdrop {
   background: color-mix(in oklab, var(--color-gray-950) 45%, transparent);
+}
+
+/* Centred rather than a sheet: the About dialog is something you read and
+   dismiss, not a form you work in. The panel owns its own size. */
+.app-dialog {
+  margin: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-dialog {
+    opacity: 0;
+    transform: scale(0.97);
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease,
+      overlay 0.15s allow-discrete,
+      display 0.15s allow-discrete;
+  }
+
+  .app-dialog[open] {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  @starting-style {
+    .app-dialog[open] {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
 }
 
 .app-drawer {

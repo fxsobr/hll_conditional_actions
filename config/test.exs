@@ -33,6 +33,14 @@ config :hll_conditional_actions, :bootstrap_on_boot, false
 # tests drive it directly instead.
 config :hll_conditional_actions, :engine_enabled, false
 
+# No test may reach GitHub. The update checker is not started, and the tests
+# that cover it call the fetch directly with `Req.Test` answering.
+config :hll_conditional_actions, :updates_enabled, false
+
+config :hll_conditional_actions, :updates_req_options,
+  plug: {Req.Test, HllConditionalActions.Updates},
+  retry: false
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :hll_conditional_actions, HllConditionalActionsWeb.Endpoint,

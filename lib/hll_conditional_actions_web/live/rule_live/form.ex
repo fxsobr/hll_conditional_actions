@@ -45,6 +45,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
   alias HllConditionalActions.Rules.Recipes
   alias HllConditionalActions.Rules.Rule
   alias HllConditionalActions.Servers
+  alias Phoenix.HTML.Form, as: HtmlForm
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -954,8 +955,8 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
   end
 
   defp limits_summary(form) do
-    cooldown = Phoenix.HTML.Form.input_value(form, :cooldown_seconds)
-    maximum = Phoenix.HTML.Form.input_value(form, :max_executions_per_player)
+    cooldown = HtmlForm.input_value(form, :cooldown_seconds)
+    maximum = HtmlForm.input_value(form, :max_executions_per_player)
 
     limits =
       case {blank_or_zero?(cooldown), blank_or_zero?(maximum)} do
@@ -973,9 +974,9 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
   # truth, and falls back to the window for a rule loaded straight from the
   # database, where the virtual field has not been derived yet.
   defp escalating?(form) do
-    case Phoenix.HTML.Form.input_value(form, :escalate) do
-      nil -> not blank_or_zero?(Phoenix.HTML.Form.input_value(form, :escalation_window_seconds))
-      value -> Phoenix.HTML.Form.normalize_value("checkbox", value)
+    case HtmlForm.input_value(form, :escalate) do
+      nil -> not blank_or_zero?(HtmlForm.input_value(form, :escalation_window_seconds))
+      value -> HtmlForm.normalize_value("checkbox", value)
     end
   end
 
@@ -992,7 +993,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
       {gettext("1 week"), 604_800}
     ]
 
-    current = to_seconds(Phoenix.HTML.Form.input_value(form, :escalation_window_seconds))
+    current = to_seconds(HtmlForm.input_value(form, :escalation_window_seconds))
 
     if current in [nil, 0] or Enum.any?(options, fn {_label, value} -> value == current end) do
       options

@@ -1,0 +1,147 @@
+# What has to pass before a pull request can go into main.
+#
+# Three jobs, because three different things can break independently:
+#
+#   test    the suite, plus the checks `mix precommit` runs locally
+#   credo   static analysis
+#   docker  the production image builds
+#
+# The docker job is not redundant with the other two: nothing in the test suite
+# touches the Dockerfile, the release overlays or their file permissions, which
+# is exactly where a deploy tends to fail.
+name: pull-requests
+
+on:
+  pull_request:
+    branches: [main]
+  # So a branch can be checked before the pull request exists.
+  workflow_dispatch:
+
+# A new push supersedes the run still going for the previous one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The versions the production image is built with, so CI is not testing
+  # against a toolchain nobody deploys. Keep in step with the ARGs at the top
+  # of the Dockerfile.
+  ELIXIR_VERSION: "1.20.3"
+  OTP_VERSION: "29.0.5"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      # The suite talks to a real PostgreSQL: Ecto's sandbox gives isolation,
+      # not a substitute for the database.
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      MIX_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Cache deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - run: mix deps.get
+
+      # `mix precommit` runs `mix format` and `mix deps.unlock --unused`, which
+      # rewrite files. Here they have to report instead: a job that fixes the
+      # problem itself would pass no matter what was pushed.
+      - name: Formatted
+        run: mix format --check-formatted
+
+      - name: No unused entries in mix.lock
+        run: mix deps.unlock --check-unused
+
+      - name: Compile without warnings
+        run: mix compile --warnings-as-errors
+
+      - name: Test
+        run: mix test
+
+  credo:
+    name: Credo
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Cache deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - run: mix deps.get
+
+      # `--strict` turns on the readability and consistency checks too. What is
+      # switched off, and why, is in .credo.exs.
+      - name: Credo
+        run: mix credo --strict
+
+  docker:
+    name: Production image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Built, not pushed: this is asking whether the release still compiles
+      # and assembles, not publishing anything.
+      - name: Build the release image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -270,42 +270,30 @@ defmodule HllConditionalActions.Engine.Executor do
     end
   end
 
+  # What the history shows under an action, and what a Discord message quotes.
+  # Most actions carry either a message or a reason and nothing else.
+  @message_actions [
+    :message_player,
+    :message_all_players,
+    :broadcast_message,
+    :temporary_broadcast,
+    :set_welcome_message
+  ]
+
+  @reason_actions [:punish_player, :kick_player, :perma_ban_player, :add_to_watchlist]
+
   defp detail(%Action{type: type} = action, context) do
     case type do
-      :message_player ->
+      type when type in @message_actions ->
         text(action, :message, context)
 
-      :message_all_players ->
-        text(action, :message, context)
-
-      :broadcast_message ->
-        text(action, :message, context)
-
-      :temporary_broadcast ->
-        text(action, :message, context)
-
-      :set_welcome_message ->
-        text(action, :message, context)
-
-      :punish_player ->
-        text(action, :reason, context)
-
-      :kick_player ->
-        text(action, :reason, context)
-
-      :perma_ban_player ->
-        text(action, :reason, context)
-
-      :add_to_watchlist ->
+      type when type in @reason_actions ->
         text(action, :reason, context)
 
       :temp_ban_player ->
         "#{integer(action, :duration_hours, 2)}h - #{text(action, :reason, context)}"
 
-      :add_player_flag ->
-        to_string(Action.param(action, :flag))
-
-      :remove_player_flag ->
+      type when type in [:add_player_flag, :remove_player_flag] ->
         to_string(Action.param(action, :flag))
 
       :grant_vip ->

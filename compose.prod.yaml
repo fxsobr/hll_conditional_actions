@@ -41,6 +41,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Which commit this image is. Set it when building and the About
+        # dialog shows `v0.2.0-3-gab12cd3` instead of just the mix.exs
+        # version:
+        #
+        #   BUILD_VERSION=$(git describe --tags --always) \
+        #     docker compose -f compose.prod.yaml up -d --build
+        #
+        BUILD_VERSION: ${BUILD_VERSION:-}
     restart: unless-stopped
     depends_on:
       db:

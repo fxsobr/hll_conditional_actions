@@ -121,6 +121,10 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Where the About dialog reads its release notes from. Public data on a
+# public repository, so the check is unauthenticated.
+config :hll_conditional_actions, :updates, repository: "fxsobr/hll_conditional_actions"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

@@ -113,8 +113,8 @@ defmodule HllConditionalActionsWeb do
       alias HllConditionalActionsWeb.Icons
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
       alias HllConditionalActionsWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

@@ -52,7 +52,7 @@ production; naming this one explicitly is what keeps them apart.
 ```bash
 mix test                  # the full suite
 mix test --failed         # only what failed last time
-mix precommit             # compile with warnings as errors, format, test
+mix precommit             # warnings as errors, format, credo, test
 mix ecto.reset            # drop, create, migrate, seed
 ```
 

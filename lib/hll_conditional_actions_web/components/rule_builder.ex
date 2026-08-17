@@ -16,6 +16,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
 
   alias HllConditionalActions.Engine.Template
   alias HllConditionalActions.Rules.Catalog
+  alias Phoenix.HTML.Form
 
   # ── Step navigator ─────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
           id={@field.id}
           name={@field.name}
           value="true"
-          checked={Phoenix.HTML.Form.normalize_value("checkbox", @field.value)}
+          checked={Form.normalize_value("checkbox", @field.value)}
           class="peer sr-only"
         />
         <span class="pc-switch__fake-input pc-switch__fake-input--sm"></span>
@@ -174,9 +175,9 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   attr :total, :integer, required: true
 
   def condition_row(assigns) do
-    field = Phoenix.HTML.Form.input_value(assigns.condition, :field) || :always_true
+    field = Form.input_value(assigns.condition, :field) || :always_true
     field = if is_binary(field), do: existing_field(field), else: field
-    operator = Phoenix.HTML.Form.input_value(assigns.condition, :operator)
+    operator = Form.input_value(assigns.condition, :operator)
     operator = if is_binary(operator), do: existing_operator(operator), else: operator
 
     assigns =
@@ -265,7 +266,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
     doc: "the 1-based rung when the rule escalates, false when it does not"
 
   def action_node(assigns) do
-    type = Phoenix.HTML.Form.input_value(assigns.action, :type) || :message_player
+    type = Form.input_value(assigns.action, :type) || :message_player
     type = if is_binary(type), do: existing_action(type), else: type
     tone = Icons.action_tone(type)
 
@@ -775,7 +776,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   end
 
   defp current_parameters(action_form) do
-    case Phoenix.HTML.Form.input_value(action_form, :parameters) do
+    case Form.input_value(action_form, :parameters) do
       parameters when is_map(parameters) -> parameters
       _other -> %{}
     end

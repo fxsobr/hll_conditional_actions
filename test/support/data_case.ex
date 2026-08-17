@@ -16,6 +16,8 @@ defmodule HllConditionalActions.DataCase do
 
   use ExUnit.CaseTemplate
 
+  alias Ecto.Adapters.SQL.Sandbox
+
   using do
     quote do
       alias HllConditionalActions.Repo
@@ -37,9 +39,9 @@ defmodule HllConditionalActions.DataCase do
   """
   def setup_sandbox(tags) do
     pid =
-      Ecto.Adapters.SQL.Sandbox.start_owner!(HllConditionalActions.Repo, shared: not tags[:async])
+      Sandbox.start_owner!(HllConditionalActions.Repo, shared: not tags[:async])
 
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    on_exit(fn -> Sandbox.stop_owner(pid) end)
   end
 
   @doc """

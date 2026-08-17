@@ -11,8 +11,8 @@ defmodule HllConditionalActions.Rules do
 
   alias HllConditionalActions.PubSub
   alias HllConditionalActions.Repo
-  alias HllConditionalActions.Rules.Execution
   alias HllConditionalActions.Rules.Audit
+  alias HllConditionalActions.Rules.Execution
   alias HllConditionalActions.Rules.Rule
   alias HllConditionalActions.Rules.Transfer
   alias HllConditionalActions.Servers.Server
@@ -263,17 +263,20 @@ defmodule HllConditionalActions.Rules do
     end
   end
 
+  # The index rides along so a failure can say which rule of the batch it was.
+  defp insert_or_rollback({attrs, index}, inserted) do
+    case %Rule{} |> Rule.changeset(attrs) |> Repo.insert() do
+      {:ok, rule} -> [rule | inserted]
+      {:error, changeset} -> Repo.rollback({index, changeset})
+    end
+  end
+
   defp insert_all_rules(attrs_list) do
     result =
       Repo.transaction(fn ->
         attrs_list
         |> Enum.with_index()
-        |> Enum.reduce([], fn {attrs, index}, acc ->
-          case %Rule{} |> Rule.changeset(attrs) |> Repo.insert() do
-            {:ok, rule} -> [rule | acc]
-            {:error, changeset} -> Repo.rollback({index, changeset})
-          end
-        end)
+        |> Enum.reduce([], &insert_or_rollback/2)
       end)
 
     case result do
