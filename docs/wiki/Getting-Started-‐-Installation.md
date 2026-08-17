@@ -108,7 +108,8 @@ Paste each into `.env`, on one line.
 ## 5. Start it
 
 ```bash
-docker compose -f compose.prod.yaml up -d --build
+docker compose -f compose.prod.yaml pull
+docker compose -f compose.prod.yaml up -d
 ```
 
 The first build takes a few minutes — it compiles the release. After that,
@@ -254,13 +255,13 @@ container running.
 
 `docker logs <id>` works too, but you have to look the id up first
 (`docker compose -f compose.prod.yaml ps`) and it will be a different one after
-the next `up --build`.
+the next upgrade.
 
 ### Common causes
 
 | Symptom | Usually |
 | --- | --- |
-| `/app/bin/migrate: Permission denied`, repeating | A checkout that lost the executable bit on the release scripts. Fixed since Aug 2026: `git pull`, then `up -d --build` |
+| `/app/bin/migrate: Permission denied`, repeating | Only affects images built from a checkout that lost the executable bit on the release scripts. Fixed since Aug 2026, and the published images never had it |
 | `set SECRET_KEY_BASE in .env` on startup | One of the two secrets is still empty |
 | The browser cannot reach it at all | `APP_PORT` is taken, or a firewall. `sudo ss -tlnp \| grep 4000` |
 | The connection test cannot reach CRCON | The URL is `localhost`, which inside a container means the container. Use `host.docker.internal` or the machine's address |

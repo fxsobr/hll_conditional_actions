@@ -6,12 +6,14 @@
 ## Menu
 
 - [The short version](#the-short-version)
-- [Why the rebuild is not optional](#why-the-rebuild-is-not-optional)
+- [How the version gets picked](#how-the-version-gets-picked)
+- [Building it yourself instead](#building-it-yourself-instead)
 - [What an upgrade touches, and what it leaves alone](#what-an-upgrade-touches)
 - [Checking it worked](#checking-it-worked)
 - [If it will not start](#if-it-will-not-start)
 - [Going back](#going-back)
 - [Following a tag, or following main](#following-a-tag-or-following-main)
+- [If the pull is denied](#if-the-pull-is-denied)
 - [CRCON is not involved](#crcon-is-not-involved)
 
 ***
@@ -22,7 +24,8 @@
 cd ~/hll_conditional_actions
 git fetch --tags
 git checkout v0.2.0
-BUILD_VERSION=$(git describe --tags --always) docker compose -f compose.prod.yaml up -d --build
+docker compose -f compose.prod.yaml pull
+docker compose -f compose.prod.yaml up -d
 ```
 
 Replace `v0.2.0` with the version you are moving to. The
@@ -30,23 +33,47 @@ Replace `v0.2.0` with the version you are moving to. The
 lists them, and the **About** dialog in the app tells you when there is a
 newer one.
 
-## Why the rebuild is not optional
+Nothing is compiled on your machine. The images are built when a release is
+published and downloaded ready to run, so an upgrade takes about as long as
+the download.
 
-This is the step people skip, so it is worth being blunt about.
+## How the version gets picked
 
-This project **builds its image on your machine**. It does not publish a
-prebuilt one, so there is nothing to `docker compose pull`. Without `--build`,
-compose finds an image already there, decides it has nothing to do, and starts
-the old version again.
+Worth understanding, because it explains why the `git checkout` matters even
+though no code is being compiled.
 
-Nothing warns you. The containers come up, the site answers, the logs look
-normal — and you are still running the version you were trying to leave. The
-only sign is that the version in the About dialog did not change.
+The compose file names the image with the version **it** was released as:
 
-The `BUILD_VERSION` part is what stamps the running commit into the image, so
-the app can report `v0.2.0` instead of falling back to the version written in
-`mix.exs`. Leave it out and everything still works; you just lose the ability
+```yaml
+image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.2.0}
+```
+
+So checking out the tag is what selects the image. `pull` then fetches exactly
+that one, and `up -d` runs it. There is no `latest` involved and nothing moves
+under you: two servers on the same tag run the identical image.
+
+To run a different version without moving the working copy, set `APP_VERSION`
+in your `.env`. Useful for trying a version briefly, but the checkout is the
+normal way, because it keeps the compose file and the image in step.
+
+## Building it yourself instead
+
+The published images are `linux/amd64`. On anything else — an ARM server, for
+instance — or to run a commit that has not been released, build from source:
+
+```bash
+BUILD_VERSION=$(git describe --tags --always) \
+  docker compose -f compose.prod.yaml up -d --build
+```
+
+The `build:` section is still in the compose file for exactly this. The
+`BUILD_VERSION` part stamps the commit into the image so the About dialog
+reports it; leave it out and everything still works, you just lose the ability
 to tell two builds apart.
+
+> [!NOTE]
+> `--build` and `pull` do not mix. If you build locally and later run `pull`,
+> the downloaded image replaces yours under the same name.
 
 ## What an upgrade touches
 
@@ -79,7 +106,10 @@ above your account — and compare it with what the server says:
 git describe --tags --always
 ```
 
-If the two disagree, you forgot `--build` and the old image is still running.
+If the two disagree, the old image is still running — usually because
+`pull` failed and `up -d` fell back to what was already there. The output of
+the `pull` says why; a `denied` or `not found` almost always means the
+[package is still private](#if-the-pull-is-denied).
 
 One thing to know: the dialog does not check GitHub on demand. It checks
 thirty seconds after the app starts and every six hours after that, because
@@ -125,8 +155,12 @@ Then switch the code:
 
 ```bash
 git checkout v0.1.0
-BUILD_VERSION=$(git describe --tags --always) docker compose -f compose.prod.yaml up -d --build
+docker compose -f compose.prod.yaml pull
+docker compose -f compose.prod.yaml up -d
 ```
+
+Older images are not deleted when a new one is published, so going back is
+always a download away.
 
 > [!WARNING]
 > **Undoing a migration does not bring data back.** If the migration you are
@@ -153,6 +187,28 @@ git checkout main && git pull
 `main` is where work lands as it is merged. It is not what a server should
 usually run — a tag is a version somebody decided was ready, and `main` is
 whatever was merged most recently.
+
+## If the pull is denied
+
+```
+Error response from daemon: denied
+```
+
+The images live in GitHub's registry and have to be public for an anonymous
+`docker compose pull` to reach them. A package is **private when it is first
+published**, and making it public is a one-off setting on the repository, not
+something the release process can do:
+
+**Repository → Packages → the package → Package settings → Change visibility →
+Public.**
+
+Once for each of the two packages, and never again.
+
+If the images are private on purpose, sign in on the server first:
+
+```bash
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+```
 
 ## CRCON is not involved
 
