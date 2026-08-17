@@ -41,7 +41,7 @@ services:
     # Built by the release workflow and pulled from here, so upgrading is a
     # download rather than a compile. `git checkout v0.2.0` is what selects the
     # version: the compose file at that tag names that image.
-    image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.1.0}
+    image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.1.2}
     # Kept so the stack can still be built from source — on an architecture
     # with no published image, or from an unreleased commit:
     #
