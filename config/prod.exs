@@ -10,7 +10,7 @@ config :hll_conditional_actions, HllConditionalActionsWeb.Endpoint,
 
 # `force_ssl` and the secure cookie flag are decided at boot, in
 # config/runtime.exs, from BEHIND_PROXY — the same release runs behind the
-# Caddy in compose.prod.yaml and, when somebody prefers it, published directly
+# Caddy in compose.yaml and, when somebody prefers it, published directly
 # on its own port over plain HTTP.
 
 # Do not print debug messages in production

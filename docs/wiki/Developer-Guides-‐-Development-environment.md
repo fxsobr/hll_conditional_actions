@@ -15,7 +15,7 @@
 ## With Docker (nothing to install)
 
 ```bash
-docker compose up
+docker compose -f compose.dev.yaml up
 ```
 
 Postgres, migrations, seeds and the server with code reloading, on
@@ -41,8 +41,13 @@ Only if something on your machine already holds 4000 or 5432:
 ```bash
 cp .env.dev.example .env.dev
 # edit DEV_APP_PORT / DEV_POSTGRES_PORT
-docker compose --env-file .env.dev up
+docker compose -f compose.dev.yaml --env-file .env.dev up
 ```
+
+> [!IMPORTANT]
+> `compose.yaml` is **production**. A bare `docker compose up` in a checkout
+> starts the production stack, not this one. The development stack is always
+> `-f compose.dev.yaml`.
 
 The `--env-file` matters. Compose reads `.env` by itself, and `.env` belongs to
 production; naming this one explicitly is what keeps them apart.

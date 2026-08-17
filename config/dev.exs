@@ -3,7 +3,7 @@ import Config
 # Configure your database.
 #
 # The defaults match a Postgres running on localhost; the environment variables
-# are what `compose.yaml` sets so the same config works inside the dev
+# are what `compose.dev.yaml` sets so the same config works inside the dev
 # container, where the database is reachable as `db`.
 config :hll_conditional_actions, HllConditionalActions.Repo,
   username: System.get_env("DATABASE_USER", "postgres"),

@@ -4,8 +4,8 @@
 # so upgrading is a pull rather than a compile on the operator's machine:
 #
 #   git fetch --tags && git checkout v0.2.0
-#   docker compose -f compose.prod.yaml pull
-#   docker compose -f compose.prod.yaml up -d
+#   docker compose pull
+#   docker compose up -d
 #
 # The tag is what the image is named after, and it is baked into the app as
 # BUILD_VERSION so the About dialog reports the release rather than guessing
@@ -13,7 +13,7 @@
 #
 # Only linux/amd64 is published. Building an Elixir release for arm64 under
 # emulation takes long enough to make cutting a release a chore, and the
-# `build:` section in compose.prod.yaml is still there for anyone on another
+# `build:` section in compose.yaml is still there for anyone on another
 # architecture — see the Upgrading page.
 name: release
 
@@ -56,11 +56,11 @@ jobs:
         run: |
           tag="${{ inputs.tag || github.ref_name }}"
           mix_version=$(grep -m1 'version: "' mix.exs | sed 's/.*version: "//; s/".*//')
-          image_versions=$(grep -o 'APP_VERSION:-v[^}]*' compose.prod.yaml \
+          image_versions=$(grep -o 'APP_VERSION:-v[^}]*' compose.yaml \
             | sed 's/APP_VERSION:-v//' | sort -u)
           echo "tag: $tag   mix.exs: $mix_version   images: $(echo $image_versions)"
           test "$(echo "$image_versions" | wc -l)" -eq 1 || {
-            echo "::error::The image tags in compose.prod.yaml do not agree with each other."
+            echo "::error::The image tags in compose.yaml do not agree with each other."
             exit 1
           }
           test "$tag" = "v$mix_version" || {
@@ -68,7 +68,7 @@ jobs:
             exit 1
           }
           test "v$image_versions" = "$tag" || {
-            echo "::error::compose.prod.yaml names v$image_versions, not $tag."
+            echo "::error::compose.yaml names v$image_versions, not $tag."
             exit 1
           }
 

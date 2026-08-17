@@ -108,8 +108,8 @@ Paste each into `.env`, on one line.
 ## 5. Start it
 
 ```bash
-docker compose -f compose.prod.yaml pull
-docker compose -f compose.prod.yaml up -d
+docker compose pull
+docker compose up -d
 ```
 
 The first build takes a few minutes — it compiles the release. After that,
@@ -227,10 +227,10 @@ goes badly: [Upgrading](https://github.com/fxsobr/hll_conditional_actions/wiki/G
 
 ```bash
 # Stop, keep everything
-docker compose -f compose.prod.yaml down
+docker compose down
 
 # Stop and delete the database as well. There is no undo
-docker compose -f compose.prod.yaml down -v
+docker compose down -v
 ```
 
 ## If something goes wrong
@@ -243,18 +243,18 @@ id — the id changes on every rebuild:
 ```bash
 cd ~/hll_conditional_actions
 
-docker compose -f compose.prod.yaml logs -f app        # follow the app
-docker compose -f compose.prod.yaml logs --tail 200 app
-docker compose -f compose.prod.yaml logs caddy
-docker compose -f compose.prod.yaml logs db
-docker compose -f compose.prod.yaml logs               # all three
+docker compose logs -f app        # follow the app
+docker compose logs --tail 200 app
+docker compose logs caddy
+docker compose logs db
+docker compose logs               # all three
 ```
 
 `-f` follows the log as it is written; Ctrl+C stops following and leaves the
 container running.
 
 `docker logs <id>` works too, but you have to look the id up first
-(`docker compose -f compose.prod.yaml ps`) and it will be a different one after
+(`docker compose ps`) and it will be a different one after
 the next upgrade.
 
 ### Common causes

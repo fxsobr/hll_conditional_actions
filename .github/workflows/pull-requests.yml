@@ -92,19 +92,19 @@ jobs:
       - name: Compile without warnings
         run: mix compile --warnings-as-errors
 
-      # Every image tag in compose.prod.yaml is what `git checkout v0.2.0`
+      # Every image tag in compose.yaml is what `git checkout v0.2.0`
       # selects. There is more than one — the app and Caddy — and a release
       # that bumps only the first publishes a compose file pointing at an
       # image that was never built.
-      - name: The versions in mix.exs and compose.prod.yaml agree
+      - name: The versions in mix.exs and compose.yaml agree
         run: |
           mix_version=$(grep -m1 'version: "' mix.exs | sed 's/.*version: "//; s/".*//')
-          image_versions=$(grep -o 'APP_VERSION:-v[^}]*' compose.prod.yaml \
+          image_versions=$(grep -o 'APP_VERSION:-v[^}]*' compose.yaml \
             | sed 's/APP_VERSION:-v//' | sort -u)
           echo "mix.exs: $mix_version"
-          echo "compose.prod.yaml: $(echo $image_versions)"
+          echo "compose.yaml: $(echo $image_versions)"
           test "$(echo "$image_versions" | wc -l)" -eq 1 || {
-            echo "::error::The image tags in compose.prod.yaml do not agree with each other."
+            echo "::error::The image tags in compose.yaml do not agree with each other."
             exit 1
           }
           test "$mix_version" = "$image_versions" || {
