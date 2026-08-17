@@ -7,8 +7,8 @@
 
 - [The four steps](#the-four-steps)
 - [Setup](#setup)
-- [Priority](#priority)
-- [Group](#group)
+- [Priority — which rule runs first](#priority)
+- [Group — switching a set together](#group)
 - [Game and Applies to](#game-and-applies-to)
 - [Enabled and Simulation only](#enabled-and-simulation-only)
 - [How conditions combine](#how-conditions-combine)
@@ -45,44 +45,108 @@ legitimate rule — a welcome message is exactly that — not an unfinished one.
 
 ## Priority
 
-A whole number, default `0`. Rules are evaluated **highest priority first**;
-ties are broken by the order the rules were created.
+**What it does:** decides which rule runs **first** when more than one answers
+the same event.
 
-It does **not** stop other rules from running. Every rule whose trigger and
-conditions match will fire, whatever its priority — priority only decides
-*who goes first*. If two rules both kick, both kick.
+**What it does not do:** stop the others. This is the part people get wrong.
+Priority is not "first match wins" — every rule whose trigger fires and whose
+conditions hold will run, whatever its priority. If two rules both kick, the
+player is kicked twice.
 
-Where it matters:
+A whole number, `0` by default. Higher goes first. Rules with the same number
+run in the order they were created.
 
-- A rule that adds a flag should run **before** a rule that reads that flag.
-- A specific rule ("clan members are exempt, add a flag") should run before a
-  broad one that punishes.
-- When you want the message a player sees first to be the friendlier one.
+### What the order does *not* buy you
+
+One rule cannot set something up for another rule **within the same event**.
+Everything the conditions read — the player, their squad, their flags, the
+server — is read **once, before any rule runs**, and every rule matching that
+event sees that same picture.
+
+So this does not work the way it looks:
+
+| Priority | Rule | Then |
+| --- | --- | --- |
+| 10 | Flag clan members on a team kill | Add a flag `✅` |
+| 0 | Punish anyone without `✅` | Punish the player |
+
+The flag really is added first, but the punishing rule is still looking at the
+picture taken before either ran — where the flag was not there yet. It punishes
+anyway. The flag helps from the *next* event onwards.
+
+Write the exemption as a condition on the punishing rule instead:
+
+> `Player name` **does not contain** `[CB]`
+
+One rule, no ordering, no window where it is wrong.
+
+### When the order does matter
+
+What priority really controls is the order things **reach the game**, and that
+is worth getting right when a player is on the receiving end of two rules.
+
+Two rules that both message on a team kill:
+
+| Priority | Rule | Message |
+| --- | --- | --- |
+| **10** | Explain the rule | "Team killing is not allowed here." |
+| **0** | Warn about the ladder | "That is your third. The next one is a ban." |
+
+At those priorities the player reads the explanation and then the warning,
+which is a sentence. Reversed, they read the threat and then a rule they have
+already been threatened over.
+
+The same applies when one rule messages and another kicks: put the message
+above the kick, or it never arrives.
+
+Most of the time the order does not matter and `0` everywhere is right.
 
 > [!TIP]
-> The builder warns you when another enabled rule answers the same trigger on
-> the same servers. It is a heads up, not an error: two rules on one event is
-> often exactly right — warn *and* log to Discord.
+> The builder tells you when another enabled rule answers the same trigger on
+> the same servers. It is a heads up, not an error — two rules on one event is
+> often exactly what you want, like warning the player *and* posting to
+> Discord. It is there so that "both of them kick" is a decision rather than a
+> surprise.
 
 ## Group
 
-A free text label. Type anything; the builder suggests the names already in
-use so you do not end up with both `Seeding` and `seeding`.
+**What it does:** puts a label on a rule so a set of related rules can be
+found, and switched, together. It changes nothing about how or when a rule
+runs.
 
-A group buys you three things on the **Rules** page:
+Type anything you like; the builder suggests names already in use so you do
+not end up with both `Seeding` and `seeding`. Leaving it empty is fine.
 
-1. **Filtering.** The group dropdown appears as soon as any rule has one.
-2. **Switching the whole set on or off in one go.** Pick a group in the
-   filter and a bar appears: *Acting on the whole group X* → **Enable all** /
-   **Disable all**. Each rule is toggled individually and each one is recorded
-   in the audit trail, so "who disabled the whole seeding group" has an answer.
-3. **A label on the row**, so the list reads as a set of policies rather than
-   a pile of rules.
+### What you get on the Rules page
 
-Groups people tend to end up with: `Seeding`, `Anti-cheat`, `Welcome`,
-`Events`, `Discord`.
+**A filter.** The group dropdown appears as soon as any rule has one, and
+narrows the list to that set.
 
-Leaving the group empty is fine. Nothing requires it.
+**One switch for the whole set.** Pick a group in the filter and a bar
+appears:
+
+> Acting on the whole group **Seeding**.  **[Enable all]** **[Disable all]**
+
+That is the point of groups. A community that runs different rules while the
+server is filling up can switch six seeding rules off with one click when it
+is full, instead of finding each one.
+
+Each rule is still toggled individually underneath, and each one is written to
+the audit trail — so *"who turned the whole seeding group off"* has an answer
+on the rule's **Changes** tab.
+
+**A label on the row**, so the list reads as a handful of policies rather than
+twenty loose rules.
+
+### Groups that tend to appear
+
+| Group | Holds |
+| --- | --- |
+| `Seeding` | Rules that only make sense on an empty server, switched off when it fills |
+| `Anti-cheat` | Kill rate watching, suspicious name patterns |
+| `Welcome` | Greetings, new player watching |
+| `Events` | Rules for a one-off night, switched on and off as a set |
+| `Discord` | Rules whose only action is posting somewhere |
 
 ## Game and Applies to
 
