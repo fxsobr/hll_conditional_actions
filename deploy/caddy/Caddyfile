@@ -1,34 +1,27 @@
 # Caddy in front of the release.
 #
-# It exists for four things the application should not be doing itself:
+# It exists for three things the application should not be doing itself:
 #
-#   1. getting and renewing a certificate, so nobody has to remember to
-#   2. refusing floods before they reach a BEAM process
-#   3. compressing responses
-#   4. being the single thing that answers on 80 and 443
+#   1. refusing floods before they reach a BEAM process
+#   2. compressing responses
+#   3. being the one thing that answers, so the app's own port never has to be
+#      published
 #
-# The app is not published to the host at all in `compose.prod.yaml`; this is
-# the only way in.
+# It answers on **4000, over plain HTTP**, and asks nobody for a certificate.
+# Ports 80 and 443 are left alone, which is what keeps this out of the way of
+# CRCON and of anything else already on the machine.
 #
-# {$PHX_HOST} and {$ACME_EMAIL} come from the environment, so the same file
-# serves every deployment. Point PHX_HOST at a real hostname that resolves to
-# this machine and Caddy will fetch a Let's Encrypt certificate on first boot;
-# set it to `localhost` and it issues a local one instead, which is what makes
-# a laptop run work without ceremony.
-{
-	email {$ACME_EMAIL:admin@localhost}
+# That means the traffic between a browser and this machine is not encrypted.
+# On a private network, or behind something that already terminates TLS, that
+# is fine. On the open internet it is not: put a proxy in front, and set
+# FORCE_HTTPS=true on the app service so the session cookie is marked `secure`
+# and plain HTTP is redirected.
+#
+# SITE_ADDRESS is still a variable, so a deployment that *does* want Caddy to
+# get its own certificate can set it to a hostname and publish 80 and 443 —
+# but nothing here assumes it.
 
-	# Caddy is the outermost hop here, so no forwarded header may be believed.
-	# When something else sits in front — Cloudflare, a load balancer — list
-	# its ranges instead, or one client can pretend to be many and walk past
-	# every limit below.
-	#
-	#   servers {
-	#     trusted_proxies static 173.245.48.0/20
-	#   }
-}
-
-{$PHX_HOST:localhost} {
+{$SITE_ADDRESS::4000} {
 	encode zstd gzip
 
 	# ── Rate limiting ────────────────────────────────────────────────────────
@@ -68,14 +61,18 @@
 	# Permissions-Policy; those belong with the pages and travel even when
 	# Caddy is not in front. What is here is what only the edge can say.
 	header {
-		# One year. Add `preload` only once the certificate is settled and the
-		# whole hostname is meant to be https forever — it is hard to undo.
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		# Caddy announces itself by default; there is no reason to.
 		-Server
 	}
+
+	# HSTS tells a browser to refuse plain HTTP to this host from now on, so it
+	# is only correct once there really is TLS. Uncomment it together with a
+	# hostname in SITE_ADDRESS.
+	#
+	#   header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
 
 	# Digested filenames change with their content, so the browser may keep
 	# them forever.

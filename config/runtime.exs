@@ -115,32 +115,32 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
 
-  # Is something terminating TLS in front of this? True for the compose stack,
-  # which puts Caddy there; false for a deployment that publishes the app's own
-  # port directly.
+  # Two separate questions, because with Caddy on a plain HTTP port the
+  # answers differ:
   #
-  # It decides three things that all have to agree, or the result is an app
-  # nobody can sign in to:
+  #   BEHIND_PROXY  is something in front setting X-Forwarded-For? Believing
+  #                 that header with nothing in front lets any client name its
+  #                 own address and walk past the sign in limiter.
   #
-  #   * whether plain HTTP is redirected to https. On its own port with no
-  #     proxy, that redirect is an infinite loop.
-  #   * whether the session cookie is `secure`. A secure cookie is never sent
-  #     over plain HTTP, so signing in would appear to work and then not.
-  #   * whether `X-Forwarded-For` may be believed. With nothing in front, that
-  #     header is whatever the client typed.
+  #   FORCE_HTTPS   is the *public* connection TLS? It decides whether plain
+  #                 HTTP is redirected, whether HSTS is sent, and whether the
+  #                 session cookie is `secure`. A secure cookie is never sent
+  #                 over plain HTTP, so saying yes when it is not produces an
+  #                 app where signing in appears to work and then does not.
   behind_proxy? = System.get_env("BEHIND_PROXY", "true") not in ~w(false 0 no)
+  force_https? = System.get_env("FORCE_HTTPS", "false") not in ~w(false 0 no)
 
   config :hll_conditional_actions,
-    secure_cookies: behind_proxy?,
-    trust_proxy_headers: behind_proxy?,
-    force_https: behind_proxy?
+    secure_cookies: force_https?,
+    force_https: force_https?,
+    trust_proxy_headers: behind_proxy?
 
   config :hll_conditional_actions, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   {scheme, url_port} =
-    if behind_proxy?,
+    if force_https?,
       do: {"https", 443},
-      else: {"http", String.to_integer(System.get_env("PORT", "4000"))}
+      else: {"http", String.to_integer(System.get_env("PUBLIC_PORT", "4000"))}
 
   config :hll_conditional_actions, HllConditionalActionsWeb.Endpoint,
     url: [host: host, port: url_port, scheme: scheme],

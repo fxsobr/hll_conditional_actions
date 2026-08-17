@@ -12,7 +12,7 @@
 - [4. Generate the two secrets](#4-generate-the-two-secrets)
 - [5. Start it](#5-start-it)
   - [Does this fight with CRCON?](#does-this-fight-with-crcon)
-  - [Alternative: no Caddy, straight on its own port](#alternative-no-caddy-straight-on-its-own-port)
+  - [About TLS](#about-tls)
 - [6. Sign in and change the password](#6-sign-in-and-change-the-password)
 - [7. Connect your CRCON](#7-connect-your-crcon)
 - [8. Write your first rule](#8-write-your-first-rule)
@@ -71,19 +71,13 @@ changing:
 
 | Variable | Change it to |
 | --- | --- |
-| `PHX_HOST` | The hostname people will type — `rules.myclan.gg`. Leave `localhost` to try it out first |
-| `ACME_EMAIL` | Your email, for certificate expiry warnings |
+| `PHX_HOST` | How people reach the machine — a hostname, or its address |
+| `APP_PORT` | Only if 4000 is already taken |
 | `POSTGRES_PASSWORD` | Any long random string. Nothing but the app ever types it |
-| `HTTP_PORT` / `HTTPS_PORT` | Only if 80 and 443 are already taken |
 | `DEFAULT_LOCALE` | `pt_BR` for Portuguese |
 
 The file explains each one where it sits. Ctrl+O, Enter, Ctrl+X to save in
 nano.
-
-> [!TIP]
-> For a real certificate, `PHX_HOST` has to be a name that **resolves to this
-> machine**, and port 80 has to be reachable from the internet — that is how
-> Let's Encrypt validates it. Point an `A` record at the server first.
 
 ## 4. Generate the two secrets
 
@@ -115,81 +109,48 @@ The first build takes a few minutes — it compiles the release. After that,
 starts are quick.
 
 This brings up three containers: the app, its PostgreSQL, and **Caddy**, which
-answers on 80 and 443 and gets the certificate by itself. Only Caddy is
+answers on **port 4000 over plain HTTP** and proxies to the app. Only Caddy is
 published; the app and the database are reachable on the compose network and
-nowhere else, so nobody can go around the sign in form by talking to port 4000.
+nowhere else, so nobody can go around the sign in form by talking to the app
+directly.
+
+Open `http://<your machine>:4000`.
 
 ### Does this fight with CRCON?
 
-No. CRCON's own web container answers on **8010** and **9010**, not on 80 and
-443, and its PostgreSQL and Redis are not published to the machine at all —
-they live on CRCON's Docker network. This stack does the same with its own
-database. The two never see each other.
+No, and deliberately so. Caddy binds **4000 and nothing else** — ports 80 and
+443 are left alone, so anything you already run there is untouched. CRCON's own
+web container answers on 8010 and 9010, and both stacks keep their PostgreSQL
+on their own Docker network without publishing it.
 
 | | CRCON | This app |
 | --- | --- | --- |
-| Web, HTTP | 8010 | 80 |
-| Web, HTTPS | 9010 | 443 |
+| Web | 8010 / 9010 | **4000** |
 | Public stats | 7010 / 7011 | — |
 | PostgreSQL | its own, not published | its own, not published |
 
-If something *else* on the machine already holds 80 and 443 — your own reverse
-proxy, another site — change `HTTP_PORT` and `HTTPS_PORT` in `.env` rather than
-reaching for the alternative below.
+Change `APP_PORT` in `.env` if 4000 itself is taken.
 
 > [!WARNING]
 > Do not point this app at CRCON's database. It shares no schema with it, and
 > nothing good comes of trying.
 
-### Alternative: no Caddy, straight on its own port
+### About TLS
 
-If you would rather not run Caddy — something else already terminates TLS, or
-the app is only reachable over a private network — there is a second compose
-file:
+Port 4000 is **plain HTTP**. Passwords and session cookies travel in clear, so:
 
-```bash
-docker compose -f compose.prod.direct.yaml up -d --build
-```
+- on a private network, or reachable only through a VPN, this is fine as it is
+- on the open internet, put something in front that terminates TLS — a proxy
+  you already run, or Cloudflare — and then set `FORCE_HTTPS=true` in `.env`
 
-Same release image, no proxy: the app answers on `APP_PORT` (4000 by default)
-over **plain HTTP**, the way CRCON's own web container answers on 8010.
-
-What changes is one variable, `BEHIND_PROXY=false`, and it matters more than it
-looks:
-
-| | Behind Caddy (default) | Direct |
-| --- | --- | --- |
-| Plain HTTP | redirected to https | served |
-| Session cookie | `secure` | not `secure` |
-| `X-Forwarded-For` | believed | ignored |
-| HSTS | sent | not sent |
-
-The cookie is the one that bites. A `secure` cookie is **never sent over plain
-HTTP**, so running the default settings on a bare port produces an app where
-signing in appears to work and then quietly does not — you land back on the
-login page with nothing to explain it. That is why this is a separate compose
-file rather than "just change the port".
-
-> [!WARNING]
-> Direct mode is plain HTTP. Passwords and session cookies travel in clear,
-> and nothing refuses a flood before it reaches the application. On the open
-> internet, put a proxy in front of it or use `compose.prod.yaml`, which gets a
-> certificate by itself.
-
-Check it came up:
-
-```bash
-docker compose -f compose.prod.yaml ps
-docker compose -f compose.prod.yaml logs -f app
-```
-
-You are looking for `Running HllConditionalActionsWeb.Endpoint`. Ctrl+C stops
-following the logs; it does not stop the app.
+That flag marks the session cookie `secure` and redirects plain HTTP. Setting
+it **without** real TLS in front breaks signing in: a `secure` cookie is never
+sent over plain HTTP, so the login form accepts the password and returns you to
+itself with nothing to explain why.
 
 ## 6. Sign in and change the password
 
-Open `https://<your PHX_HOST>`. On `localhost`, or before DNS has caught up,
-the browser will warn about the certificate — that is expected, continue.
+Open `http://<your machine>:4000`.
 
 The first account is:
 
@@ -275,17 +236,14 @@ docker compose -f compose.prod.yaml logs app
 docker compose -f compose.prod.yaml logs caddy
 docker compose -f compose.prod.yaml logs db
 
-# On the direct stack, same thing without the caddy line:
-docker compose -f compose.prod.direct.yaml logs app
 ```
 
 | Symptom | Usually |
 | --- | --- |
 | `set SECRET_KEY_BASE in .env` on startup | One of the two secrets is still empty |
-| The browser cannot reach it at all | `HTTP_PORT`/`HTTPS_PORT` are taken, or a firewall. `sudo ss -tlnp \| grep -E ':(80\|443)'` |
-| Certificate never arrives | `PHX_HOST` does not resolve to this machine, or port 80 is not reachable from the internet |
+| The browser cannot reach it at all | `APP_PORT` is taken, or a firewall. `sudo ss -tlnp \| grep 4000` |
 | The connection test cannot reach CRCON | The URL is `localhost`, which inside a container means the container. Use `host.docker.internal` or the machine's address |
-| Sign in returns to the login page with no error | Running on a bare port with the default settings. The session cookie is `secure` and never leaves the browser over plain HTTP — use `compose.prod.direct.yaml` |
+| Sign in returns to the login page with no error | `FORCE_HTTPS=true` with no TLS actually in front. The session cookie is `secure` and never leaves the browser over plain HTTP |
 | Connected, but no rule ever fires | The log stream is off in CRCON |
 
 More on all of these:

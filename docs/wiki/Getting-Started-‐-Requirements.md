@@ -14,15 +14,14 @@
 
 - **Docker** and **Docker Compose**. Nothing else: the stack builds and
   runs Elixir, PostgreSQL and Caddy for you.
-- A hostname pointing at the machine, and ports **80** and **443** free,
-  if you want the automatic certificate.
+- One free port for the app to answer on. **4000** by default.
 - Developing without Docker instead? See
   [Development environment](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment).
 
 **Running on the same machine as CRCON is the normal setup.** Each stack keeps
 its own database, on its own Docker network and unpublished, so they cannot
-collide; CRCON answers on 8010 and 9010 while this app answers on 80 and 443,
-so the web ports do not collide either.
+collide; CRCON answers on 8010 and 9010 while this app answers on 4000,
+leaving 80 and 443 alone entirely.
 
 ## On the CRCON side
 

@@ -9,7 +9,7 @@ Three things are worth keeping, and they are not the same kind of thing:
 | --- | --- | --- |
 | The database | `db_data` volume | Rules, users and history are gone |
 | `ENCRYPTION_KEY` | your `.env` | The database survives, but every CRCON key in it is unreadable and has to be entered again |
-| `caddy_data` | volume | A new certificate is requested on next boot, which Let's Encrypt rate limits |
+| `caddy_data` | volume | Nothing, while there is no certificate in it |
 
 A database dump on a schedule:
 

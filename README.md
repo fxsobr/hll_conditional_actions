@@ -73,7 +73,7 @@ cp .env.example .env          # fill in PHX_HOST, SECRET_KEY_BASE, ENCRYPTION_KE
 docker compose -f compose.prod.yaml up -d --build
 ```
 
-Caddy gets the certificate by itself. Sign in with `admin` / `admin` and you are asked to pick a new password immediately.
+It answers on `http://<your machine>:4000`, leaving ports 80 and 443 alone. Sign in with `admin` / `admin` and you are asked to pick a new password immediately.
 
 Full walkthrough: [Installation](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation).
 
