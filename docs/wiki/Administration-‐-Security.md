@@ -13,7 +13,7 @@
 
 What this app does to keep an admin panel on the open internet from
 becoming somebody else's. See also
-[Users, roles and two factor](User-Guide-%E2%80%90-Users-roles-and-two-factor)
+[Users, roles and two factor](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor)
 for who can do what once they are in.
 
 ## The short list

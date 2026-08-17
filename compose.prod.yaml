@@ -55,6 +55,12 @@ services:
       ENGINE_ENABLED: ${ENGINE_ENABLED:-true}
       EXECUTION_RETENTION_DAYS: ${EXECUTION_RETENTION_DAYS:-30}
       POOL_SIZE: ${POOL_SIZE:-10}
+    # CRCON usually runs on the same machine. From inside a container
+    # `localhost` is the container itself, so the CRCON URL has to be either
+    # the machine's LAN address or `host.docker.internal`. Docker Desktop
+    # resolves that name by itself; on Linux this line is what makes it work.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Reachable from Caddy, never from the host.
     expose:
       - "4000"

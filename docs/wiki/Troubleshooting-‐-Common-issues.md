@@ -68,7 +68,7 @@ action did and what CRCON answered.
 - No codes left? Any account that can manage users has **Switch two factor off**
   in the row menu on **Users**.
 - Nobody left who can? See
-  [Users, roles and two factor](User-Guide-%E2%80%90-Users-roles-and-two-factor).
+  [Users, roles and two factor](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor).
 
 Keep a second administrator account. It is the whole plan for this case.
 

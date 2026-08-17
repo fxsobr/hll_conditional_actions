@@ -3,7 +3,7 @@
 
 # Configuration
 
-See [`.env.example`](.env.example) for the full list.
+See [`.env.example`](https://github.com/fxsobr/hll_conditional_actions/blob/main/.env.example) for the full list.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |

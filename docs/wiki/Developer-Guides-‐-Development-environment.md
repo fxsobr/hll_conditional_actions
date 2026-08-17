@@ -40,4 +40,4 @@ mix ecto.reset            # drop, create, migrate, seed
 
 ---
 
-See also [Translations](Developer-Guides-%E2%80%90-Translations).
+See also [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).

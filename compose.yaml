@@ -15,17 +15,20 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-hll_conditional_actions_dev}
+      POSTGRES_USER: ${DEV_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${DEV_POSTGRES_DB:-hll_conditional_actions_dev}
     ports:
       # Exposed so you can point a SQL client at it. Change the host side if
       # 5432 is already taken by another Postgres.
-      - "${POSTGRES_PORT:-5432}:5432"
+      #
+      # These are DEV_* on purpose: a `.env` filled in for a deployment must
+      # not change the credentials this database was created with.
+      - "${DEV_POSTGRES_PORT:-5432}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DEV_POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -43,17 +46,23 @@ services:
       PORT: 4000
       # Inside the compose network the database is reachable by service name.
       DATABASE_HOST: db
-      DATABASE_USER: ${POSTGRES_USER:-postgres}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      DATABASE_NAME: ${POSTGRES_DB:-hll_conditional_actions_dev}
+      DATABASE_USER: ${DEV_POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${DEV_POSTGRES_PASSWORD:-postgres}
+      DATABASE_NAME: ${DEV_POSTGRES_DB:-hll_conditional_actions_dev}
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
       ENGINE_ENABLED: ${ENGINE_ENABLED:-true}
       # Binding to every interface is what makes the port reachable from the
       # host; outside Docker the dev server stays on loopback.
       DEV_BIND_ALL: "true"
       PHX_HOST: localhost
+    # CRCON usually runs on the same machine. From inside a container
+    # `localhost` is the container itself, so the CRCON URL has to be either
+    # the machine's LAN address or `host.docker.internal`. Docker Desktop
+    # resolves that name by itself; on Linux this line is what makes it work.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "${APP_PORT:-4000}:4000"
+      - "${DEV_APP_PORT:-4000}:4000"
     volumes:
       - .:/app
       # Build artifacts stay in volumes: sharing them with the host would mix

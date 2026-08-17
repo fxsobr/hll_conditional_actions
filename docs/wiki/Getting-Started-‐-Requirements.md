@@ -17,7 +17,14 @@
 - A hostname pointing at the machine, and ports **80** and **443** free,
   if you want the automatic certificate.
 - Developing without Docker instead? See
-  [Development environment](Developer-Guides-%E2%80%90-Development-environment).
+  [Development environment](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment).
+
+**Running on the same machine as CRCON is the normal setup.** The two stacks
+keep their own databases, on their own Docker networks, neither published —
+they cannot collide. CRCON answers on 8010 and 9010, this app on 80 and 443,
+so the web ports do not collide either. The one thing that trips people up is
+that `localhost` inside a container is the container: see
+[Installation → Running it next to CRCON](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation#running-it-next-to-crcon).
 
 ## On the CRCON side
 

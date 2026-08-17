@@ -47,6 +47,6 @@ docker compose -f compose.prod.yaml run --rm app /app/bin/migrate
 
 ---
 
-Next: [Security](Administration-%E2%80%90-Security) ·
-[Backups](Administration-%E2%80%90-Backups) ·
-[Configuration](Administration-%E2%80%90-Configuration)
+Next: [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security) ·
+[Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups) ·
+[Configuration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration)
