@@ -14,24 +14,16 @@
 
 ### ⚡ Rules
 
-[Writing rules](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules)
+* [Writing rules](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules)
 
 <details>
-  <summary>The four steps (click to unfold)</summary>
+  <summary>Reference (click to unfold)</summary>
 
-  * [When — the trigger](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#1-when--the-trigger)
-  * [If — the conditions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#2-if--the-conditions)
-  * [Then — the actions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#3-then--the-actions)
-  * [Scope and limits](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#4-scope-and-limits)
-</details>
-
-<details>
-  <summary>Going further</summary>
-
-  * [Trying a rule before trusting it](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#trying-a-rule-before-trusting-it)
-  * [Escalating repeat offenders](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#escalating-repeat-offenders)
-  * [Time windows](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#time-windows)
-  * [Sharing rules](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules#sharing-rules)
+  * [Overview, groups and limits](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Overview)
+  * [When — the triggers](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Triggers)
+  * [If — the conditions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions)
+  * [Operators, with examples](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators)
+  * [Then — the actions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions)
 </details>
 
 ### 🔐 Accounts
