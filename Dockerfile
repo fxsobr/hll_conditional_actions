@@ -70,6 +70,13 @@ RUN mix assets.deploy
 COPY config/runtime.exs config/
 
 COPY rel rel
+
+# The overlay scripts end up as `bin/migrate` and `bin/server` in the release.
+# A checkout made on Windows, or unpacked from a zip, loses the executable bit
+# and the container then dies on "Permission denied" in a loop — so it is set
+# here rather than trusted to survive the trip.
+RUN chmod +x rel/overlays/bin/migrate rel/overlays/bin/server
+
 RUN mix release
 
 # start a new build stage so that the final image will only contain

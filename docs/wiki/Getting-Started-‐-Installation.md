@@ -19,6 +19,8 @@
 - [Updating](#updating)
 - [Stopping and removing](#stopping-and-removing)
 - [If something goes wrong](#if-something-goes-wrong)
+  - [Reading the logs](#reading-the-logs)
+  - [Common causes](#common-causes)
 
 ***
 
@@ -235,15 +237,33 @@ docker compose -f compose.prod.yaml down -v
 
 ## If something goes wrong
 
+### Reading the logs
+
+From the project directory, and by **service name** rather than by container
+id — the id changes on every rebuild:
+
 ```bash
-docker compose -f compose.prod.yaml logs app
+cd ~/hll_conditional_actions
+
+docker compose -f compose.prod.yaml logs -f app        # follow the app
+docker compose -f compose.prod.yaml logs --tail 200 app
 docker compose -f compose.prod.yaml logs caddy
 docker compose -f compose.prod.yaml logs db
-
+docker compose -f compose.prod.yaml logs               # all three
 ```
+
+`-f` follows the log as it is written; Ctrl+C stops following and leaves the
+container running.
+
+`docker logs <id>` works too, but you have to look the id up first
+(`docker compose -f compose.prod.yaml ps`) and it will be a different one after
+the next `up --build`.
+
+### Common causes
 
 | Symptom | Usually |
 | --- | --- |
+| `/app/bin/migrate: Permission denied`, repeating | A checkout that lost the executable bit on the release scripts. Fixed since Aug 2026: `git pull`, then `up -d --build` |
 | `set SECRET_KEY_BASE in .env` on startup | One of the two secrets is still empty |
 | The browser cannot reach it at all | `APP_PORT` is taken, or a firewall. `sudo ss -tlnp \| grep 4000` |
 | The connection test cannot reach CRCON | The URL is `localhost`, which inside a container means the container. Use `host.docker.internal` or the machine's address |

@@ -20,6 +20,21 @@
 # SITE_ADDRESS is still a variable, so a deployment that *does* want Caddy to
 # get its own certificate can set it to a hostname and publish 80 and 443 —
 # but nothing here assumes it.
+{
+	# Caddy's admin API listens on 2019 and can rewrite the routing at runtime.
+	# Nothing here uses it, and a listener that powerful is not worth leaving
+	# on for no reason.
+	admin off
+
+	# Caddy is the outermost hop, so no forwarded header may be believed. When
+	# something else sits in front — Cloudflare, a load balancer — list its
+	# ranges instead, or one client can pretend to be many and walk past the
+	# limits below.
+	#
+	#   servers {
+	#     trusted_proxies static 173.245.48.0/20
+	#   }
+}
 
 {$SITE_ADDRESS::4000} {
 	encode zstd gzip
