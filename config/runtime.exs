@@ -115,10 +115,35 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
 
+  # Is something terminating TLS in front of this? True for the compose stack,
+  # which puts Caddy there; false for a deployment that publishes the app's own
+  # port directly.
+  #
+  # It decides three things that all have to agree, or the result is an app
+  # nobody can sign in to:
+  #
+  #   * whether plain HTTP is redirected to https. On its own port with no
+  #     proxy, that redirect is an infinite loop.
+  #   * whether the session cookie is `secure`. A secure cookie is never sent
+  #     over plain HTTP, so signing in would appear to work and then not.
+  #   * whether `X-Forwarded-For` may be believed. With nothing in front, that
+  #     header is whatever the client typed.
+  behind_proxy? = System.get_env("BEHIND_PROXY", "true") not in ~w(false 0 no)
+
+  config :hll_conditional_actions,
+    secure_cookies: behind_proxy?,
+    trust_proxy_headers: behind_proxy?,
+    force_https: behind_proxy?
+
   config :hll_conditional_actions, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  {scheme, url_port} =
+    if behind_proxy?,
+      do: {"https", 443},
+      else: {"http", String.to_integer(System.get_env("PORT", "4000"))}
+
   config :hll_conditional_actions, HllConditionalActionsWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: url_port, scheme: scheme],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

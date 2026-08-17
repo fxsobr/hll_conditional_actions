@@ -11,17 +11,17 @@ defmodule HllConditionalActionsWeb.Endpoint do
   #     on any request that reached the app over http
   #   * `max_age` ends an abandoned session on a shared machine after a week
   #
-  # `secure` is off outside production only because dev and test are served
-  # over http, where a secure cookie is never sent at all.
-  @secure_cookies Application.compile_env(:hll_conditional_actions, :secure_cookies, false)
-
+  # `secure` is decided at *boot*, not at compile time, because the same
+  # release runs two ways: behind the Caddy in `compose.prod.yaml`, where
+  # everything is TLS and the flag must be on, and published directly on its
+  # own port over plain HTTP, where a secure cookie would never be sent at all
+  # and nobody could sign in. `config/runtime.exs` sets it from BEHIND_PROXY.
   @session_options [
     store: :cookie,
     key: "_hll_conditional_actions_key",
     signing_salt: "Ej99+OaA",
     same_site: "Lax",
     http_only: true,
-    secure: @secure_cookies,
     max_age: 60 * 60 * 24 * 7
   ]
 
@@ -64,6 +64,63 @@ defmodule HllConditionalActionsWeb.Endpoint do
 
   plug Plug.MethodOverride
   plug Plug.Head
-  plug Plug.Session, @session_options
+  # Phoenix's own `force_ssl` is a *compile time* endpoint key: setting it in
+  # runtime.exs makes the release refuse to boot with a "different value at
+  # runtime" error. Doing the redirect here instead is what lets one image both
+  # sit behind Caddy and be published directly over plain HTTP, where
+  # redirecting to https would loop forever.
+  plug :force_https
+
+  plug :session
+
+  defp force_https(conn, _opts) do
+    if Application.get_env(:hll_conditional_actions, :force_https, false) do
+      Plug.SSL.call(conn, ssl_options())
+    else
+      conn
+    end
+  end
+
+  defp ssl_options do
+    cached(:ssl, fn ->
+      Plug.SSL.init(
+        rewrite_on: [:x_forwarded_proto],
+        # Plug.SSL's `exclude` is a list of *hosts*. A container healthcheck or
+        # a probe on the loopback address is not something to redirect.
+        exclude: ["localhost", "127.0.0.1"]
+      )
+    end)
+  end
+
+  # Built once on the first request and kept in :persistent_term, because the
+  # endpoint's pipeline is compiled and cannot read application config for us.
+  defp session(conn, _opts), do: Plug.Session.call(conn, session_plug_options())
+
+  defp session_plug_options do
+    cached(:session, fn ->
+      Plug.Session.init(
+        Keyword.put(
+          @session_options,
+          :secure,
+          Application.get_env(:hll_conditional_actions, :secure_cookies, false)
+        )
+      )
+    end)
+  end
+
+  # Built on first use and kept, because the endpoint's pipeline is compiled
+  # and cannot read application config on our behalf.
+  defp cached(key, build) do
+    case :persistent_term.get({__MODULE__, key}, nil) do
+      nil ->
+        value = build.()
+        :persistent_term.put({__MODULE__, key}, value)
+        value
+
+      value ->
+        value
+    end
+  end
+
   plug HllConditionalActionsWeb.Router
 end
