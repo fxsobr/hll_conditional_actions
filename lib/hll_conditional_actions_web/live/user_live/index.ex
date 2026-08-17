@@ -109,23 +109,21 @@ defmodule HllConditionalActionsWeb.UserLive.Index do
   def handle_event("delete", %{"id" => id}, socket) do
     user = Accounts.get_user!(id)
 
-    cond do
-      to_string(user.id) == to_string(socket.assigns.current_user.id) ->
-        {:noreply, put_flash(socket, :error, gettext("You cannot remove your own account."))}
+    if to_string(user.id) == to_string(socket.assigns.current_user.id) do
+      {:noreply, put_flash(socket, :error, gettext("You cannot remove your own account."))}
+    else
+      case Accounts.delete_user(user) do
+        {:ok, _user} ->
+          {:noreply, socket |> put_flash(:info, gettext("User removed.")) |> load()}
 
-      true ->
-        case Accounts.delete_user(user) do
-          {:ok, _user} ->
-            {:noreply, socket |> put_flash(:info, gettext("User removed.")) |> load()}
-
-          {:error, :last_administrator} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               gettext("This is the last account that can manage users.")
-             )}
-        end
+        {:error, :last_administrator} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("This is the last account that can manage users.")
+           )}
+      end
     end
   end
 

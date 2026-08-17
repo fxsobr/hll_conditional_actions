@@ -92,23 +92,27 @@ defmodule HllConditionalActions.Accounts.Totp do
 
     with true <- String.match?(cleaned, ~r/^\d{#{@digits}}$/),
          {:ok, key} <- decode(secret) do
-      now = step(at)
-
-      Enum.reduce_while((now - @drift)..(now + @drift), :error, fn candidate, acc ->
-        # Constant time: comparing with `==` leaks, through timing, how much of
-        # the code was right, which is enough to guess one digit at a time.
-        if secure_equal?(pad(hotp(key, candidate)), cleaned) do
-          {:halt, {:ok, candidate}}
-        else
-          {:cont, acc}
-        end
-      end)
+      matching_step(key, cleaned, step(at))
     else
       _invalid -> :error
     end
   end
 
   def verify(_secret, _code, _at), do: :error
+
+  # The clock the phone read may be a step either side of ours, so the codes
+  # around `now` count too.
+  defp matching_step(key, code, now) do
+    Enum.reduce_while((now - @drift)..(now + @drift), :error, fn candidate, acc ->
+      # Constant time: comparing with `==` leaks, through timing, how much of
+      # the code was right, which is enough to guess one digit at a time.
+      if secure_equal?(pad(hotp(key, candidate)), code) do
+        {:halt, {:ok, candidate}}
+      else
+        {:cont, acc}
+      end
+    end)
+  end
 
   @doc """
   The `otpauth://` URI an authenticator app reads out of the QR code.

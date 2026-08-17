@@ -85,9 +85,10 @@ defmodule HllConditionalActions.Crcon.PermissionsTest do
     # review would still fail at run time with a permission error.
     test "every player-affecting action maps to a permission" do
       unmapped =
-        Catalog.action_types()
-        |> Enum.reject(&(&1 == :send_discord_webhook))
-        |> Enum.reject(&Permissions.for_action/1)
+        Enum.reject(
+          Catalog.action_types(),
+          &(&1 == :send_discord_webhook or Permissions.for_action(&1))
+        )
 
       assert unmapped == [],
              "these actions have no CRCON permission mapped: #{inspect(unmapped)}"
@@ -119,8 +120,8 @@ defmodule HllConditionalActions.Crcon.PermissionsTest do
       # that the key cannot do what the rule asks, and the failure only shows
       # up in the execution history after the fact.
       unmapped =
-        HllConditionalActions.Rules.Catalog.action_types()
-        |> Enum.reject(&HllConditionalActions.Crcon.Permissions.permission_for/1)
+        Catalog.action_types()
+        |> Enum.reject(&Permissions.permission_for/1)
 
       # Discord is the one action that reaches somewhere other than CRCON.
       assert unmapped == [:send_discord_webhook]

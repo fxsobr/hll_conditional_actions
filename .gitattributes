@@ -1,0 +1,9 @@
+# The repository stores LF for everything, and so should every working copy.
+# Without this, a Windows checkout gets CRLF and `mix credo` reports line
+# ending inconsistencies that do not exist in the repository.
+* text=auto eol=lf
+
+# Binary, never touched.
+*.png binary
+*.webp binary
+*.ico binary
