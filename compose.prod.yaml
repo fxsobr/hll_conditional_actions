@@ -99,7 +99,7 @@ services:
   caddy:
     # Not the stock Caddy: this one carries the rate limiting module, so there
     # is nothing on Docker Hub to pull. The release workflow builds it too.
-    image: ghcr.io/fxsobr/hll_conditional_actions-caddy:${APP_VERSION:-v0.1.0}
+    image: ghcr.io/fxsobr/hll_conditional_actions-caddy:${APP_VERSION:-v0.1.2}
     build:
       context: ./deploy/caddy
     restart: unless-stopped

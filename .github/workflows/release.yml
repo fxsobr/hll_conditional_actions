@@ -39,8 +39,42 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  verify:
+    name: The tag matches the tree
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # v0.1.2 shipped a compose file naming a Caddy image that was never
+      # built, because only one of the two image lines had been bumped. The
+      # pull request check reads them all now; this one runs where it counts,
+      # at the moment the release is made.
+      - name: The tag, mix.exs and every image line agree
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          mix_version=$(grep -m1 'version: "' mix.exs | sed 's/.*version: "//; s/".*//')
+          image_versions=$(grep -o 'APP_VERSION:-v[^}]*' compose.prod.yaml \
+            | sed 's/APP_VERSION:-v//' | sort -u)
+          echo "tag: $tag   mix.exs: $mix_version   images: $(echo $image_versions)"
+          test "$(echo "$image_versions" | wc -l)" -eq 1 || {
+            echo "::error::The image tags in compose.prod.yaml do not agree with each other."
+            exit 1
+          }
+          test "$tag" = "v$mix_version" || {
+            echo "::error::The tag is $tag but mix.exs says $mix_version."
+            exit 1
+          }
+          test "v$image_versions" = "$tag" || {
+            echo "::error::compose.prod.yaml names v$image_versions, not $tag."
+            exit 1
+          }
+
   publish:
     name: Publish ${{ matrix.name }}
+    needs: verify
     runs-on: ubuntu-latest
 
     strategy:
