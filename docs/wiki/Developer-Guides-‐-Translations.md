@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / Developer Guides / [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [Developer Guides](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides) / [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations)
 ***
 
 # Translations
@@ -16,3 +16,7 @@ follows the browser's `Accept-Language` header and falls back to
 `DEFAULT_LOCALE`.
 
 ---
+
+***
+
+**←** [Development environment](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment) · **↑** [Developer Guides](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides)

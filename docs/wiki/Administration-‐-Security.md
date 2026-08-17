@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / Administration / [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) / [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security)
 ***
 
 # Security
@@ -70,3 +70,7 @@ authenticator app, no email and no SMS, because this app sends neither.
 - **The way back in** when the phone and the codes are both gone: anybody who
   can manage users has *Switch two factor off* in the row menu on **Users**.
   Keep a second administrator account for exactly this.
+
+***
+
+**←** [Configuration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration) · **↑** [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) · [Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups) **→**

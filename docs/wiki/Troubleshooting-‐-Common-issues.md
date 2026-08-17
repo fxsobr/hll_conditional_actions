@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / Troubleshooting & Help / [Common issues](https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting-%E2%80%90-Common-issues)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [Troubleshooting & Help](https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting) / [Common issues](https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting-%E2%80%90-Common-issues)
 ***
 
 # Common issues
@@ -87,3 +87,7 @@ Open an issue with:
 
 If the problem is with CRCON itself rather than with this app, the CRCON
 Discord is the better place: <https://discord.com/invite/zpSQQef>
+
+***
+
+**↑** [Troubleshooting & Help](https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting)

@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / Administration / [Production deployment](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Production-deployment)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) / [Production deployment](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Production-deployment)
 ***
 
 # Production deployment
@@ -72,3 +72,7 @@ docker compose -f compose.prod.yaml run --rm app /app/bin/migrate
 Next: [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security) ·
 [Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups) ·
 [Configuration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration)
+
+***
+
+**↑** [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) · [Configuration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration) **→**

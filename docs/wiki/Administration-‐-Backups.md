@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / Administration / [Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) / [Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups)
 ***
 
 # Backups
@@ -20,3 +20,7 @@ docker compose -f compose.prod.yaml exec -T db   pg_dump -U "$POSTGRES_USER" hll
 Keep `.env` somewhere other than the same disk. A dump without its
 `ENCRYPTION_KEY` restores everything except the ability to talk to any game
 server.
+
+***
+
+**←** [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security) · **↑** [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration)

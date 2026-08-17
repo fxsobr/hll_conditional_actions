@@ -1,1 +1,3 @@
-HLL Conditional Actions Wiki - [Back to Home](https://github.com/fxsobr/hll_conditional_actions/wiki) — built on [CRCON](https://github.com/MarechJ/hll_rcon_tool)
+[Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) · [Getting Started](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started) · [User Guide](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide) · [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) · [Developer Guides](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides) · [Troubleshooting](https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting)
+
+Built on [CRCON](https://github.com/MarechJ/hll_rcon_tool) · [Report an issue](https://github.com/fxsobr/hll_conditional_actions/issues)
