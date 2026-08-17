@@ -38,17 +38,20 @@ services:
       - "5432"
 
   app:
+    # Built by the release workflow and pulled from here, so upgrading is a
+    # download rather than a compile. `git checkout v0.2.0` is what selects the
+    # version: the compose file at that tag names that image.
+    image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.1.0}
+    # Kept so the stack can still be built from source — on an architecture
+    # with no published image, or from an unreleased commit:
+    #
+    #   BUILD_VERSION=$(git describe --tags --always) \
+    #     docker compose -f compose.prod.yaml up -d --build
+    #
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # Which commit this image is. Set it when building and the About
-        # dialog shows `v0.2.0-3-gab12cd3` instead of just the mix.exs
-        # version:
-        #
-        #   BUILD_VERSION=$(git describe --tags --always) \
-        #     docker compose -f compose.prod.yaml up -d --build
-        #
         BUILD_VERSION: ${BUILD_VERSION:-}
     restart: unless-stopped
     depends_on:
@@ -94,6 +97,9 @@ services:
       retries: 3
 
   caddy:
+    # Not the stock Caddy: this one carries the rate limiting module, so there
+    # is nothing on Docker Hub to pull. The release workflow builds it too.
+    image: ghcr.io/fxsobr/hll_conditional_actions-caddy:${APP_VERSION:-v0.1.0}
     build:
       context: ./deploy/caddy
     restart: unless-stopped

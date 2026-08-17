@@ -1,0 +1,99 @@
+# Publishes the images a release is installed from.
+#
+# Pushing a `v*` tag builds both images and pushes them to GitHub's registry,
+# so upgrading is a pull rather than a compile on the operator's machine:
+#
+#   git fetch --tags && git checkout v0.2.0
+#   docker compose -f compose.prod.yaml pull
+#   docker compose -f compose.prod.yaml up -d
+#
+# The tag is what the image is named after, and it is baked into the app as
+# BUILD_VERSION so the About dialog reports the release rather than guessing
+# from mix.exs.
+#
+# Only linux/amd64 is published. Building an Elixir release for arm64 under
+# emulation takes long enough to make cutting a release a chore, and the
+# `build:` section in compose.prod.yaml is still there for anyone on another
+# architecture — see the Upgrading page.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  # For re-publishing a tag whose build failed.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build, e.g. v0.2.0"
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # One failing image should not leave the other unpublished without
+      # saying so.
+      fail-fast: false
+      matrix:
+        include:
+          - name: app
+            image: hll_conditional_actions
+            context: .
+            dockerfile: Dockerfile
+            versioned: true
+          # Caddy is built here too. It is not the stock image: it carries the
+          # rate limiting module, so there is nothing on Docker Hub to pull.
+          # It takes no BUILD_VERSION — passing one it does not declare would
+          # warn on every release.
+          - name: caddy
+            image: hll_conditional_actions-caddy
+            context: ./deploy/caddy
+            dockerfile: ./deploy/caddy/Dockerfile
+            versioned: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Work out the version
+        id: version
+        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64
+          # `latest` moves; the version tag never does, which is what makes
+          # pinning a deployment to one mean something.
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.version.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          build-args: ${{ matrix.versioned && format('BUILD_VERSION={0}', steps.version.outputs.tag) || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

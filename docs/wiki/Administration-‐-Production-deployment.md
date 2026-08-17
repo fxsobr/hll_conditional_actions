@@ -14,11 +14,12 @@
 ```bash
 cp .env.example .env
 # fill in PHX_HOST, SECRET_KEY_BASE, ENCRYPTION_KEY, POSTGRES_PASSWORD
-docker compose -f compose.prod.yaml up -d --build
+docker compose -f compose.prod.yaml pull
+docker compose -f compose.prod.yaml up -d
 ```
 
-This builds a release image (`Dockerfile`), runs migrations before serving any
-traffic, and publishes **only Caddy**. The app and Postgres are reachable on
+This pulls the images the release workflow published, runs migrations before
+serving any traffic, and publishes **only Caddy**. The app and Postgres are reachable on
 the compose network and nowhere else, so nobody can go around the sign in form
 by talking to port 4000.
 

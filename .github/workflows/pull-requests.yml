@@ -92,6 +92,20 @@ jobs:
       - name: Compile without warnings
         run: mix compile --warnings-as-errors
 
+      # The image tag in compose.prod.yaml is what `git checkout v0.2.0`
+      # selects. If it drifts from the version this commit calls itself, a
+      # release quietly runs the previous image.
+      - name: The version in mix.exs and compose.prod.yaml agree
+        run: |
+          mix_version=$(grep -m1 'version: "' mix.exs | sed 's/.*version: "//; s/".*//')
+          compose_version=$(grep -m1 'hll_conditional_actions:' compose.prod.yaml \
+            | sed 's/.*APP_VERSION:-v//; s/}.*//')
+          echo "mix.exs: $mix_version   compose.prod.yaml: $compose_version"
+          test "$mix_version" = "$compose_version" || {
+            echo "::error::These must match. Bump both in the same commit."
+            exit 1
+          }
+
       - name: Test
         run: mix test
 

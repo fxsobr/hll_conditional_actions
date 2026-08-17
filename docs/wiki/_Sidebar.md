@@ -7,6 +7,7 @@
 * [What it does](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-What-it-does)
 * [Requirements](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Requirements)
 * [Installation](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation)
+* [Upgrading](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Upgrading)
 
 ## 📖 [User Guide](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide)
 

@@ -39,6 +39,7 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-What-it-does">What it does</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Requirements">Requirements</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation">Installation</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Upgrading">Upgrading</a><br />
         <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>
