@@ -11,6 +11,8 @@
 - [3. Create the configuration file](#3-create-the-configuration-file)
 - [4. Generate the two secrets](#4-generate-the-two-secrets)
 - [5. Start it](#5-start-it)
+  - [Does this fight with CRCON?](#does-this-fight-with-crcon)
+  - [Alternative: no Caddy, straight on its own port](#alternative-no-caddy-straight-on-its-own-port)
 - [6. Sign in and change the password](#6-sign-in-and-change-the-password)
 - [7. Connect your CRCON](#7-connect-your-crcon)
 - [8. Write your first rule](#8-write-your-first-rule)
@@ -112,6 +114,68 @@ docker compose -f compose.prod.yaml up -d --build
 The first build takes a few minutes — it compiles the release. After that,
 starts are quick.
 
+This brings up three containers: the app, its PostgreSQL, and **Caddy**, which
+answers on 80 and 443 and gets the certificate by itself. Only Caddy is
+published; the app and the database are reachable on the compose network and
+nowhere else, so nobody can go around the sign in form by talking to port 4000.
+
+### Does this fight with CRCON?
+
+No. CRCON's own web container answers on **8010** and **9010**, not on 80 and
+443, and its PostgreSQL and Redis are not published to the machine at all —
+they live on CRCON's Docker network. This stack does the same with its own
+database. The two never see each other.
+
+| | CRCON | This app |
+| --- | --- | --- |
+| Web, HTTP | 8010 | 80 |
+| Web, HTTPS | 9010 | 443 |
+| Public stats | 7010 / 7011 | — |
+| PostgreSQL | its own, not published | its own, not published |
+
+If something *else* on the machine already holds 80 and 443 — your own reverse
+proxy, another site — change `HTTP_PORT` and `HTTPS_PORT` in `.env` rather than
+reaching for the alternative below.
+
+> [!WARNING]
+> Do not point this app at CRCON's database. It shares no schema with it, and
+> nothing good comes of trying.
+
+### Alternative: no Caddy, straight on its own port
+
+If you would rather not run Caddy — something else already terminates TLS, or
+the app is only reachable over a private network — there is a second compose
+file:
+
+```bash
+docker compose -f compose.prod.direct.yaml up -d --build
+```
+
+Same release image, no proxy: the app answers on `APP_PORT` (4000 by default)
+over **plain HTTP**, the way CRCON's own web container answers on 8010.
+
+What changes is one variable, `BEHIND_PROXY=false`, and it matters more than it
+looks:
+
+| | Behind Caddy (default) | Direct |
+| --- | --- | --- |
+| Plain HTTP | redirected to https | served |
+| Session cookie | `secure` | not `secure` |
+| `X-Forwarded-For` | believed | ignored |
+| HSTS | sent | not sent |
+
+The cookie is the one that bites. A `secure` cookie is **never sent over plain
+HTTP**, so running the default settings on a bare port produces an app where
+signing in appears to work and then quietly does not — you land back on the
+login page with nothing to explain it. That is why this is a separate compose
+file rather than "just change the port".
+
+> [!WARNING]
+> Direct mode is plain HTTP. Passwords and session cookies travel in clear,
+> and nothing refuses a flood before it reaches the application. On the open
+> internet, put a proxy in front of it or use `compose.prod.yaml`, which gets a
+> certificate by itself.
+
 Check it came up:
 
 ```bash
@@ -210,6 +274,9 @@ docker compose -f compose.prod.yaml down -v
 docker compose -f compose.prod.yaml logs app
 docker compose -f compose.prod.yaml logs caddy
 docker compose -f compose.prod.yaml logs db
+
+# On the direct stack, same thing without the caddy line:
+docker compose -f compose.prod.direct.yaml logs app
 ```
 
 | Symptom | Usually |
@@ -218,6 +285,7 @@ docker compose -f compose.prod.yaml logs db
 | The browser cannot reach it at all | `HTTP_PORT`/`HTTPS_PORT` are taken, or a firewall. `sudo ss -tlnp \| grep -E ':(80\|443)'` |
 | Certificate never arrives | `PHX_HOST` does not resolve to this machine, or port 80 is not reachable from the internet |
 | The connection test cannot reach CRCON | The URL is `localhost`, which inside a container means the container. Use `host.docker.internal` or the machine's address |
+| Sign in returns to the login page with no error | Running on a bare port with the default settings. The session cookie is `secure` and never leaves the browser over plain HTTP — use `compose.prod.direct.yaml` |
 | Connected, but no rule ever fires | The log stream is off in CRCON |
 
 More on all of these:
