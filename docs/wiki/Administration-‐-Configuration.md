@@ -24,3 +24,12 @@ See [`.env.example`](https://github.com/fxsobr/hll_conditional_actions/blob/main
 again.** Keep it with your other secrets.
 
 ---
+
+## Development
+
+None of the above applies to the development stack, which has working defaults
+and needs no file at all. The handful of variables it does read are prefixed
+`DEV_` and documented in
+[`.env.dev.example`](https://github.com/fxsobr/hll_conditional_actions/blob/main/.env.dev.example)
+— see
+[Development environment](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment#moving-a-port).
