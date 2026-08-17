@@ -8,21 +8,14 @@ defmodule HllConditionalActions.Rules.AuditTest do
 
   import HllConditionalActions.Fixtures
 
-  alias HllConditionalActions.Accounts
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Rules.Audit
 
   setup do
-    {:ok, user} =
-      Accounts.create_user(%{
-        "username" => "sarge",
-        "name" => "Sarge",
-        "password" => "wintergreen1",
-        "password_confirmation" => "wintergreen1",
-        "role_id" => Accounts.list_roles() |> hd() |> Map.fetch!(:id)
-      })
-
-    %{actor: user}
+    # Through the fixture, which creates the system roles first. Reading
+    # `list_roles()` here instead would pass only on a database that some
+    # earlier run had already seeded.
+    %{actor: user_fixture(%{username: "sarge", name: "Sarge"})}
   end
 
   test "records who created a rule", %{actor: actor} do
