@@ -57,7 +57,7 @@ services:
       FORCE_HTTPS: "${FORCE_HTTPS:-false}"
       PUBLIC_PORT: "${APP_PORT:-4000}"
       DATABASE_URL: "ecto://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB:-hll_conditional_actions}"
-      SECRET_KEY_BASE: "${SECRET_KEY_BASE:?generate one with mix phx.gen.secret}"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE:?generate one with openssl rand -base64 64}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:?generate one with openssl rand -base64 32}"
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
       ENGINE_ENABLED: ${ENGINE_ENABLED:-true}

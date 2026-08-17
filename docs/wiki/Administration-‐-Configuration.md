@@ -8,7 +8,8 @@ See [`.env.example`](https://github.com/fxsobr/hll_conditional_actions/blob/main
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | prod | — | `ecto://user:pass@host/database` |
-| `SECRET_KEY_BASE` | prod | — | Signs cookies and LiveView payloads (`mix phx.gen.secret`) |
+| `SECRET_KEY_BASE` | prod | — | Signs cookies and LiveView payloads. At least 64 characters (`openssl rand -base64 64 \| tr -d '
+'`) |
 | `ENCRYPTION_KEY` | prod | — | Encrypts CRCON API keys (`openssl rand -base64 32`) |
 | `PHX_HOST` | prod | `example.com` | Public hostname |
 | `PORT` | no | `4000` | HTTP port |

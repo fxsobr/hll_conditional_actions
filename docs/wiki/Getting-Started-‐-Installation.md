@@ -84,15 +84,19 @@ nano.
 Both are empty in the template and the stack refuses to start without them.
 
 ```bash
-# SECRET_KEY_BASE — signs session cookies
-docker run --rm hexpm/elixir:1.20.3-erlang-29.0.5-debian-trixie-20260803-slim \
-  mix phx.gen.secret
+# SECRET_KEY_BASE — signs session cookies. At least 64 characters
+openssl rand -base64 64 | tr -d '\n'; echo
 
-# ENCRYPTION_KEY — encrypts the CRCON API keys in the database
+# ENCRYPTION_KEY — encrypts the CRCON API keys. Exactly 32 bytes
 openssl rand -base64 32
 ```
 
-Paste each into `.env`.
+Paste each into `.env`, on one line.
+
+> [!NOTE]
+> `openssl` is on any Debian or Ubuntu server already. `mix phx.gen.secret`
+> would also work, but only inside a checkout with the dependencies
+> installed — not in a bare Elixir container, which has no Phoenix in it.
 
 > [!WARNING]
 > **Keep a copy of `ENCRYPTION_KEY` somewhere other than this machine.** The
