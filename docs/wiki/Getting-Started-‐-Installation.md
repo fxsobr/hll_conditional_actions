@@ -6,7 +6,6 @@
 ## Menu
 
 - [Before you start](#before-you-start)
-- [Running it next to CRCON](#running-it-next-to-crcon)
 - [1. Log into your server over SSH](#1-log-into-your-server-over-ssh)
 - [2. Download the project](#2-download-the-project)
 - [3. Create the configuration file](#3-create-the-configuration-file)
@@ -36,45 +35,6 @@ brings its own.
 
 Full detail on what is required, and on the CRCON side of it, is on
 [Requirements](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Requirements).
-
-## Running it next to CRCON
-
-This is the normal setup, and it works — but it is worth knowing exactly what
-each stack occupies, because that is where the surprises are.
-
-| | CRCON | This app |
-| --- | --- | --- |
-| Web, HTTP | `8010` | `80` |
-| Web, HTTPS | `9010` | `443` |
-| Public stats | `7010` / `7011` | — |
-| PostgreSQL | its own, **not published** | its own, **not published** |
-| Redis | its own, **not published** | does not use Redis |
-
-**The databases cannot collide.** Each stack runs its own PostgreSQL on its own
-Docker network, and neither publishes it to the machine. They never see each
-other. Do not point this app at CRCON's database — it has no schema in common
-with it and nothing good comes of it.
-
-**The web ports do not collide by default**, because CRCON answers on 8010 and
-9010 rather than on 80 and 443. If something else on the machine already holds
-80 and 443 — your own reverse proxy, another site — change `HTTP_PORT` and
-`HTTPS_PORT` in `.env`.
-
-> [!IMPORTANT]
-> **The one that catches everybody: `localhost` does not mean the machine.**
->
-> This app runs in a container. From inside it, `http://localhost:8010` is the
-> container itself, not CRCON. When you add the server later, the URL has to be
-> one of:
->
-> | URL | When |
-> | --- | --- |
-> | `http://host.docker.internal:8010` | Same machine. Works out of the box — the compose file wires the name up on Linux too |
-> | `http://192.168.1.50:8010` | Same machine, by its LAN address |
-> | `https://crcon.myclan.gg` | CRCON is published under a name |
->
-> Whatever you use, the connection test will tell you plainly whether it
-> answered.
 
 ## 1. Log into your server over SSH
 
@@ -190,7 +150,7 @@ from the login page the moment you do.
 | --- | --- |
 | **Name** | Whatever you call it. `Caveiras Brasil #1` |
 | **Game** | Hell Let Loose, or Hell Let Loose: Vietnam |
-| **CRCON URL** | See the box above — `http://host.docker.internal:8010` on the same machine |
+| **CRCON URL** | `http://host.docker.internal:8010` when CRCON is on this same machine, otherwise its address. Not `localhost`: inside a container that is the container itself |
 | **API key** | From CRCON: *Django admin → Django API Keys*. Create a key for a **regular** user, not a superuser |
 | **Timezone** | Your players' timezone. Time-of-day conditions use it |
 
@@ -257,7 +217,7 @@ docker compose -f compose.prod.yaml logs db
 | `set SECRET_KEY_BASE in .env` on startup | One of the two secrets is still empty |
 | The browser cannot reach it at all | `HTTP_PORT`/`HTTPS_PORT` are taken, or a firewall. `sudo ss -tlnp \| grep -E ':(80\|443)'` |
 | Certificate never arrives | `PHX_HOST` does not resolve to this machine, or port 80 is not reachable from the internet |
-| The connection test cannot reach CRCON | `localhost` again. See the box at the top |
+| The connection test cannot reach CRCON | The URL is `localhost`, which inside a container means the container. Use `host.docker.internal` or the machine's address |
 | Connected, but no rule ever fires | The log stream is off in CRCON |
 
 More on all of these:
