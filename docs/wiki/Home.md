@@ -28,37 +28,43 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 <table>
   <tbody>
     <tr>
-      <th>Getting started</th>
-      <th>User guide</th>
-      <th>Running it</th>
-      <th>For the devs</th>
-      <th>Help</th>
+      <th><a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started">📦 Getting started</a></th>
+      <th><a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide">📖 User guide</a></th>
+      <th><a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration">🚀 Running it</a></th>
+      <th><a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides">⚗️ For the devs</a></th>
+      <th><a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting">🆘 Help</a></th>
     </tr>
     <tr>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-What-it-does">What it does</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Requirements">Requirements</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation">Installation</a>
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation">Installation</a><br />
+        <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Connecting-a-CRCON-server">Connecting a server</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules">Writing rules</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Triggers">When — triggers</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions">If — conditions</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators">Operators</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions">Then — actions</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor">Users and two factor</a>
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules"><strong>Rules</strong></a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Overview">Overview</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Triggers">When — triggers</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions">If — conditions</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators">Operators</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions">Then — actions</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor">Users and two factor</a><br />
+        <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Production-deployment">Production deployment</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration">Configuration</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security">Security</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups">Backups</a>
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups">Backups</a><br />
+        <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Architecture">Architecture</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment">Development environment</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations">Translations</a>
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations">Translations</a><br />
+        <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Troubleshooting-%E2%80%90-Common-issues">Common issues</a><br />

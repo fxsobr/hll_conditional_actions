@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / Developer Guides / [Development environment](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [Developer Guides](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides) / [Development environment](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Development-environment)
 ***
 
 # Development environment
@@ -59,3 +59,7 @@ mix ecto.reset            # drop, create, migrate, seed
 ---
 
 See also [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
+
+***
+
+**←** [Architecture](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Architecture) · **↑** [Developer Guides](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides) · [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations) **→**

@@ -1,4 +1,4 @@
-🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / User Guide / [Users, roles and two factor](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor)
+🧭 You are here : [Wiki home](https://github.com/fxsobr/hll_conditional_actions/wiki/Home) / [User Guide](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide) / [Users, roles and two factor](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor)
 ***
 
 # Users, roles and two factor
@@ -40,3 +40,7 @@ event re-checks the permission. Hiding a button in the sidebar is presentation,
 not authorization.
 
 ---
+
+***
+
+**←** [Rules · Then](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions) · **↑** [User Guide](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide)
