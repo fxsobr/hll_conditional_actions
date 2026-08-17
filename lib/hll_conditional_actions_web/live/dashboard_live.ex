@@ -18,11 +18,10 @@ defmodule HllConditionalActionsWeb.DashboardLive do
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Servers.subscribe()
-
-      Enum.each(
-        Servers.list_servers_for(socket.assigns[:current_user]),
-        &LogStream.subscribe(&1.id)
-      )
+      # One subscription for every server's status, including the ones added
+      # while this page is open. Subscribing per server, as this used to, left
+      # a new server stuck on "Connecting" until a reload.
+      LogStream.subscribe_status()
 
       :timer.send_interval(@refresh_ms, :refresh)
     end

@@ -34,7 +34,13 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Servers.subscribe()
+    if connected?(socket) do
+      Servers.subscribe()
+      # Whether a server is live changes on its own, so the badge has to be
+      # told rather than read once. The shared topic covers servers added
+      # after this page was opened, which a per server subscription would miss.
+      LogStream.subscribe_status()
+    end
 
     {:ok,
      socket
@@ -154,6 +160,10 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
   end
 
   @impl Phoenix.LiveView
+  def handle_info({:crcon_stream_status, server_id, status}, socket) do
+    {:noreply, update(socket, :stream_status, &Map.put(&1, server_id, status))}
+  end
+
   def handle_info({event, _server}, socket)
       when event in [:server_created, :server_updated, :server_deleted] do
     {:noreply, load_servers(socket)}

@@ -107,6 +107,24 @@ defmodule HllConditionalActions.Crcon.LogStream do
   def topic(server_id), do: "crcon:#{server_id}:logs"
 
   @doc """
+  Subscribes to the stream status of *every* server.
+
+  A page showing a list cares about "some server changed", not about one
+  server's events, and subscribing per server means a server added after the
+  page was opened is never heard from — which left the badge saying
+  "Connecting" until somebody reloaded. One topic, subscribed once, has no
+  such gap.
+  """
+  @spec subscribe_status() :: :ok | {:error, term()}
+  def subscribe_status, do: Phoenix.PubSub.subscribe(PubSub, status_topic())
+
+  @doc """
+  The PubSub topic carrying every server's stream status.
+  """
+  @spec status_topic() :: String.t()
+  def status_topic, do: "crcon:status"
+
+  @doc """
   Returns the current connection status of a server's stream.
   """
   @spec status(term()) :: status()
@@ -425,11 +443,12 @@ defmodule HllConditionalActions.Crcon.LogStream do
       %{server_id: state.server.id, status: status_name(status)}
     )
 
-    Phoenix.PubSub.broadcast(
-      PubSub,
-      topic(state.server.id),
-      {:crcon_stream_status, state.server.id, status}
-    )
+    message = {:crcon_stream_status, state.server.id, status}
+
+    # Twice: to this server's own topic, for whoever is watching just it, and
+    # to the shared one, for the pages showing a list.
+    Phoenix.PubSub.broadcast(PubSub, topic(state.server.id), message)
+    Phoenix.PubSub.broadcast(PubSub, status_topic(), message)
 
     %{state | status: status}
   end
