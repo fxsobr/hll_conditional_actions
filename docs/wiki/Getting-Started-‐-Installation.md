@@ -215,15 +215,12 @@ From there: [Writing rules](https://github.com/fxsobr/hll_conditional_actions/wi
 
 ## Updating
 
-```bash
-cd ~/hll_conditional_actions
-git pull
-docker compose -f compose.prod.yaml up -d --build
-```
+Migrations run automatically before the new version serves any traffic, and
+your data, rules and settings are in the `db_data` volume, untouched by a
+rebuild.
 
-Migrations run automatically before the new version serves any traffic. Your
-data, your rules and your settings are in the `db_data` volume and are not
-touched by a rebuild.
+The commands, the one step people skip, and how to get back if an upgrade
+goes badly: [Upgrading](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Upgrading).
 
 ## Stopping and removing
 
@@ -275,4 +272,4 @@ More on all of these:
 
 ***
 
-**←** [Requirements](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Requirements) · **↑** [Getting Started](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started)
+**←** [Requirements](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Requirements) · **↑** [Getting Started](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started) · [Upgrading](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Upgrading) **→**
