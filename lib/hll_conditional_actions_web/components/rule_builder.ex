@@ -1197,7 +1197,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
 
       <p class="mb-2 text-xs text-muted">
         {gettext(
-          "Each one becomes a line like \"Ana (30), Bo (21), Cy (18)\". Write the headings yourself, in your server's language."
+          "Each ranking lists the top 3, one per line: \"1. Ana (30)\". Add a number to show more or fewer, from 1 to 10: {top_kills:5}. Write the headings yourself, in your server's language."
         )}
       </p>
 

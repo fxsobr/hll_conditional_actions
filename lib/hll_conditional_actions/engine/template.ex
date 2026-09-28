@@ -19,7 +19,8 @@ defmodule HllConditionalActions.Engine.Template do
   alias HllConditionalActions.Leaderboards
   alias HllConditionalActions.Progression
 
-  @placeholder ~r/\{([a-z_][a-z0-9_]*)\}/
+  # A leaderboard placeholder may say how many to list: `{top_kills:5}`.
+  @placeholder ~r/\{([a-z_][a-z0-9_]*(?::\d{1,2})?)\}/
 
   @doc """
   Renders a template against a context or an explicit variable map.
@@ -66,8 +67,8 @@ defmodule HllConditionalActions.Engine.Template do
   end
 
   # `{top_kills}`, `{top_support}` ... and `{top_armor_squads}` ...: the top
-  # three of a category as one language free line, only computed when a
-  # message actually asks for one.
+  # of a category, one numbered line each, only computed when a message
+  # actually asks for one. Three by default; `{top_kills:5}` lists five.
   @leaderboard_placeholders Map.new(
                               Leaderboards.categories(),
                               &{"top_#{&1}", {:players, &1}}
@@ -80,6 +81,7 @@ defmodule HllConditionalActions.Engine.Template do
                             )
 
   @leaderboard_size 3
+  @leaderboard_max 10
 
   @progression_placeholders ~w(achievements achievements_count season_rank season_top)
 
@@ -134,10 +136,30 @@ defmodule HllConditionalActions.Engine.Template do
   defp dash_if_blank(text), do: text
 
   defp leaderboard(name, roster) do
-    case Map.get(@leaderboard_placeholders, name) do
-      {:players, category} -> Leaderboards.line(roster, category, @leaderboard_size)
-      {:squads, type} -> Leaderboards.squad_line(roster, type, @leaderboard_size)
+    {base, count} = leaderboard_count(name)
+
+    case Map.get(@leaderboard_placeholders, base) do
+      {:players, category} -> Leaderboards.line(roster, category, count)
+      {:squads, type} -> Leaderboards.squad_line(roster, type, count)
       nil -> nil
+    end
+  end
+
+  @doc """
+  Splits a leaderboard placeholder into its name and how many to list,
+  kept between 1 and 10 - an in-game message has little room.
+
+      iex> alias HllConditionalActions.Engine.Template
+      iex> {Template.leaderboard_count("top_kills"), Template.leaderboard_count("top_kills:5")}
+      {{"top_kills", 3}, {"top_kills", 5}}
+      iex> {Template.leaderboard_count("top_kills:0"), Template.leaderboard_count("top_kills:50")}
+      {{"top_kills", 1}, {"top_kills", 10}}
+  """
+  @spec leaderboard_count(String.t()) :: {String.t(), pos_integer()}
+  def leaderboard_count(name) do
+    case String.split(name, ":", parts: 2) do
+      [base, count] -> {base, count |> String.to_integer() |> max(1) |> min(@leaderboard_max)}
+      [base] -> {base, @leaderboard_size}
     end
   end
 
@@ -218,10 +240,22 @@ defmodule HllConditionalActions.Engine.Template do
 
       iex> HllConditionalActions.Engine.Template.unknown_placeholders("Hi {player_name} {nope}", :player_connected)
       ["nope"]
+      iex> HllConditionalActions.Engine.Template.unknown_placeholders("{top_kills:5} {player_name:2}", :chat_command)
+      ["player_name:2"]
   """
   @spec unknown_placeholders(String.t() | nil, atom()) :: [String.t()]
   def unknown_placeholders(template, trigger) when is_binary(template) do
-    template |> placeholders() |> Enum.reject(&(&1 in valid_placeholders(trigger)))
+    valid = valid_placeholders(trigger)
+    leaderboards = leaderboard_placeholders()
+
+    template
+    |> placeholders()
+    |> Enum.reject(fn name ->
+      case String.split(name, ":", parts: 2) do
+        [base, _count] -> base in leaderboards
+        [base] -> base in valid
+      end
+    end)
   end
 
   def unknown_placeholders(_template, _trigger), do: []
