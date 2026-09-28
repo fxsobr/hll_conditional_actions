@@ -9,6 +9,8 @@ defmodule HllConditionalActions.Engine.Evaluator do
   """
 
   alias HllConditionalActions.Engine.Context
+  alias HllConditionalActions.Games.Weapons
+  alias HllConditionalActions.Leaderboards
   alias HllConditionalActions.Rules.Catalog
   alias HllConditionalActions.Rules.Condition
   alias HllConditionalActions.Rules.Rule
@@ -48,7 +50,11 @@ defmodule HllConditionalActions.Engine.Evaluator do
           operator: condition.operator,
           expected: condition.value,
           actual: actual,
-          result: compare(actual, condition.operator, condition.value, condition.field)
+          # Same verdict as `evaluate_condition/2`, which short-circuits
+          # `always_true` rather than comparing it.
+          result:
+            condition.field == :always_true or
+              compare(actual, condition.operator, condition.value, condition.field)
         }
       end)
 
@@ -179,6 +185,20 @@ defmodule HllConditionalActions.Engine.Evaluator do
   def field_value(:axis_score, context),
     do: Context.gamestate_field(context.gamestate, "axis_score")
 
+  def field_value(:vehicles_destroyed, context), do: player(context, "vehicles_destroyed")
+
+  # Objectives are the five sectors of a warfare match. The team that holds
+  # four is pushing into the enemy's last one - the only time the HQ area is
+  # the front line.
+  def field_value(:team_objectives, context), do: Context.objectives(context, :own)
+  def field_value(:enemy_objectives, context), do: Context.objectives(context, :enemy)
+
+  def field_value(:attacking_last_sector, context),
+    do: warfare?(context) and Context.objectives(context, :own) == 4
+
+  def field_value(:defending_last_sector, context),
+    do: warfare?(context) and Context.objectives(context, :own) == 1
+
   # How lopsided the teams are, as a count, whichever side is bigger. A
   # seeding or balance rule wants "off by more than 3", not "who is ahead".
   def field_value(:team_balance, context) do
@@ -220,6 +240,56 @@ defmodule HllConditionalActions.Engine.Evaluator do
 
   # Set by the engine before evaluating, because it costs a query.
   def field_value(:strikes, context), do: Map.get(context.extra, :strikes, 0)
+
+  def field_value(:weapon_type, context) do
+    case context |> event(:weapon) |> Weapons.category() do
+      nil -> nil
+      category -> Atom.to_string(category)
+    end
+  end
+
+  # Leaderboard positions, read from the roster of the same snapshot. A
+  # replayed sample carries the ranks it had when it was recorded, because
+  # the sample keeps only the player's squad, not the whole roster.
+  def field_value(:squad_rank, context), do: rank(context, :squad)
+
+  def field_value(:squad_type, context) do
+    case Leaderboards.squad_type_of(context.roster, context.player_id) do
+      nil -> nil
+      type -> Atom.to_string(type)
+    end
+  end
+
+  def field_value(field, context)
+      when field in [
+             :rank_kills,
+             :rank_kill_death_ratio,
+             :rank_kills_per_minute,
+             :rank_combat,
+             :rank_offense,
+             :rank_defense,
+             :rank_support,
+             :rank_vehicles_destroyed,
+             :rank_teamplay,
+             :rank_offdef
+           ] do
+    category =
+      field |> Atom.to_string() |> String.replace_prefix("rank_", "") |> String.to_existing_atom()
+
+    rank(context, category)
+  end
+
+  defp warfare?(context) do
+    downcase(Context.gamestate_field(context.gamestate, "game_mode")) == "warfare"
+  end
+
+  defp rank(context, category) do
+    case context.extra do
+      %{ranks: %{^category => rank}} -> rank
+      _live when category == :squad -> Leaderboards.squad_rank(context.roster, context.player_id)
+      _live -> Leaderboards.rank(context.roster, context.player_id, category)
+    end
+  end
 
   defp chat_command(context) do
     case event(context, :chat_message) do

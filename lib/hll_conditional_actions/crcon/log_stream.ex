@@ -359,9 +359,17 @@ defmodule HllConditionalActions.Crcon.LogStream do
   end
 
   defp handle_message(%{"logs" => logs} = message, state) when is_list(logs) do
+    # The stream id travels with the line so consumers can tell a line the
+    # stream sent again after a reconnect from a new one.
     Enum.each(logs, fn
-      %{"log" => log} -> broadcast_event(state, log)
-      _other -> :ok
+      %{"log" => log, "id" => id} when is_map(log) ->
+        broadcast_event(state, Map.put(log, "stream_id", id))
+
+      %{"log" => log} ->
+        broadcast_event(state, log)
+
+      _other ->
+        :ok
     end)
 
     # Real data means the stream genuinely works, which is the only signal that
@@ -449,6 +457,7 @@ defmodule HllConditionalActions.Crcon.LogStream do
     # to the shared one, for the pages showing a list.
     Phoenix.PubSub.broadcast(PubSub, topic(state.server.id), message)
     Phoenix.PubSub.broadcast(PubSub, status_topic(), message)
+    if status != state.status, do: HllConditionalActions.Attention.notify_changed()
 
     %{state | status: status}
   end

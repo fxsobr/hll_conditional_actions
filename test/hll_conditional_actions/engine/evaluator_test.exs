@@ -12,6 +12,7 @@ defmodule HllConditionalActions.Engine.EvaluatorTest do
 
   doctest HllConditionalActions.Engine.Evaluator
   doctest HllConditionalActions.Engine.Context
+  doctest HllConditionalActions.Games.Weapons
 
   @server %Server{id: 1, name: "EU #1", game: :hll}
   @hllv_server %Server{id: 2, name: "Nam #1", game: :hllv}
@@ -192,6 +193,38 @@ defmodule HllConditionalActions.Engine.EvaluatorTest do
         context(player: player(), event: Events.from_log(log_line()), trigger: :player_kill)
 
       assert holds?(:weapon, :contains, "garand", context)
+    end
+
+    test "a group of weapon types in one condition" do
+      grenade = Events.from_log(log_line(%{"weapon" => "MK2 GRENADE"}))
+      rifle = Events.from_log(log_line(%{"weapon" => "M1 GARAND"}))
+
+      holds = fn event ->
+        holds?(
+          :weapon_type,
+          :in_list,
+          "melee,grenade,flamethrower",
+          context(player: player(), event: event, trigger: :player_kill)
+        )
+      end
+
+      assert holds.(grenade)
+      refute holds.(rifle)
+    end
+
+    test "the weapon's category, so every knife and spade is one condition" do
+      for {weapon, expected} <- [
+            {"M3 KNIFE", "melee"},
+            {"FELDSPATEN", "melee"},
+            {"MPL-50 SPADE", "melee"},
+            {"MG42", "machine_gun"},
+            {"M1 GARAND", "infantry"}
+          ] do
+        event = Events.from_log(log_line(%{"weapon" => weapon}))
+        context = context(player: player(), event: event, trigger: :player_kill)
+
+        assert holds?(:weapon_type, :equal, expected, context), weapon
+      end
     end
   end
 

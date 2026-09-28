@@ -97,7 +97,11 @@ defmodule HllConditionalActionsWeb.Router do
     # themselves with `on_mount {UserAuth, {:ensure_permission, ...}}`, so they
     # are still enforced server side.
     live_session :authenticated,
-      on_mount: [{Plugs.Locale, :default}, {UserAuth, :ensure_authenticated}] do
+      on_mount: [
+        {Plugs.Locale, :default},
+        {UserAuth, :ensure_authenticated},
+        HllConditionalActionsWeb.FeatureGuard
+      ] do
       live "/", DashboardLive, :index
       live "/account", AccountLive.Show, :show
 
@@ -106,12 +110,49 @@ defmodule HllConditionalActionsWeb.Router do
       live "/servers/:id/edit", ServerLive.Index, :edit
       live "/servers/:id", ServerLive.Show, :show
 
+      # Everything about one server lives under it: the sidebar switches to
+      # that server's pages, and switching server keeps the page.
+      live "/servers/:server_id/marketplace", MarketplaceLive, :index
+      live "/servers/:server_id/feed", FeedLive, :index
+      live "/servers/:server_id/leaderboard", LeaderboardLive, :index
+      live "/servers/:server_id/matches", MatchLive.Index, :index
+      live "/servers/:server_id/matches/:id", MatchLive.Show, :show
+      live "/servers/:server_id/rules", RuleLive.Index, :index
+      live "/servers/:server_id/history", ExecutionLive.Index, :index
+      live "/servers/:server_id/attention", AttentionLive, :index
+      live "/servers/:server_id/tickets", TicketLive.Index, :index
+      live "/servers/:server_id/tickets/settings", TicketLive.Settings, :edit
+      live "/servers/:server_id/tickets/setup", TicketLive.Setup, :new
+      live "/servers/:server_id/tickets/metrics", TicketLive.Metrics, :index
+      live "/servers/:server_id/tickets/:id", TicketLive.Show, :show
+      live "/servers/:server_id/seasons", SeasonLive.Index, :index
+      live "/servers/:server_id/achievements", AchievementLive, :index
+      live "/servers/:server_id/achievements/new", AchievementLive, :new
+      live "/servers/:server_id/achievements/:id/edit", AchievementLive, :edit
+
       live "/rules", RuleLive.Index, :index
       live "/rules/new", RuleLive.Form, :new
+      live "/rules/simulate", RuleLive.Simulate, :index
       live "/rules/:id", RuleLive.Show, :show
       live "/rules/:id/edit", RuleLive.Form, :edit
 
+      live "/discord", DiscordLive.Index, :index
+      live "/discord/new", DiscordLive.Index, :new
+      live "/discord/:id/edit", DiscordLive.Index, :edit
+
       live "/feed", FeedLive, :index
+      live "/leaderboard", LeaderboardLive, :index
+      live "/attention", AttentionLive, :index
+      live "/tickets", TicketLive.Index, :index
+      live "/tickets/metrics", TicketLive.Metrics, :index
+      live "/tickets/settings", TicketLive.Settings, :edit
+      live "/tickets/setup", TicketLive.Setup, :new
+      live "/tickets/:id", TicketLive.Show, :show
+      live "/achievements", AchievementLive, :index
+      live "/seasons", SeasonLive.Index, :index
+      live "/seasons/new", SeasonLive.Index, :new
+      live "/seasons/:id", SeasonLive.Show, :show
+      live "/matches", MatchLive.Index, :index
       live "/executions", ExecutionLive.Index, :index
       live "/players/:player_id", PlayerLive.Show, :show
       live "/metrics", MetricsLive, :index

@@ -1,0 +1,157 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:49
+#, elixir-autogen, elixir-format
+msgid "Best squad of the match"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:50
+#, elixir-autogen, elixir-format
+msgid "Join us at discord.gg/your-invite"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:51
+#, elixir-autogen, elixir-format
+msgid "MATCH TOP\nKills: {top_kills}\nSupport: {top_support}\nDefense: {top_defense}\nBest squads: {top_infantry_squads}"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:55
+#, elixir-autogen, elixir-format
+msgid "MVP of the match"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:56
+#, elixir-autogen, elixir-format
+msgid "Melee kill! You got {target_player_name} with your {weapon}."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:57
+#, elixir-autogen, elixir-format
+msgid "Repeated team killing"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:58
+#, elixir-autogen, elixir-format
+msgid "Seeding reward"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:59
+#, elixir-autogen, elixir-format
+msgid "Solo tanking"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:60
+#, elixir-autogen, elixir-format
+msgid "Squad without an officer"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:61
+#, elixir-autogen, elixir-format
+msgid "Still no officer in your squad. Next time this costs you."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:62
+#, elixir-autogen, elixir-format
+msgid "TOP PLAYERS\nKills: {top_kills}\nTeamplay: {top_teamplay}\nOffense + defense: {top_offdef}\n\nTOP SQUADS\nInfantry: {top_infantry_squads}\nArmor: {top_armor_squads}"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:66
+#, elixir-autogen, elixir-format
+msgid "Team killing"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:68
+#, elixir-autogen, elixir-format
+msgid "Thanks for commanding"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:67
+#, elixir-autogen, elixir-format
+msgid "Thanks for commanding this match! You have VIP for 24 hours."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:69
+#, elixir-autogen, elixir-format
+msgid "Thanks for helping us seed! You have VIP for 24 hours."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:70
+#, elixir-autogen, elixir-format
+msgid "Thanks for leading a squad"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:71
+#, elixir-autogen, elixir-format
+msgid "Thanks for leading your squad this match! You have VIP for 12 hours."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:75
+#, elixir-autogen, elixir-format
+msgid "Top support of the match"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:76
+#, elixir-autogen, elixir-format
+msgid "Very low level, joined recently"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:77
+#, elixir-autogen, elixir-format
+msgid "Watch your fire, {player_name}. That was a team mate."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:78
+#, elixir-autogen, elixir-format
+msgid "Welcome {player_name}! Have a good match."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:79
+#, elixir-autogen, elixir-format
+msgid "Welcome! Ask your squad for help, everyone starts somewhere."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:80
+#, elixir-autogen, elixir-format
+msgid "You are alone in an armor squad. Crew up or switch role."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:81
+#, elixir-autogen, elixir-format
+msgid "You were the MVP of this match! You have VIP for 24 hours."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:82
+#, elixir-autogen, elixir-format
+msgid "You were the best supporter of this match! You have VIP for 24 hours."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:86
+#, elixir-autogen, elixir-format
+msgid "Your achievements ({achievements_count}):\n{achievements}"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:87
+#, elixir-autogen, elixir-format
+msgid "Your position this season: {season_rank}\nTop: {season_top}"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:88
+#, elixir-autogen, elixir-format
+msgid "Your squad has no officer. Take the role or join another squad."
+msgstr ""
+
+#: lib/hll_conditional_actions_web/recipe_text.ex:89
+#, elixir-autogen, elixir-format
+msgid "Your squad was the best of the match! You have VIP for 12 hours."
+msgstr ""

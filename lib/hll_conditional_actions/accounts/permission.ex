@@ -17,17 +17,25 @@ defmodule HllConditionalActions.Accounts.Permission do
     manage_rules: :rules,
     view_executions: :monitoring,
     view_live_feed: :monitoring,
+    view_stats: :monitoring,
+    view_progression: :community,
+    manage_progression: :community,
+    view_tickets: :support,
+    manage_tickets: :support,
+    manage_integrations: :platform,
     manage_users: :platform,
     manage_roles: :platform
   ]
 
-  @groups [:servers, :rules, :monitoring, :platform]
+  @groups [:servers, :rules, :monitoring, :community, :support, :platform]
 
   # manage_x grants view_x, so an "Operator" role only has to list what it can
   # change.
   @implications %{
     manage_servers: [:view_servers],
     manage_rules: [:view_rules],
+    manage_progression: [:view_progression],
+    manage_tickets: [:view_tickets],
     manage_users: [:manage_roles]
   }
 

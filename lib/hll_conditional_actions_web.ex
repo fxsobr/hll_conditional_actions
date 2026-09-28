@@ -17,7 +17,7 @@ defmodule HllConditionalActionsWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg robots.txt)
 
   def router do
     quote do
@@ -111,6 +111,7 @@ defmodule HllConditionalActionsWeb do
       alias HllConditionalActionsWeb.Labels
       # The icon and colour that vocabulary is drawn with
       alias HllConditionalActionsWeb.Icons
+      import HllConditionalActionsWeb.RecipeArt, only: [recipe_art: 1]
 
       # Common modules used in templates
       alias HllConditionalActionsWeb.Layouts

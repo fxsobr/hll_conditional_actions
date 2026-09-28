@@ -48,6 +48,43 @@ defmodule HllConditionalActionsWeb.ExecutionLiveTest do
     for index <- 1..count, do: record(rule, server, index)
   end
 
+  describe "details" do
+    test "walk through what the rule read and did", %{conn: conn, rule: rule, server: server} do
+      {:ok, execution} =
+        Rules.record_execution(%{
+          rule_id: rule.id,
+          server_id: server.id,
+          player_id: "76561190000000001",
+          player_name: "Chris",
+          trigger_event: "player_kill",
+          status: :executed,
+          results: [%{"type" => "message_player", "status" => "ok", "detail" => "Nice!"}],
+          trace: %{
+            "logical_operator" => "and",
+            "conditions" => [
+              %{
+                "field" => "kills",
+                "operator" => "greater_than",
+                "expected" => "5",
+                "actual" => 12,
+                "result" => true
+              }
+            ],
+            "duration_ms" => 42
+          }
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/executions")
+
+      html = view |> element("#execution-#{execution.id}-toggle") |> render_click()
+
+      assert has_element?(view, "#execution-#{execution.id}-trace")
+      assert html =~ "read 12, needed: is greater than 5"
+      assert html =~ "Nice!"
+      assert html =~ "Took 42 ms"
+    end
+  end
+
   describe "paging" do
     test "shows only the first page, and says how many there are", %{
       conn: conn,

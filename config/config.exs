@@ -30,16 +30,18 @@ config :hll_conditional_actions, :execution_retention_days, 30
 # punish a situation that has already passed, so those run inline.
 config :hll_conditional_actions, Oban,
   repo: HllConditionalActions.Repo,
-  queues: [actions: 10, maintenance: 1],
+  queues: [actions: 10, discord: 1, maintenance: 1],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
-       {"0 4 * * *", HllConditionalActions.Workers.PruneExecutions}
+       {"0 4 * * *", HllConditionalActions.Workers.PruneExecutions},
+       {"*/5 * * * *", HllConditionalActions.Workers.FinalizeSeasons},
+       {"*/10 * * * *", HllConditionalActions.Workers.CloseStaleTickets}
      ]}
   ]
 
-# Internationalization. The source language is English; pt_BR ships translated.
+# Internationalization. The source language is English; pt_BR and es ship translated.
 #
 # Gettext reads this at compile time, so it cannot be changed by an environment
 # variable. The locale actually served per request comes from
@@ -47,7 +49,7 @@ config :hll_conditional_actions, Oban,
 # at runtime.
 config :hll_conditional_actions, HllConditionalActionsWeb.Gettext,
   default_locale: "en",
-  locales: ~w(en pt_BR)
+  locales: ~w(en pt_BR es)
 
 config :hll_conditional_actions, :default_locale, "en"
 
@@ -117,6 +119,11 @@ config :tailwind,
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
+
+# Request parameters Phoenix writes to the log with the value replaced by
+# [FILTERED]. The default only covers "password"; the CRCON API key, TOTP
+# codes and recovery codes are just as secret.
+config :phoenix, :filter_parameters, ["password", "api_key", "secret", "token", "code"]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

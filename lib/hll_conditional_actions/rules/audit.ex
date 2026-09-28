@@ -18,6 +18,7 @@ defmodule HllConditionalActions.Rules.Audit do
 
   alias HllConditionalActions.Repo
   alias HllConditionalActions.Rules.Rule
+  alias HllConditionalActions.Rules.Snapshot
   alias HllConditionalActions.Rules.Version
 
   # Fields worth remembering the before and after of. Conditions and actions
@@ -37,7 +38,9 @@ defmodule HllConditionalActions.Rules.Audit do
     :logical_operator,
     :cooldown_seconds,
     :max_executions_per_player,
-    :escalation_window_seconds
+    :escalation_window_seconds,
+    :paused_until,
+    :pause_reason
   ]
 
   @doc """
@@ -55,16 +58,15 @@ defmodule HllConditionalActions.Rules.Audit do
       :ok
     else
       %Version{}
-      |> Version.changeset(%{
-        # A delete is recorded *after* the row is gone, so the entry keeps
-        # only the name — which is why the schema stores it.
-        rule_id: if(action == :deleted, do: nil, else: rule.id),
-        rule_name: rule.name,
-        user_id: actor && Map.get(actor, :id),
-        user_name: actor && (Map.get(actor, :name) || Map.get(actor, :username)),
-        action: action,
-        changes: changes
-      })
+      |> Version.changeset(
+        Map.merge(subject(rule, action), %{
+          rule_name: rule.name,
+          user_id: actor && Map.get(actor, :id),
+          user_name: actor && (Map.get(actor, :name) || Map.get(actor, :username)),
+          action: action,
+          changes: changes
+        })
+      )
       |> Repo.insert()
       |> case do
         {:ok, _version} ->
@@ -94,12 +96,28 @@ defmodule HllConditionalActions.Rules.Audit do
   end
 
   @doc """
+  One entry of a rule's history, or `nil`.
+  """
+  @spec get_version(term(), term()) :: Version.t() | nil
+  def get_version(rule_id, version_id) do
+    Repo.one(from v in Version, where: v.rule_id == ^rule_id and v.id == ^version_id)
+  rescue
+    Ecto.Query.CastError -> nil
+  end
+
+  @doc """
   How many entries a rule's history holds.
   """
   @spec count_versions(term()) :: non_neg_integer()
   def count_versions(rule_id) do
     Repo.one(from v in Version, where: v.rule_id == ^rule_id, select: count(v.id)) || 0
   end
+
+  # A delete is recorded *after* the row is gone, so the entry keeps only the
+  # name — which is why the schema stores it. Everything else keeps the full
+  # definition, so the version can be restored.
+  defp subject(_rule, :deleted), do: %{rule_id: nil, snapshot: nil}
+  defp subject(rule, _action), do: %{rule_id: rule.id, snapshot: Snapshot.take(rule)}
 
   # ── The diff ───────────────────────────────────────────────────────────────
 

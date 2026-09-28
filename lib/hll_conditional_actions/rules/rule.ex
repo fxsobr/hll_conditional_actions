@@ -21,6 +21,16 @@ defmodule HllConditionalActions.Rules.Rule do
   24 hour window (`0` disables either check). Both are enforced by
   `HllConditionalActions.Engine.Limiter` against the `rule_executions` table.
 
+  The builder shows each limit as an on/off switch with a friendly duration
+  (virtual `cooldown_enabled`, `cooldown_value`, `cooldown_unit` and
+  `cap_enabled`); `put_limits/1` folds them back into the two columns.
+
+  ## Exemptions
+
+  `exemptions` names the players the rule never applies to - VIPs, players
+  carrying certain CRCON flags, specific ids. See
+  `HllConditionalActions.Rules.Exemptions`.
+
   ## Escalation
 
   With `escalation_window_seconds` at `0` a rule runs *every* action on every
@@ -46,10 +56,12 @@ defmodule HllConditionalActions.Rules.Rule do
 
   import Ecto.Changeset
 
+  alias HllConditionalActions.Engine.Template
   alias HllConditionalActions.Games
   alias HllConditionalActions.Rules.Action
   alias HllConditionalActions.Rules.Catalog
   alias HllConditionalActions.Rules.Condition
+  alias HllConditionalActions.Rules.Exemptions
   alias HllConditionalActions.Servers.Server
 
   @type t :: %__MODULE__{}
@@ -59,6 +71,12 @@ defmodule HllConditionalActions.Rules.Rule do
   # One hour: long enough that a repeat offence inside it is the same
   # episode, short enough that a player is not punished tomorrow for today.
   @default_escalation_window 3600
+
+  # What a limit starts at when its switch is turned on.
+  @default_cooldown 60
+  @default_cap 3
+
+  @duration_units %{"s" => 1, "min" => 60, "h" => 3600}
 
   schema "rules" do
     field :name, :string
@@ -79,11 +97,26 @@ defmodule HllConditionalActions.Rules.Rule do
     field :escalation_window_seconds, :integer, default: 0
     # The builder's switch over that window; never stored.
     field :escalate, :boolean, virtual: true
+    # The builder's plain-language view of the limits; never stored. See
+    # `put_limits/1` for how they map onto the two columns above.
+    field :cooldown_enabled, :boolean, virtual: true
+    field :cooldown_value, :integer, virtual: true
+    field :cooldown_unit, :string, virtual: true
+    field :cap_enabled, :boolean, virtual: true
+    # A temporary pause: the engine skips the rule until this moment passes.
+    field :paused_until, :utc_datetime
+    field :pause_reason, :string
+    # Pending edits to a live rule, as a `Snapshot` the engine never reads
+    # until they are published.
+    field :draft, :map
+    field :draft_user_name, :string
+    field :draft_updated_at, :utc_datetime
 
     belongs_to :server, Server
 
     embeds_many :conditions, Condition, on_replace: :delete
     embeds_many :actions, Action, on_replace: :delete
+    embeds_one :exemptions, Exemptions, on_replace: :update
 
     timestamps(type: :utc_datetime)
   end
@@ -109,10 +142,15 @@ defmodule HllConditionalActions.Rules.Rule do
       :cooldown_seconds,
       :max_executions_per_player,
       :escalation_window_seconds,
-      :escalate
+      :escalate,
+      :cooldown_enabled,
+      :cooldown_value,
+      :cooldown_unit,
+      :cap_enabled
     ])
     |> cast_embed(:conditions, required: true, with: &Condition.changeset/2)
     |> cast_embed(:actions, required: true, with: &Action.changeset/2)
+    |> cast_embed(:exemptions, with: &Exemptions.changeset/2)
     |> validate_required([:name, :game, :trigger_event, :logical_operator])
     |> validate_length(:name, max: 120)
     |> validate_inclusion(:game, Games.all())
@@ -120,10 +158,13 @@ defmodule HllConditionalActions.Rules.Rule do
     |> validate_number(:cooldown_seconds, greater_than_or_equal_to: 0)
     |> validate_number(:max_executions_per_player, greater_than_or_equal_to: 0)
     |> validate_number(:trigger_interval_seconds, greater_than_or_equal_to: @min_trigger_interval)
+    |> put_limits()
     |> put_escalation()
+    |> update_change(:group, &normalize_group/1)
     |> validate_at_least_one(:conditions)
     |> validate_at_least_one(:actions)
     |> validate_fields_match_trigger()
+    |> validate_placeholders()
     |> validate_server_game()
     |> assoc_constraint(:server)
   end
@@ -146,12 +187,203 @@ defmodule HllConditionalActions.Rules.Rule do
   def applies_to?(%__MODULE__{}, %Server{}), do: false
 
   @doc """
+  Whether a rule is temporarily paused at `now`.
+
+  The pause ends on its own: once `paused_until` is in the past the rule is
+  live again, with no job needed to clear the field.
+  """
+  @spec paused?(t(), DateTime.t()) :: boolean()
+  def paused?(rule, now \\ DateTime.utc_now())
+  def paused?(%__MODULE__{paused_until: nil}, _now), do: false
+  def paused?(%__MODULE__{paused_until: until}, now), do: DateTime.compare(until, now) == :gt
+
+  @doc """
+  Builds a changeset that pauses a rule until a moment, or resumes it with `nil`.
+  """
+  @spec pause_changeset(t(), DateTime.t() | nil, String.t() | nil) :: Ecto.Changeset.t()
+  def pause_changeset(rule, until, reason) do
+    reason = if until, do: normalize_reason(reason)
+
+    rule
+    |> change(paused_until: until && DateTime.truncate(until, :second), pause_reason: reason)
+    |> validate_length(:pause_reason, max: 200)
+  end
+
+  defp normalize_reason(reason) when is_binary(reason) do
+    case String.trim(reason) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp normalize_reason(_reason), do: nil
+
+  @doc """
+  Normalizes a group name: trims and collapses whitespace, so "Seeding " and
+  "seeding" do not become two groups. Matching an existing group ignoring case
+  is done by `HllConditionalActions.Rules`, which knows the groups in use.
+
+      iex> HllConditionalActions.Rules.Rule.normalize_group("  Seeding   rules ")
+      "Seeding rules"
+      iex> HllConditionalActions.Rules.Rule.normalize_group("   ")
+      nil
+  """
+  @spec normalize_group(term()) :: String.t() | nil
+  def normalize_group(group) when is_binary(group) do
+    case group |> String.split() |> Enum.join(" ") do
+      "" -> nil
+      value -> value
+    end
+  end
+
+  def normalize_group(_group), do: nil
+
+  @doc """
   Sorts rules the way the engine evaluates them: highest priority first, then
   oldest first so the order is stable.
   """
   @spec sort([t()]) :: [t()]
   def sort(rules) do
     Enum.sort_by(rules, &{-&1.priority, &1.id})
+  end
+
+  @doc """
+  Splits seconds into the largest unit that holds them exactly, for the
+  builder's value + unit inputs.
+
+      iex> alias HllConditionalActions.Rules.Rule
+      iex> {Rule.split_duration(90), Rule.split_duration(600), Rule.split_duration(7200)}
+      {{90, "s"}, {10, "min"}, {2, "h"}}
+  """
+  @spec split_duration(non_neg_integer()) :: {non_neg_integer(), String.t()}
+  def split_duration(seconds) when is_integer(seconds) and seconds > 0 do
+    cond do
+      rem(seconds, 3600) == 0 -> {div(seconds, 3600), "h"}
+      rem(seconds, 60) == 0 -> {div(seconds, 60), "min"}
+      true -> {seconds, "s"}
+    end
+  end
+
+  def split_duration(_seconds), do: {0, "s"}
+
+  # The builder speaks in switches and "value + unit"; the API, the importer
+  # and the engine speak in seconds and a count where zero means off. This
+  # keeps the two in step, whichever side the caller set - the same deal as
+  # `put_escalation/1`.
+  defp put_limits(changeset) do
+    changeset
+    |> put_cooldown()
+    |> put_cap()
+  end
+
+  defp put_cooldown(changeset) do
+    seconds = typed_cooldown(changeset)
+
+    enabled =
+      case get_field(changeset, :cooldown_enabled) do
+        nil -> seconds > 0
+        value -> value
+      end
+
+    changeset =
+      if enabled,
+        do: validate_number(changeset, :cooldown_value, greater_than: 0),
+        else: changeset
+
+    invalid? = Keyword.has_key?(changeset.errors, :cooldown_value)
+    seconds = cooldown_seconds(changeset, enabled, seconds, invalid?)
+
+    changeset
+    |> put_change(:cooldown_enabled, enabled)
+    |> put_change(:cooldown_seconds, seconds)
+    |> put_cooldown_display(seconds, invalid?)
+  end
+
+  # Seconds as the builder typed them (value x unit), else as stored.
+  defp typed_cooldown(changeset) do
+    case get_change(changeset, :cooldown_value) do
+      value when is_integer(value) ->
+        unit = get_field(changeset, :cooldown_unit) || "s"
+        value * Map.get(@duration_units, unit, 1)
+
+      _no_builder_value ->
+        get_field(changeset, :cooldown_seconds) || 0
+    end
+  end
+
+  defp cooldown_seconds(_changeset, false, _seconds, _invalid?), do: 0
+  defp cooldown_seconds(_changeset, true, seconds, _invalid?) when seconds > 0, do: seconds
+
+  defp cooldown_seconds(changeset, true, _seconds, true),
+    do: get_field(changeset, :cooldown_seconds) || 0
+
+  defp cooldown_seconds(_changeset, true, _seconds, false), do: @default_cooldown
+
+  # A value the admin is still fixing is left as typed, so the error sits
+  # next to what they wrote.
+  defp put_cooldown_display(changeset, seconds, invalid?) do
+    {value, unit} =
+      if seconds > 0,
+        do: split_duration(seconds),
+        else: {@default_cooldown, get_field(changeset, :cooldown_unit) || "s"}
+
+    changeset = put_change(changeset, :cooldown_unit, unit)
+    if invalid?, do: changeset, else: put_change(changeset, :cooldown_value, value)
+  end
+
+  defp put_cap(changeset) do
+    count = get_field(changeset, :max_executions_per_player) || 0
+
+    enabled =
+      case get_field(changeset, :cap_enabled) do
+        nil -> count > 0
+        value -> value
+      end
+
+    count =
+      cond do
+        not enabled -> 0
+        count > 0 -> count
+        true -> @default_cap
+      end
+
+    changeset
+    |> put_change(:cap_enabled, enabled)
+    |> put_change(:max_executions_per_player, count)
+  end
+
+  # A `{placeholder}` the engine cannot fill is sent to the game as written,
+  # so a typo would reach players. Caught here, with the trigger in hand:
+  # `{weapon}` is fine on a kill and meaningless on a connect.
+  defp validate_placeholders(changeset) do
+    trigger = get_field(changeset, :trigger_event)
+    actions = get_field(changeset, :actions) || []
+
+    unknown =
+      for action <- actions,
+          action.type in Catalog.action_types(),
+          {key, _type, opts} <- Catalog.action_params(action.type),
+          opts[:template],
+          name <- Template.unknown_placeholders(template_text(action, key), trigger),
+          uniq: true,
+          do: name
+
+    case unknown do
+      [] ->
+        changeset
+
+      names ->
+        add_error(changeset, :actions, "unknown placeholders: %{names}",
+          names: Enum.map_join(names, ", ", &"{#{&1}}")
+        )
+    end
+  end
+
+  defp template_text(action, key) do
+    case Map.get(action.parameters || %{}, to_string(key)) do
+      text when is_binary(text) -> text
+      _other -> nil
+    end
   end
 
   # Keeps the switch and the window telling the same story, whichever of the
@@ -206,10 +438,8 @@ defmodule HllConditionalActions.Rules.Rule do
           changeset
 
         invalid ->
-          add_error(
-            changeset,
-            :conditions,
-            "#{Enum.map_join(invalid, ", ", &to_string/1)} cannot be used with this trigger"
+          add_error(changeset, :conditions, "%{fields} cannot be used with this trigger",
+            fields: Enum.map_join(invalid, ", ", &to_string/1)
           )
       end
     end

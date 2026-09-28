@@ -15,10 +15,23 @@ defmodule HllConditionalActionsWeb.Layouts do
 
   alias HllConditionalActions.Accounts
   alias HllConditionalActions.Updates
+  alias HllConditionalActionsWeb.Nav
   alias HllConditionalActionsWeb.Plugs.Locale
   alias HllConditionalActionsWeb.ReleaseNotes
 
   embed_templates "layouts/*"
+
+  # Maps with a clear, recognisable daytime shot, for the sign in backdrop.
+  @auth_art ~w(
+    /images/maps/hll/carentan-day.webp
+    /images/maps/hll/stmereeglise-dawn.webp
+    /images/maps/hll/omahabeach-day.webp
+    /images/maps/hll/foy-day.webp
+    /images/maps/hll/purpleheartlane-dawn.webp
+    /images/maps/hll/elsenbornridge-dawn.webp
+    /images/maps/hll/driel-dawn.webp
+    /images/maps/hll/stalingrad-dusk.webp
+  )
 
   @doc """
   The shell for authenticated pages.
@@ -32,6 +45,11 @@ defmodule HllConditionalActionsWeb.Layouts do
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :current_user, :map, default: nil, doc: "the signed in user"
   attr :current_path, :string, default: "/", doc: "used to highlight the active nav entry"
+
+  attr :nav, :map,
+    default: nil,
+    doc: "the servers to switch between and the one in scope, from `HllConditionalActionsWeb.Nav`"
+
   attr :page_title, :string, default: nil
   attr :page_subtitle, :string, default: nil, doc: "one line of context under the page title"
 
@@ -51,7 +69,8 @@ defmodule HllConditionalActionsWeb.Layouts do
   def app(assigns) do
     ~H"""
     <div class="min-h-screen bg-base-200">
-      <.sidebar current_user={@current_user} current_path={@current_path} />
+      <HllConditionalActionsWeb.TicketComponents.alert_listener :if={@current_user} />
+      <.sidebar current_user={@current_user} current_path={@current_path} nav={@nav} />
       <div class="lg:pl-64">
         <header class="sticky top-0 z-30 bg-base-100/85 backdrop-blur">
           <%!-- The rail and the sidebar brand are both a 4rem box with the
@@ -77,7 +96,10 @@ defmodule HllConditionalActionsWeb.Layouts do
               <.icon name="hero-chevron-left" class="size-4" />
             </.link>
 
-            <div class="min-w-0 flex-1">
+            <%!-- A floor under the title: without it a page with many actions
+                  squeezes it to nothing on a phone, and nobody can tell which
+                  page they are on. --%>
+            <div class="min-w-28 flex-1">
               <div class="flex min-w-0 flex-wrap items-center gap-2">
                 <h1 class="truncate text-headline-medium">{@page_title}</h1>
 
@@ -102,8 +124,10 @@ defmodule HllConditionalActionsWeb.Layouts do
             <div class="flex min-w-0 shrink flex-wrap items-center justify-end gap-2">
               {render_slot(@actions)}
               <div class="hidden h-6 w-px bg-base-300 sm:block"></div>
+
               <%!-- Below `sm` the switch lives in the navigation drawer
                     instead, so the sticky header stays one row tall. --%>
+              <.attention_bell :if={@nav && Map.get(@nav, :attention)} nav={@nav} />
               <.color_scheme_switch id="scheme-switch" variant="dropdown" class="hidden sm:flex" />
               <.user_menu current_user={@current_user} />
             </div>
@@ -111,12 +135,12 @@ defmodule HllConditionalActionsWeb.Layouts do
         </header>
 
         <main class="p-4 pb-24 sm:p-6 lg:pb-6">
-          <div class="mx-auto max-w-7xl space-y-6">
+          <div class="mx-auto max-w-[120rem] space-y-6">
             {render_slot(@inner_block)}
           </div>
         </main>
       </div>
-      <.tab_bar current_user={@current_user} current_path={@current_path} />
+      <.tab_bar current_user={@current_user} current_path={@current_path} nav={@nav} />
       <.flash_group flash={@flash} />
     </div>
     """
@@ -127,9 +151,10 @@ defmodule HllConditionalActionsWeb.Layouts do
   # sidebar owns navigation.
   attr :current_user, :map, default: nil
   attr :current_path, :string, required: true
+  attr :nav, :map, default: nil
 
   defp tab_bar(assigns) do
-    assigns = assign(assigns, :tabs, tab_items(assigns.current_user))
+    assigns = assign(assigns, :tabs, tab_items(assigns.current_user, assigns.nav))
 
     ~H"""
     <nav
@@ -170,25 +195,65 @@ defmodule HllConditionalActionsWeb.Layouts do
     """
   end
 
-  # The four highest-traffic destinations the user can actually reach.
-  defp tab_items(current_user) do
+  # The four highest-traffic destinations the user can actually reach - of
+  # the server in scope when there is one.
+  defp tab_items(current_user, %{server: %{id: id}} = nav) do
     [
-      %{label: gettext("Overview"), path: "/", icon: "hero-squares-2x2", permission: nil},
-      %{label: gettext("Rules"), path: "/rules", icon: "hero-bolt", permission: :view_rules},
       %{
-        label: gettext("Live feed"),
-        path: "/feed",
+        label: gettext("Overview"),
+        path: "/servers/#{id}",
+        icon: "hero-squares-2x2",
+        permission: nil
+      },
+      %{
+        label: gettext("Live"),
+        path: "/servers/#{id}/feed",
+        feature: :live_feed,
         icon: "hero-signal",
         permission: :view_live_feed
       },
       %{
-        label: gettext("History"),
-        path: "/executions",
-        icon: "hero-clock",
+        label: gettext("Leaderboard"),
+        path: "/servers/#{id}/leaderboard",
+        feature: :stats,
+        icon: "hero-trophy",
+        permission: :view_stats
+      },
+      %{
+        label: gettext("Rules"),
+        path: "/servers/#{id}/rules",
+        feature: :rules,
+        icon: "hero-bolt",
+        permission: :view_rules
+      }
+    ]
+    |> Enum.filter(&(allowed?(current_user, &1.permission) and Nav.feature?(nav, &1[:feature])))
+  end
+
+  defp tab_items(current_user, nav) do
+    [
+      %{label: gettext("Overview"), path: "/", icon: "hero-squares-2x2", permission: nil},
+      %{
+        label: gettext("Servers"),
+        path: "/servers",
+        icon: "hero-server-stack",
+        permission: :view_servers
+      },
+      %{
+        label: gettext("Rules"),
+        path: "/rules",
+        feature: :rules,
+        icon: "hero-bolt",
+        permission: :view_rules
+      },
+      %{
+        label: gettext("Attention"),
+        path: "/attention",
+        icon: "hero-bell-alert",
         permission: :view_executions
       }
     ]
-    |> Enum.filter(&allowed?(current_user, &1.permission))
+    |> Enum.filter(&(allowed?(current_user, &1.permission) and Nav.feature?(nav, &1[:feature])))
   end
 
   @doc """
@@ -203,40 +268,42 @@ defmodule HllConditionalActionsWeb.Layouts do
   slot :inner_block, required: true
 
   def auth(assigns) do
+    assigns = assign(assigns, :art, Enum.random(@auth_art))
+
     ~H"""
-    <div class="grid min-h-screen bg-base-100 lg:grid-cols-[1.15fr_minmax(28rem,0.85fr)]">
-      <%!-- Artwork and nothing else. Everybody who reaches this page already
-            has an account, so there is nobody here to sell anything to; the
-            panel is there to make the page feel like the tool it opens. --%>
-      <aside class="hll-art relative hidden lg:block" aria-hidden="true">
-        <div class="hll-art-scrim absolute inset-0"></div>
+    <%!-- One of the game's maps, full bleed, under a scrim that settles it
+          into the page; the form floats on a frosted card over it. Everybody
+          who reaches this page already has an account, so it sells nothing:
+          it only has to look like the tool it opens. --%>
+    <div class="auth-shell" style={"--auth-art: url('#{@art}')"}>
+      <div class="auth-scrim" aria-hidden="true"></div>
 
-        <p class="absolute inset-x-0 bottom-0 p-6 text-xs text-white/40">
-          {gettext("Hell Let Loose is a trademark of Team17. This is an unofficial admin tool.")}
-        </p>
-      </aside>
+      <header class="relative flex items-center gap-3 p-6 text-white sm:p-8">
+        <.logo_mark class="size-10" />
+        <div>
+          <p class="font-semibold leading-tight">{gettext("Conditional Actions")}</p>
 
-      <main class="flex flex-col">
-        <div class="hll-art-mobile flex items-center gap-3 p-6 text-white lg:hidden">
-          <div>
-            <p class="font-semibold leading-tight">{gettext("Conditional Actions")}</p>
-
-            <p class="eyebrow text-white/60">{gettext("Hell Let Loose")}</p>
-          </div>
+          <p class="text-xs text-white/60">{gettext("Hell Let Loose")}</p>
         </div>
+      </header>
 
-        <div class="flex flex-1 items-center justify-center p-6 sm:p-10">
-          <div class="w-full max-w-sm">
-            {render_slot(@inner_block)}
+      <main class="relative flex flex-1 items-center justify-center px-4 py-6 sm:justify-end sm:px-12 lg:px-24">
+        <div class="auth-card">
+          {render_slot(@inner_block)}
+          <%!-- The language belongs to the form it changes, not to the
+                artwork: under the button, quiet, centred. --%>
+          <div class="mt-6 flex justify-center border-t border-base-300 pt-4">
+            <.locale_switch locale={@locale} return_to={@return_to} />
           </div>
-        </div>
-
-        <div class="flex flex-col items-center gap-4 p-6 pt-0">
-          <.crcon_credit />
-
-          <.locale_switch locale={@locale} return_to={@return_to} />
         </div>
       </main>
+
+      <footer class="relative flex flex-col items-center gap-3 p-6 text-white/70 sm:flex-row sm:justify-between sm:px-8">
+        <p class="text-center text-xs text-white/45">
+          {gettext("Hell Let Loose is a trademark of Team17. This is an unofficial admin tool.")}
+        </p>
+        <.crcon_credit />
+      </footer>
       <.flash_group flash={@flash} />
     </div>
     """
@@ -253,29 +320,24 @@ defmodule HllConditionalActionsWeb.Layouts do
   # panel is hidden below `lg` and this should be there on a phone too.
   defp crcon_credit(assigns) do
     ~H"""
-    <p class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted">
-      <span>{gettext("Powered by CRCON")}</span>
-
-      <span aria-hidden="true">·</span>
-
+    <p class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-white/60">
+      <span>{gettext("Powered by CRCON")}</span> <span aria-hidden="true">·</span>
       <%!-- `noopener` because a page opened from here must not get a handle on
             this one through `window.opener`. --%>
       <.link
         href="https://github.com/MarechJ/hll_rcon_tool"
         target="_blank"
         rel="noopener noreferrer"
-        class="hover:text-base-content hover:underline"
+        class="transition-colors hover:text-white hover:underline"
       >
         GitHub
       </.link>
-
       <span aria-hidden="true">·</span>
-
       <.link
         href="https://discord.com/invite/zpSQQef"
         target="_blank"
         rel="noopener noreferrer"
-        class="hover:text-base-content hover:underline"
+        class="transition-colors hover:text-white hover:underline"
       >
         Discord
       </.link>
@@ -285,6 +347,7 @@ defmodule HllConditionalActionsWeb.Layouts do
 
   attr :locale, :string, default: nil
   attr :return_to, :string, default: "/login"
+  attr :overlay, :boolean, default: false, doc: "drawn over artwork: light text on glass"
 
   defp locale_switch(assigns) do
     assigns = assign(assigns, :locales, Locale.supported())
@@ -292,17 +355,20 @@ defmodule HllConditionalActionsWeb.Layouts do
     ~H"""
     <div
       :if={length(@locales) > 1}
-      class="flex items-center gap-0.5 rounded-field border border-base-300 bg-base-100 p-0.5"
+      class={[
+        "flex items-center gap-0.5 rounded-pill p-0.5",
+        if(@overlay,
+          do: "bg-white/10 ring-1 ring-white/15 backdrop-blur",
+          else: "border border-base-300 bg-base-100"
+        )
+      ]}
     >
       <.link
         :for={locale <- @locales}
         href={~p"/locale/#{locale}?#{[return_to: @return_to]}"}
         class={[
-          "rounded-selector px-2.5 py-1 text-xs transition-colors",
-          if(locale == @locale,
-            do: "bg-base-200 font-medium text-base-content",
-            else: "text-muted hover:text-base-content"
-          )
+          "rounded-pill px-3 py-1 text-xs transition-colors",
+          locale_tone(locale == @locale, @overlay)
         ]}
       >
         {locale_label(locale)}
@@ -311,12 +377,19 @@ defmodule HllConditionalActionsWeb.Layouts do
     """
   end
 
+  defp locale_tone(true, true), do: "bg-white/90 font-medium text-gray-900"
+  defp locale_tone(false, true), do: "text-white/70 hover:text-white"
+  defp locale_tone(true, false), do: "bg-base-200 font-medium text-base-content"
+  defp locale_tone(false, false), do: "text-muted hover:text-base-content"
+
   defp locale_label("pt_BR"), do: "Português"
+  defp locale_label("es"), do: "Español"
   defp locale_label("en"), do: "English"
   defp locale_label(locale), do: locale
 
   attr :current_user, :map, default: nil
   attr :current_path, :string, default: "/"
+  attr :nav, :map, default: nil
 
   # The permanent rail on lg+, and a native <dialog> drawer below it: the
   # dialog is what buys the mobile menu its focus trap, Escape handling and
@@ -324,7 +397,12 @@ defmodule HllConditionalActionsWeb.Layouts do
   defp sidebar(assigns) do
     ~H"""
     <aside class="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-base-300 bg-base-100 lg:flex">
-      <.sidebar_content id="sidebar" current_user={@current_user} current_path={@current_path} />
+      <.sidebar_content
+        id="sidebar"
+        current_user={@current_user}
+        current_path={@current_path}
+        nav={@nav}
+      />
     </aside>
 
     <dialog
@@ -339,6 +417,7 @@ defmodule HllConditionalActionsWeb.Layouts do
           id="mobile-sidebar-content"
           current_user={@current_user}
           current_path={@current_path}
+          nav={@nav}
           closable
         />
       </div>
@@ -349,11 +428,13 @@ defmodule HllConditionalActionsWeb.Layouts do
   attr :id, :string, required: true
   attr :current_user, :map, default: nil
   attr :current_path, :string, required: true
+  attr :nav, :map, default: nil
   attr :closable, :boolean, default: false
 
   defp sidebar_content(assigns) do
     ~H"""
     <div class="flex h-16 shrink-0 items-center gap-2.5 border-b border-base-300 px-4">
+      <.logo_mark class="size-8 shrink-0" />
       <div class="min-w-0 flex-1">
         <p class="truncate text-title-medium leading-tight">
           {gettext("Conditional Actions")}
@@ -372,17 +453,22 @@ defmodule HllConditionalActionsWeb.Layouts do
       </form>
     </div>
 
-    <nav class="flex-1 space-y-6 overflow-y-auto p-3 pl-4">
+    <.scope_switcher
+      :if={@nav && @nav.servers != []}
+      id={"#{@id}-scope"}
+      nav={@nav}
+      current_user={@current_user}
+      current_path={@current_path}
+    />
+    <nav id={"#{@id}-nav"} class="flex-1 space-y-6 overflow-y-auto p-3 pl-4">
       <.nav_section
-        :for={section <- nav_sections(@current_user)}
+        :for={section <- nav_sections(@current_user, @nav)}
         title={section.title}
         items={section.items}
         current_path={@current_path}
       />
     </nav>
-
     <.version_line :if={Accounts.can?(@current_user, :manage_users)} id={@id} />
-
     <div :if={@current_user} class="flex shrink-0 items-center gap-2 border-t border-base-300 p-3">
       <.link
         navigate={~p"/account"}
@@ -426,7 +512,6 @@ defmodule HllConditionalActionsWeb.Layouts do
         class="size-1.5 shrink-0 rounded-full bg-warning"
         aria-hidden="true"
       />
-
       <span class="truncate">
         {gettext("Version:")} {Updates.current_version()}
       </span>
@@ -435,7 +520,6 @@ defmodule HllConditionalActionsWeb.Layouts do
         {gettext("Update")}
       </span>
     </button>
-
     <.about_dialog id={"about-#{@id}"} status={@status} />
     """
   end
@@ -500,31 +584,36 @@ defmodule HllConditionalActionsWeb.Layouts do
         <dl class="mt-5 space-y-1 text-sm">
           <div class="flex flex-wrap gap-x-2">
             <dt class="text-muted">{gettext("Running:")}</dt>
+
             <dd class="font-medium">{Updates.current_version()}</dd>
           </div>
 
           <div :if={@status.latest} class="flex flex-wrap gap-x-2">
             <dt class="text-muted">{gettext("Latest release:")}</dt>
+
             <dd class="font-medium">{@status.latest.tag}</dd>
           </div>
 
           <div :if={@status.checked_at} class="flex flex-wrap gap-x-2">
             <dt class="text-muted">{gettext("Last checked:")}</dt>
+
             <dd>{format_checked_at(@status.checked_at)}</dd>
           </div>
         </dl>
 
         <p :if={@status.update_available?} class="mt-4 rounded-box bg-warning/10 p-3 text-sm">
-          <.icon name="hero-arrow-up-circle" class="size-4 text-warning" />
-          {gettext("A newer release is available.")}
+          <.icon name="hero-arrow-up-circle" class="size-4 text-warning" /> {gettext(
+            "A newer release is available."
+          )}
         </p>
 
         <p
           :if={not @status.update_available? and @status.latest}
           class="mt-4 rounded-box bg-success/10 p-3 text-sm"
         >
-          <.icon name="hero-check-circle" class="size-4 text-success" />
-          {gettext("You are up to date.")}
+          <.icon name="hero-check-circle" class="size-4 text-success" /> {gettext(
+            "You are up to date."
+          )}
         </p>
 
         <p :if={@status.error} class="mt-4 text-sm text-muted">
@@ -563,11 +652,11 @@ defmodule HllConditionalActionsWeb.Layouts do
   end
 
   defp format_checked_at(at) do
-    Calendar.strftime(at, "%d/%m/%Y %H:%M UTC")
+    Calendar.strftime(at, gettext("%m/%d/%Y %H:%M UTC"))
   end
 
   defp format_published_at(at) do
-    Calendar.strftime(at, "%d/%m/%Y")
+    Calendar.strftime(at, gettext("%m/%d/%Y"))
   end
 
   attr :title, :string, required: true
@@ -605,8 +694,15 @@ defmodule HllConditionalActionsWeb.Layouts do
                   else: "text-muted"
                 )
               ]}
-            />
-            <span class="truncate">{item.label}</span>
+            /> <span class="truncate">{item.label}</span>
+            <span
+              :if={Map.get(item, :badge, 0) > 0}
+              class="ml-auto min-w-5 rounded-full bg-warning px-1.5 text-center text-xs font-semibold leading-5 text-warning-content"
+              data-nav-badge
+              title={gettext("Waiting for an admin")}
+            >
+              {item.badge}
+            </span>
           </.link>
         </li>
       </ul>
@@ -615,6 +711,37 @@ defmodule HllConditionalActionsWeb.Layouts do
   end
 
   attr :current_user, :map, default: nil
+
+  attr :nav, :map, required: true
+
+  # The unread Attention items: a bell with their count, opening the inbox
+  # of the server being looked at, or the whole organisation's.
+  defp attention_bell(assigns) do
+    assigns =
+      assign(assigns,
+        count: assigns.nav.attention,
+        path:
+          if(assigns.nav[:server],
+            do: "/servers/#{assigns.nav.server.id}/attention",
+            else: "/attention"
+          )
+      )
+
+    ~H"""
+    <.link
+      navigate={@path}
+      id="attention-bell"
+      class="attention-bell"
+      aria-label={
+        ngettext("1 unread item in Attention", "%{count} unread items in Attention", @count)
+      }
+      title={ngettext("1 unread item in Attention", "%{count} unread items in Attention", @count)}
+    >
+      <.icon name={if @count > 0, do: "hero-bell-alert", else: "hero-bell"} class="size-5" />
+      <span :if={@count > 0} class="attention-bell-badge">{if @count > 99, do: "99+", else: @count}</span>
+    </.link>
+    """
+  end
 
   defp user_menu(assigns) do
     ~H"""
@@ -725,43 +852,158 @@ defmodule HllConditionalActionsWeb.Layouts do
 
   # Entries the signed in user has no permission for are dropped, and a section
   # with nothing left in it disappears too.
-  defp nav_sections(current_user) do
+  defp nav_sections(current_user, %{server: %{id: id}} = nav) do
+    base = "/servers/#{id}"
+
     [
       %{
-        title: gettext("Operations"),
+        title: gettext("Server"),
+        items: [
+          %{label: gettext("Overview"), path: base, icon: "hero-squares-2x2", permission: nil},
+          %{
+            label: gettext("Live feed"),
+            path: base <> "/feed",
+            feature: :live_feed,
+            icon: "hero-signal",
+            permission: :view_live_feed
+          },
+          %{
+            label: gettext("Leaderboard"),
+            path: base <> "/leaderboard",
+            feature: :stats,
+            icon: "hero-trophy",
+            permission: :view_stats
+          },
+          %{
+            label: gettext("Matches"),
+            path: base <> "/matches",
+            feature: :stats,
+            icon: "hero-flag",
+            permission: :view_stats
+          },
+          %{
+            label: gettext("Tickets"),
+            path: base <> "/tickets",
+            feature: :tickets,
+            icon: "hero-chat-bubble-left-ellipsis",
+            permission: :view_tickets,
+            badge: waiting_tickets(nav, id)
+          }
+        ]
+      },
+      %{
+        title: gettext("Automation"),
         items: [
           %{
-            label: gettext("Overview"),
-            path: "/",
-            icon: "hero-squares-2x2",
-            permission: nil
+            label: gettext("Rules"),
+            path: base <> "/rules",
+            feature: :rules,
+            icon: "hero-bolt",
+            permission: :view_rules
+          },
+          %{
+            label: gettext("History"),
+            path: base <> "/history",
+            feature: :rules,
+            icon: "hero-clock",
+            permission: :view_executions
+          },
+          %{
+            label: gettext("Attention"),
+            path: base <> "/attention",
+            icon: "hero-bell-alert",
+            permission: :view_executions
+          }
+        ]
+      },
+      %{
+        title: gettext("Community"),
+        items: [
+          %{
+            label: gettext("Achievements"),
+            path: base <> "/achievements",
+            feature: :progression,
+            icon: "hero-trophy",
+            permission: :view_progression
+          },
+          %{
+            label: gettext("Seasons"),
+            path: base <> "/seasons",
+            feature: :progression,
+            icon: "hero-calendar-days",
+            permission: :view_progression
+          }
+        ]
+      },
+      %{
+        title: gettext("Settings"),
+        items: [
+          %{
+            label: gettext("Marketplace"),
+            path: base <> "/marketplace",
+            icon: "hero-squares-plus",
+            permission: :manage_servers
+          },
+          %{
+            label: gettext("Server settings"),
+            path: base <> "/edit",
+            icon: "hero-cog-6-tooth",
+            permission: :manage_servers
+          }
+        ]
+      }
+    ]
+    |> visible_sections(current_user, nav)
+  end
+
+  defp nav_sections(current_user, nav) do
+    [
+      %{
+        title: gettext("Organisation"),
+        items: [
+          %{label: gettext("Overview"), path: "/", icon: "hero-squares-2x2", permission: nil},
+          %{
+            label: gettext("Attention"),
+            path: "/attention",
+            icon: "hero-bell-alert",
+            permission: :view_executions
+          },
+          %{
+            label: gettext("Tickets"),
+            path: "/tickets",
+            feature: :tickets,
+            icon: "hero-chat-bubble-left-ellipsis",
+            permission: :view_tickets,
+            badge: waiting_tickets(nav)
           },
           %{
             label: gettext("Servers"),
             path: "/servers",
             icon: "hero-server-stack",
             permission: :view_servers
-          },
-          %{
-            label: gettext("Rules"),
-            path: "/rules",
-            icon: "hero-bolt",
-            permission: :view_rules
           }
         ]
       },
       %{
-        title: gettext("Monitoring"),
+        title: gettext("Automation"),
         items: [
           %{
-            label: gettext("Live feed"),
-            path: "/feed",
-            icon: "hero-signal",
-            permission: :view_live_feed
+            label: gettext("All rules"),
+            path: "/rules",
+            feature: :rules,
+            icon: "hero-bolt",
+            permission: :view_rules
+          },
+          %{
+            label: gettext("Discord"),
+            path: "/discord",
+            icon: "hero-chat-bubble-left-right",
+            permission: :manage_integrations
           },
           %{
             label: gettext("History"),
             path: "/executions",
+            feature: :rules,
             icon: "hero-clock",
             permission: :view_executions
           },
@@ -770,6 +1012,18 @@ defmodule HllConditionalActionsWeb.Layouts do
             path: "/metrics",
             icon: "hero-chart-bar",
             permission: :view_executions
+          }
+        ]
+      },
+      %{
+        title: gettext("Community"),
+        items: [
+          %{
+            label: gettext("Seasons"),
+            path: "/seasons",
+            feature: :progression,
+            icon: "hero-calendar-days",
+            permission: :view_progression
           }
         ]
       },
@@ -791,16 +1045,176 @@ defmodule HllConditionalActionsWeb.Layouts do
         ]
       }
     ]
+    |> visible_sections(current_user, nav)
+  end
+
+  # Tickets waiting on an admin, for the badge next to "Tickets".
+  defp waiting_tickets(%{tickets: counts}) when is_map(counts),
+    do: counts |> Map.values() |> Enum.sum()
+
+  defp waiting_tickets(_nav), do: 0
+
+  defp waiting_tickets(%{tickets: counts}, server_id) when is_map(counts),
+    do: Map.get(counts, server_id, 0)
+
+  defp waiting_tickets(_nav, _server_id), do: 0
+
+  # Entries the role cannot reach are dropped, and a section left with
+  # nothing in it disappears too.
+  defp visible_sections(sections, current_user, nav) do
+    sections
     |> Enum.map(fn section ->
-      %{section | items: Enum.filter(section.items, &allowed?(current_user, &1.permission))}
+      items =
+        Enum.filter(
+          section.items,
+          &(allowed?(current_user, &1.permission) and Nav.feature?(nav, &1[:feature]))
+        )
+
+      %{section | items: items}
     end)
     |> Enum.reject(&(&1.items == []))
   end
+
+  # ── Scope switcher ─────────────────────────────────────────────────────────
+
+  attr :id, :string, required: true
+  attr :nav, :map, required: true
+  attr :current_user, :map, default: nil
+  attr :current_path, :string, required: true
+
+  # The card at the top of the sidebar that says where you are - a server,
+  # with its game, stream and link to switch, or the whole organisation - the
+  # way CRCON's own sidebar opens on the server it belongs to. Switching keeps
+  # the page: from one server's leaderboard to the other's.
+  defp scope_switcher(assigns) do
+    ~H"""
+    <div class="relative shrink-0 border-b border-base-300 p-3" x-data="{ open: false }">
+      <button
+        type="button"
+        id={"#{@id}-button"}
+        class="scope-switcher"
+        x-on:click="open = !open"
+        x-bind:aria-expanded="open"
+        aria-haspopup="menu"
+        aria-controls={"#{@id}-menu"}
+      >
+        <%= if @nav.server do %>
+          <img
+            src={server_art(@nav.server)}
+            alt=""
+            class="size-9 shrink-0 rounded-field object-cover"
+          />
+          <span class="min-w-0 flex-1 text-left">
+            <span class="block truncate text-sm font-medium leading-tight">
+              {@nav.server.name}
+            </span>
+
+            <span class="flex items-center gap-1.5 text-xs text-muted">
+              <span class={["size-1.5 shrink-0 rounded-full", stream_dot(@nav.status)]}></span>
+              <span class="truncate">
+                {Labels.game(@nav.server.game)} · {Labels.stream_status(@nav.status)}
+              </span>
+            </span>
+          </span>
+        <% else %>
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-field bg-base-content text-base-100">
+            <.icon name="hero-squares-2x2" class="size-4" />
+          </span>
+
+          <span class="min-w-0 flex-1 text-left">
+            <span class="block truncate text-sm font-medium leading-tight">
+              {gettext("All servers")}
+            </span>
+
+            <span class="block truncate text-xs text-muted">
+              {ngettext("1 server", "%{count} servers", length(@nav.servers))}
+            </span>
+          </span>
+        <% end %>
+        <.icon name="hero-chevron-up-down" class="size-4 shrink-0 text-muted" />
+      </button>
+
+      <div
+        id={"#{@id}-menu"}
+        role="menu"
+        class="scope-menu"
+        x-show="open"
+        x-cloak
+        x-transition.opacity.duration.100ms
+        x-on:click.outside="open = false"
+        x-on:keydown.escape.window="open = false"
+      >
+        <p class="px-2 pt-1 pb-1.5 text-[0.6875rem] font-medium tracking-wide text-muted uppercase">
+          {gettext("Servers")}
+        </p>
+
+        <.link
+          :for={server <- @nav.servers}
+          navigate={Nav.switch_path(@current_path, server.id)}
+          role="menuitem"
+          class={["scope-menu-item", @nav.server && @nav.server.id == server.id && "is-current"]}
+        >
+          <img src={server_art(server)} alt="" class="size-7 shrink-0 rounded-selector object-cover" />
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm">{server.name}</span>
+            <span class="block truncate text-xs text-muted">{Labels.game(server.game)}</span>
+          </span>
+
+          <.icon
+            :if={@nav.server && @nav.server.id == server.id}
+            name="hero-check"
+            class="size-4 shrink-0 text-primary"
+          />
+        </.link>
+
+        <div class="my-1 h-px bg-base-300"></div>
+
+        <.link
+          navigate={~p"/"}
+          role="menuitem"
+          class={["scope-menu-item", is_nil(@nav.server) && "is-current"]}
+        >
+          <span class="flex size-7 shrink-0 items-center justify-center rounded-selector bg-base-200">
+            <.icon name="hero-squares-2x2" class="size-4 text-subtle" />
+          </span>
+          <span class="flex-1 text-sm">{gettext("All servers")}</span>
+        </.link>
+
+        <.link
+          :if={Accounts.can?(@current_user, :manage_servers)}
+          navigate={~p"/servers/new"}
+          role="menuitem"
+          class="scope-menu-item"
+        >
+          <span class="flex size-7 shrink-0 items-center justify-center rounded-selector bg-base-200">
+            <.icon name="hero-plus" class="size-4 text-subtle" />
+          </span>
+          <span class="flex-1 text-sm">{gettext("Add a server")}</span>
+        </.link>
+      </div>
+    </div>
+    """
+  end
+
+  defp stream_dot(:connected), do: "bg-success"
+  defp stream_dot(:connecting), do: "bg-warning"
+  defp stream_dot({:error, _reason}), do: "bg-error"
+  defp stream_dot(_status), do: "bg-base-300"
 
   defp allowed?(_user, nil), do: true
   defp allowed?(user, permission), do: Accounts.can?(user, permission)
 
   defp active?(current_path, "/"), do: current_path == "/"
+
+  defp active?(current_path, "/servers/" <> rest = path) do
+    if String.contains?(rest, "/"),
+      do: String.starts_with?(current_path, path),
+      else: current_path == path or String.starts_with?(current_path, path <> "/edit")
+  end
+
+  defp active?(current_path, "/servers"),
+    do: current_path == "/servers" or current_path == "/servers/new"
+
   defp active?(current_path, path), do: String.starts_with?(current_path, path)
 
   defp role_name(%{role: %{name: name}}), do: name

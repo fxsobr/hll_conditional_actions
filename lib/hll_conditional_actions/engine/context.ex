@@ -97,9 +97,14 @@ defmodule HllConditionalActions.Engine.Context do
   @spec needs_player_profile?([Rule.t()]) :: boolean()
   def needs_player_profile?(rules) do
     Enum.any?(rules, fn rule ->
-      Enum.any?(rule.conditions, &(Catalog.field_group(&1.field) == :profile))
+      Enum.any?(rule.conditions, &(Catalog.field_group(&1.field) == :profile)) or
+        exempts_flags?(rule)
     end)
   end
+
+  # Flags live in the profile, so a flag exemption needs it too.
+  defp exempts_flags?(%{exemptions: %{exempt_flags: [_ | _]}}), do: true
+  defp exempts_flags?(_rule), do: false
 
   @doc """
   The team the player is on, as CRCON reports it (`"allies"` / `"axis"`), or
@@ -142,11 +147,29 @@ defmodule HllConditionalActions.Engine.Context do
       "game_mode" => gamestate_field(context.gamestate, "game_mode"),
       "server_name" => context.server.name,
       "server_player_count" => server_player_count(context),
+      "vehicles_destroyed" => player_field(context.player, "vehicles_destroyed"),
+      "team_objectives" => objectives(context, :own),
+      "enemy_objectives" => objectives(context, :enemy),
       "weapon" => context.event && context.event.weapon,
       "target_player_name" => context.event && context.event.target_player_name,
       "message" => context.event && context.event.chat_message
     }
     |> Map.new(fn {key, value} -> {key, stringify(value)} end)
+  end
+
+  @doc """
+  How many of the five objectives the player's team (`:own`) or the other
+  team (`:enemy`) holds, or `nil` without a team or a game state.
+  """
+  @spec objectives(t(), :own | :enemy) :: integer() | nil
+  def objectives(%__MODULE__{} = context, side) do
+    case {team(context), side} do
+      {"allies", :own} -> gamestate_field(context.gamestate, "allied_score")
+      {"allies", :enemy} -> gamestate_field(context.gamestate, "axis_score")
+      {"axis", :own} -> gamestate_field(context.gamestate, "axis_score")
+      {"axis", :enemy} -> gamestate_field(context.gamestate, "allied_score")
+      _no_team -> nil
+    end
   end
 
   @doc """

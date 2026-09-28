@@ -11,6 +11,8 @@ defmodule HllConditionalActions.Rules.Action do
 
   import Ecto.Changeset
 
+  alias HllConditionalActions.Discord
+  alias HllConditionalActions.Discord.Webhook
   alias HllConditionalActions.Rules.Catalog
 
   @type t :: %__MODULE__{}
@@ -31,6 +33,7 @@ defmodule HllConditionalActions.Rules.Action do
     |> validate_required([:type])
     |> normalize_parameters()
     |> validate_parameters()
+    |> validate_discord_body()
   end
 
   @doc """
@@ -96,42 +99,103 @@ defmodule HllConditionalActions.Rules.Action do
 
     cond do
       blank?(value) and opts[:required] ->
-        add_error(changeset, :parameters, "#{key} is required")
+        add_error(changeset, :parameters, "%{param} is required", param: to_string(key))
 
       blank?(value) ->
         changeset
 
-      param_type == :integer ->
-        validate_integer(changeset, key, value, opts[:min])
-
-      param_type == :string and key == :webhook_url ->
-        validate_webhook_url(changeset, value)
-
       true ->
-        changeset
+        validate_value(changeset, key, param_type, value, opts)
     end
   end
+
+  defp validate_value(changeset, key, :integer, value, opts),
+    do: validate_integer(changeset, key, value, opts[:min])
+
+  defp validate_value(changeset, key, :discord_webhook, value, _opts),
+    do: validate_discord_webhook(changeset, key, value)
+
+  defp validate_value(changeset, key, :select, value, opts),
+    do: validate_select(changeset, key, value, opts[:options])
+
+  defp validate_value(changeset, key, :color, value, _opts) do
+    check(
+      changeset,
+      key,
+      is_binary(value) and value =~ ~r/^#[0-9a-fA-F]{6}$/,
+      "%{param} must be a colour like #5865F2"
+    )
+  end
+
+  defp validate_value(changeset, key, :url, value, _opts) do
+    check(changeset, key, Webhook.https?(value), "%{param} must be an https:// address")
+  end
+
+  defp validate_value(changeset, :thread_id, _type, value, _opts) do
+    check(
+      changeset,
+      :thread_id,
+      is_binary(value) and value =~ ~r/^\d+$/,
+      "%{param} must be a Discord id"
+    )
+  end
+
+  defp validate_value(changeset, _key, _type, _value, _opts), do: changeset
+
+  defp check(changeset, _key, true, _message), do: changeset
+
+  defp check(changeset, key, false, message),
+    do: add_error(changeset, :parameters, message, param: to_string(key))
 
   defp validate_integer(changeset, key, value, min) do
     case cast_integer(value) do
       {:ok, int} when is_integer(min) and int < min ->
-        add_error(changeset, :parameters, "#{key} must be at least #{min}")
+        add_error(changeset, :parameters, "%{param} must be at least %{min}",
+          param: to_string(key),
+          min: min
+        )
 
       {:ok, _int} ->
         changeset
 
       :error ->
-        add_error(changeset, :parameters, "#{key} must be a whole number")
+        add_error(changeset, :parameters, "%{param} must be a whole number",
+          param: to_string(key)
+        )
     end
   end
 
-  defp validate_webhook_url(changeset, value) do
-    case URI.parse(to_string(value)) do
-      %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and is_binary(host) ->
-        changeset
+  defp validate_discord_webhook(changeset, key, value) do
+    if Discord.get_webhook(value) do
+      changeset
+    else
+      add_error(changeset, :parameters, "%{param} must be a registered Discord webhook",
+        param: to_string(key)
+      )
+    end
+  end
 
-      _invalid ->
-        add_error(changeset, :parameters, "webhook_url must be a full URL")
+  defp validate_select(changeset, key, value, options) do
+    if to_string(value) in options do
+      changeset
+    else
+      add_error(changeset, :parameters, "%{param} is not one of the choices",
+        param: to_string(key)
+      )
+    end
+  end
+
+  # A Discord message with neither text nor embed would be refused with a 400.
+  @discord_body ~w(message embed_title embed_description embed_fields)
+
+  defp validate_discord_body(changeset) do
+    parameters = get_field(changeset, :parameters, %{})
+
+    if get_field(changeset, :type) == :send_discord_webhook and
+         Enum.all?(@discord_body, &blank?(parameters[&1])) do
+      add_error(changeset, :parameters, "a Discord message needs a text or an embed")
+    else
+      changeset
     end
   end
 

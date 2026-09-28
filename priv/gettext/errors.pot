@@ -107,3 +107,200 @@ msgstr ""
 
 msgid "must be equal to %{number}"
 msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:20
+#, elixir-autogen, elixir-format
+msgid "%{fields} cannot be used with this trigger"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:28
+#, elixir-autogen, elixir-format
+msgid "%{param} is required"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:30
+#, elixir-autogen, elixir-format
+msgid "%{param} must be a whole number"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:29
+#, elixir-autogen, elixir-format
+msgid "%{param} must be at least %{min}"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:43
+#, elixir-autogen, elixir-format
+msgid "can only be counted over a career"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:42
+#, elixir-autogen, elixir-format
+msgid "does not match"
+msgstr ""
+
+#: lib/hll_conditional_actions/progression/season.ex:131
+#: lib/hll_conditional_actions_web/error_messages.ex:44
+#, elixir-autogen, elixir-format
+msgid "give at least one stat a weight"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:23
+#, elixir-autogen, elixir-format
+msgid "is not a valid regex: %{reason}"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:22
+#, elixir-autogen, elixir-format
+msgid "is not valid for this field"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:40
+#, elixir-autogen, elixir-format
+msgid "may only contain letters, numbers, dots, dashes and underscores"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:26
+#, elixir-autogen, elixir-format
+msgid "must be a number"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:41
+#, elixir-autogen, elixir-format
+msgid "must be a valid email address"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:25
+#, elixir-autogen, elixir-format
+msgid "must be a whole number"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:27
+#, elixir-autogen, elixir-format
+msgid "must be true or false"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:19
+#, elixir-autogen, elixir-format
+msgid "must have at least one entry"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:24
+#, elixir-autogen, elixir-format
+msgid "must list at least one value"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:21
+#, elixir-autogen, elixir-format
+msgid "runs a different game than this rule"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:34
+#, elixir-autogen, elixir-format
+msgid "%{param} is not one of the choices"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:35
+#, elixir-autogen, elixir-format
+msgid "%{param} must be a Discord id"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:32
+#, elixir-autogen, elixir-format
+msgid "%{param} must be a colour like #5865F2"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:31
+#, elixir-autogen, elixir-format
+msgid "%{param} must be a registered Discord webhook"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:33
+#, elixir-autogen, elixir-format
+msgid "%{param} must be an https:// address"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:39
+#, elixir-autogen, elixir-format
+msgid "Discord does not know this webhook"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:36
+#, elixir-autogen, elixir-format
+msgid "a Discord message needs a text or an embed"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:37
+#, elixir-autogen, elixir-format
+msgid "must be a Discord webhook URL"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/error_messages.ex:38
+#, elixir-autogen, elixir-format
+msgid "must be an https:// address"
+msgstr ""
+
+#: lib/hll_conditional_actions/tickets/settings.ex:209
+#, elixir-autogen, elixir-format
+msgid "a command cannot contain spaces"
+msgstr ""
+
+#: lib/hll_conditional_actions/tickets/settings.ex:216
+#, elixir-autogen, elixir-format
+msgid "a command is at most 30 characters"
+msgstr ""
+
+#: lib/hll_conditional_actions/tickets/settings.ex:200
+#, elixir-autogen, elixir-format
+msgid "add at least one command"
+msgstr ""
+
+#: lib/hll_conditional_actions/tickets/settings.ex:203
+#, elixir-autogen, elixir-format
+msgid "at most 10 commands"
+msgstr ""
+
+#: lib/hll_conditional_actions/tickets/settings.ex:104
+#, elixir-autogen, elixir-format
+msgid "only role ids, separated by commas"
+msgstr ""
+
+#: lib/hll_conditional_actions/progression/season.ex:91
+#: lib/hll_conditional_actions/progression/season.ex:95
+#, elixir-autogen, elixir-format
+msgid "pick at least one server"
+msgstr ""
+
+#: lib/hll_conditional_actions/rules/transfer.ex:96
+#, elixir-autogen, elixir-format
+msgid "that is not valid JSON"
+msgstr ""
+
+#: lib/hll_conditional_actions/rules/transfer.ex:107
+#, elixir-autogen, elixir-format
+msgid "the file has no \"rules\" list"
+msgstr ""
+
+#: lib/hll_conditional_actions/progression/season.ex:106
+#, elixir-autogen, elixir-format
+msgid "the servers of a season must all run the same game"
+msgstr ""
+
+#: lib/hll_conditional_actions/rules/transfer.ex:265
+#, elixir-autogen, elixir-format
+msgid "this file was written by a newer version (format %{version}, this install reads %{supported})"
+msgstr ""
+
+#: lib/hll_conditional_actions/rules/transfer.ex:257
+#, elixir-autogen, elixir-format
+msgid "unknown export format %{format}"
+msgstr ""
+
+#: lib/hll_conditional_actions/rules/transfer.ex:129
+#, elixir-autogen, elixir-format
+msgid "a rule must be a JSON object"
+msgstr ""
+
+#: lib/hll_conditional_actions/rules/transfer.ex:133
+#, elixir-autogen, elixir-format
+msgid "that is not valid JSON (at character %{position})"
+msgstr ""

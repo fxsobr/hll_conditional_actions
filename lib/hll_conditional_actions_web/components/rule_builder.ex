@@ -14,8 +14,13 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
 
   use HllConditionalActionsWeb, :html
 
+  alias HllConditionalActions.Crcon.GameText
   alias HllConditionalActions.Engine.Template
+  alias HllConditionalActions.Games.Weapons
   alias HllConditionalActions.Rules.Catalog
+  alias HllConditionalActions.Rules.Condition
+  alias HllConditionalActions.Rules.Exemptions
+  alias HllConditionalActionsWeb.DiscordComponents
   alias Phoenix.HTML.Form
 
   # ── Step navigator ─────────────────────────────────────────────────────────
@@ -110,7 +115,6 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
 
           <div :if={@aside != []} class="shrink-0">{render_slot(@aside)}</div>
         </div>
-
         {render_slot(@inner_block)}
       </div>
     </section>
@@ -149,10 +153,10 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
           value="true"
           checked={Form.normalize_value("checkbox", @field.value)}
           class="peer sr-only"
-        />
-        <span class="pc-switch__fake-input pc-switch__fake-input--sm"></span>
+        /> <span class="pc-switch__fake-input pc-switch__fake-input--sm"></span>
         <span class="pc-switch__fake-input-bg pc-switch__fake-input-bg--sm"></span>
       </label>
+
       <div class="min-w-0">
         <p class="flex items-center gap-1.5 text-sm font-medium leading-tight">
           <.icon name={@icon} class="size-3.5 shrink-0 text-muted" />{@title}
@@ -168,17 +172,23 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
 
   @doc """
   One condition of the "If" node.
+
+  The value control follows the field's type: a switch for yes/no fields,
+  a number box for numbers, chips for "is one of", a live tester for
+  patterns, and player autocomplete for ids and names.
   """
   attr :condition, :any, required: true
   attr :trigger, :atom, required: true
   attr :game, :atom, required: true
   attr :total, :integer, required: true
+  attr :popular, :list, default: [], doc: "the most used fields, shown first in the picker"
 
   def condition_row(assigns) do
     field = Form.input_value(assigns.condition, :field) || :always_true
     field = if is_binary(field), do: existing_field(field), else: field
     operator = Form.input_value(assigns.condition, :operator)
     operator = if is_binary(operator), do: existing_operator(operator), else: operator
+    boolean? = field != :always_true and Catalog.field_type(field) == :boolean
 
     assigns =
       assigns
@@ -186,17 +196,26 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
       |> assign(:value_options, value_options(field, assigns.game))
       |> assign(:numeric?, numeric_value?(field, operator))
       |> assign(:list?, Catalog.list_operator?(operator))
+      |> assign(:boolean?, boolean?)
+      |> assign(:regex?, operator == :regex_match)
       |> assign(:free_text?, field != :always_true)
+      |> assign(:players_list, player_datalist(field))
+      # A weapon compared for equality or membership is picked from the
+      # known list; "contains" and friends stay free text, for names the
+      # list does not have (Vietnam's, a weapon added after this release).
+      |> assign(
+        :weapon_pick?,
+        field == :weapon and assigns.game == :hll and
+          operator in [nil, :equal, :not_equal, :in_list, :not_in_list]
+      )
 
     ~H"""
     <div class="condition-grid rounded-box border border-base-300 bg-base-200/50 p-2.5">
-      <.input
+      <.field_picker
         field={@condition[:field]}
-        type="select"
-        options={Labels.field_options(@trigger)}
-        label={gettext("Field")}
-        label_class="lg:sr-only"
-        no_margin
+        current={@field}
+        trigger={@trigger}
+        popular={@popular}
       />
       <.input
         :if={@free_text?}
@@ -216,8 +235,9 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
         {gettext("this rule has no condition to check")}
       </div>
 
+      <.boolean_toggle :if={@boolean?} field={@condition[:value]} />
       <.input
-        :if={@free_text? and @value_options}
+        :if={@free_text? and not @boolean? and @value_options != nil and not @list?}
         field={@condition[:value]}
         type="select"
         options={@value_options}
@@ -225,30 +245,590 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
         label_class="lg:sr-only"
         no_margin
       />
+      <.option_group
+        :if={@free_text? and not @boolean? and @value_options != nil and @list?}
+        field={@condition[:value]}
+        options={@value_options}
+      />
       <.input
-        :if={@free_text? and is_nil(@value_options) and @numeric?}
+        :if={@weapon_pick? and not @list?}
+        field={@condition[:value]}
+        type="select"
+        prompt={gettext("Pick a weapon")}
+        options={weapon_options()}
+        label={gettext("Value")}
+        label_class="lg:sr-only"
+        no_margin
+      /> <.weapon_picker :if={@weapon_pick? and @list?} field={@condition[:value]} />
+      <.weapon_types_help :if={@field in [:weapon, :weapon_type] and @game == :hll} />
+      <.input
+        :if={@free_text? and is_nil(@value_options) and @numeric? and not @weapon_pick?}
         field={@condition[:value]}
         type="number"
-        step="any"
+        step={if Catalog.field_type(@field) == :integer, do: "1", else: "any"}
         placeholder={gettext("Value")}
         label={gettext("Value")}
         label_class="lg:sr-only"
         no_margin
       />
+      <.chip_input
+        :if={@free_text? and is_nil(@value_options) and @list? and not @weapon_pick?}
+        field={@condition[:value]}
+        label={gettext("Values")}
+        placeholder={gettext("Type a value, then Enter")}
+        list={@players_list}
+        numeric={Catalog.field_type(@field) in [:integer, :float]}
+      />
       <.input
-        :if={@free_text? and is_nil(@value_options) and not @numeric?}
+        :if={
+          @free_text? and is_nil(@value_options) and not @numeric? and not @list? and
+            not @weapon_pick?
+        }
         field={@condition[:value]}
         type="text"
-        placeholder={if @list?, do: gettext("value, other value"), else: gettext("Value")}
+        placeholder={if @regex?, do: gettext("A pattern, such as ^ABC"), else: gettext("Value")}
         label={gettext("Value")}
         label_class="lg:sr-only"
-        help_text={if @list?, do: gettext("Separate each one with a comma")}
+        list={@players_list}
+        autocomplete="off"
         no_margin
       />
       <div class="flex items-end justify-end">
         <.row_tools kind="condition" index={@condition.index} total={@total} />
       </div>
+      <.regex_tester :if={@regex?} condition={@condition} />
     </div>
+    """
+  end
+
+  # The fields whose values are players this install has already seen.
+  defp player_datalist(:player_id), do: "known-player-ids"
+
+  defp player_datalist(field) when field in [:player_name, :target_player_name],
+    do: "known-player-names"
+
+  defp player_datalist(_field), do: nil
+
+  @doc """
+  The datalists behind player autocomplete: ids (labelled with the name)
+  and names. Rendered once per page; inputs point at them with `list`.
+  """
+  attr :players, :list, required: true, doc: "`{player_id, player_name}` pairs"
+
+  def player_datalists(assigns) do
+    assigns = assign(assigns, :names, assigns.players |> Enum.map(&elem(&1, 1)) |> Enum.uniq())
+
+    ~H"""
+    <datalist id="known-player-ids">
+      <option :for={{id, name} <- @players} value={id}>{name}</option>
+    </datalist>
+    <datalist id="known-player-names">
+      <option :for={name <- @names} value={name}></option>
+    </datalist>
+    """
+  end
+
+  # The searchable field picker: a combobox in place of a 70-option select.
+  # The hidden input is what the form posts; the text box only searches.
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :current, :atom, required: true
+  attr :trigger, :atom, required: true
+  attr :popular, :list, default: []
+
+  defp field_picker(assigns) do
+    allowed = Catalog.fields_for_trigger(assigns.trigger)
+
+    groups =
+      for group <- Catalog.field_groups(),
+          fields = Enum.filter(Catalog.fields_in_group(group), &(&1 in allowed)),
+          fields != [],
+          do: {to_string(group), Labels.field_group(group), fields}
+
+    popular = Enum.filter(assigns.popular, &(&1 in allowed))
+
+    groups =
+      if popular == [],
+        do: groups,
+        else: [{"popular", gettext("Most used"), popular} | groups]
+
+    assigns =
+      assign(assigns,
+        groups: groups,
+        allowed: allowed,
+        listbox_id: "#{assigns.field.id}-listbox",
+        label: Labels.field(assigns.current)
+      )
+
+    ~H"""
+    <div
+      id={"#{@field.id}-picker"}
+      class="relative"
+      x-data="fieldCombobox"
+      x-on:click.outside="close()"
+    >
+      <label for={"#{@field.id}-search"} class="pc-label lg:sr-only">{gettext("Field")}</label>
+      <%!-- The control the form posts: a real select, kept out of sight and
+            out of the tab order, so the picker can only ever post a field
+            this trigger allows. --%>
+      <select
+        id={@field.id}
+        name={@field.name}
+        class="hidden"
+        tabindex="-1"
+        aria-hidden="true"
+        x-ref="value"
+      >
+        <option :for={field <- @allowed} value={field} selected={field == @current}>
+          {Labels.field(field)}
+        </option>
+      </select>
+      <div class="relative">
+        <.icon
+          name="hero-magnifying-glass"
+          class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted"
+        />
+        <input
+          type="text"
+          id={"#{@field.id}-search"}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls={@listbox_id}
+          x-bind:aria-expanded="isOpen ? 'true' : 'false'"
+          x-bind:aria-activedescendant="activeId"
+          autocomplete="off"
+          spellcheck="false"
+          value={@label}
+          data-label={@label}
+          placeholder={gettext("Search fields")}
+          class="pc-text-input w-full pl-8"
+          x-ref="search"
+          x-on:focus="open()"
+          x-on:click="open()"
+          x-on:input.stop="filter($event.target.value)"
+          x-on:change.stop=""
+          x-on:keydown.arrow-down.prevent="move(1)"
+          x-on:keydown.arrow-up.prevent="move(-1)"
+          x-on:keydown.enter.prevent="choose()"
+          x-on:keydown.escape.prevent.stop="close()"
+          x-on:keydown.tab="close()"
+        />
+      </div>
+
+      <ul
+        id={@listbox_id}
+        role="listbox"
+        aria-label={gettext("Fields")}
+        x-show="isOpen"
+        x-cloak
+        class="absolute z-40 mt-1 max-h-80 w-full min-w-72 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+      >
+        <li :for={{key, title, fields} <- @groups} role="presentation" data-group={key}>
+          <p class="px-2 pt-2 pb-1 text-[0.625rem] font-semibold tracking-wide text-muted uppercase">
+            {title}
+          </p>
+
+          <ul role="group" aria-label={title}>
+            <li
+              :for={field <- fields}
+              id={"#{@field.id}-option-#{key}-#{field}"}
+              role="option"
+              aria-selected="false"
+              data-value={field}
+              data-label={Labels.field(field)}
+              data-search={search_text(field, title)}
+              class={[
+                "cursor-pointer rounded-field px-2 py-1.5 aria-selected:bg-primary/10",
+                field == @current && "font-medium text-primary"
+              ]}
+              x-on:mousedown.prevent="pick($el)"
+              x-on:mousemove="activate($el)"
+            >
+              <span class="block text-sm leading-tight">{Labels.field(field)}</span>
+              <span class="block text-xs text-muted">{Labels.field_description(field)}</span>
+            </li>
+          </ul>
+        </li>
+        <li
+          role="presentation"
+          data-empty
+          hidden
+          class="px-2 py-3 text-center text-sm text-muted"
+        >
+          {gettext("No field matches that search.")}
+        </li>
+      </ul>
+    </div>
+    """
+  end
+
+  # Folded the same way the picker folds what is typed (see rule_builder.js),
+  # so "nivel" finds "Nível" on a keyboard without dead keys.
+  defp search_text(field, group_title) do
+    [Labels.field(field), Labels.field_description(field), group_title, to_string(field)]
+    |> Enum.join(" ")
+    |> fold()
+  end
+
+  @doc """
+  Lower case without accents, for matching what someone types against a
+  label. The builder's client side search folds the query the same way.
+
+      iex> HllConditionalActionsWeb.RuleBuilder.fold("Nível do Jogador")
+      "nivel do jogador"
+  """
+  @spec fold(String.t()) :: String.t()
+  def fold(text) do
+    text
+    |> :unicode.characters_to_nfd_binary()
+    |> String.replace(~r/\p{Mn}/u, "")
+    |> String.downcase()
+  end
+
+  # A yes/no condition value as a switch. The hidden "false" is overridden by
+  # the checkbox when it is on, the same trick Phoenix's checkbox uses.
+  attr :field, Phoenix.HTML.FormField, required: true
+
+  defp boolean_toggle(assigns) do
+    assigns = assign(assigns, :on?, Form.normalize_value("checkbox", assigns.field.value))
+
+    ~H"""
+    <label class="flex h-10 cursor-pointer items-center gap-2 text-sm">
+      <input type="hidden" name={@field.name} value="false" />
+      <span class="pc-switch pc-switch--sm shrink-0">
+        <input
+          type="checkbox"
+          id={@field.id}
+          name={@field.name}
+          value="true"
+          checked={@on?}
+          class="peer sr-only"
+        /> <span class="pc-switch__fake-input pc-switch__fake-input--sm"></span>
+        <span class="pc-switch__fake-input-bg pc-switch__fake-input-bg--sm"></span>
+      </span>
+      <span>{if @on?, do: gettext("Yes"), else: gettext("No")}</span>
+    </label>
+    """
+  end
+
+  @doc """
+  Chips over one comma separated value, for lists typed by hand ("is one
+  of", exempt flags, exempt players). The chips are drawn from the value;
+  Alpine only edits the hidden input.
+  """
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :label, :string, required: true
+  attr :placeholder, :string, default: nil
+  attr :list, :string, default: nil, doc: "a datalist id for suggestions"
+  attr :numeric, :boolean, default: false
+  attr :label_class, :string, default: "lg:sr-only"
+
+  def chip_input(assigns) do
+    assigns =
+      assign(assigns,
+        chosen: assigns.field.value |> list_value() |> Enum.uniq(),
+        errors: Enum.map(assigns.field.errors, &translate_error/1)
+      )
+
+    ~H"""
+    <div id={"#{@field.id}-chips"} x-data="chipInput" class="min-w-0">
+      <label for={"#{@field.id}-entry"} class={["pc-label", @label_class]}>{@label}</label>
+      <input
+        type="hidden"
+        id={@field.id}
+        name={@field.name}
+        value={Enum.join(@chosen, ",")}
+        x-ref="value"
+      />
+      <div class={[
+        "flex min-h-10 flex-wrap items-center gap-1 rounded-field border bg-base-100 px-1.5 py-1 focus-within:border-primary",
+        if(@errors == [], do: "border-base-300", else: "border-error")
+      ]}>
+        <span
+          :for={value <- @chosen}
+          class="inline-flex items-center gap-0.5 rounded-pill bg-primary/10 py-0.5 pr-0.5 pl-2 text-xs text-primary"
+        >
+          {value}
+          <button
+            type="button"
+            class="flex size-4 cursor-pointer items-center justify-center rounded-full hover:bg-primary/20"
+            aria-label={gettext("Remove %{value}", value: value)}
+            x-on:click={"remove(#{Jason.encode!(value)})"}
+          >
+            <.icon name="hero-x-mark" class="size-3" />
+          </button>
+        </span>
+        <input
+          type="text"
+          id={"#{@field.id}-entry"}
+          list={@list}
+          inputmode={if @numeric, do: "decimal"}
+          autocomplete="off"
+          placeholder={if @chosen == [], do: @placeholder}
+          class="min-w-24 flex-1 border-0 bg-transparent px-1 py-0.5 text-sm focus:ring-0 focus:outline-none"
+          x-ref="entry"
+          x-on:input.stop=""
+          x-on:change.stop="add()"
+          x-on:keydown.enter.prevent="add()"
+          x-on:keydown.comma.prevent="add()"
+          x-on:keydown.backspace="backspace()"
+        />
+      </div>
+
+      <p :for={error <- @errors} class="mt-1 text-xs text-error">{error}</p>
+    </div>
+    """
+  end
+
+  defp list_value(value) when is_list(value), do: Enum.map(value, &to_string/1)
+  defp list_value(value), do: chosen_values(value)
+
+  # The pattern run against text the admin types, the way the engine will
+  # run it, so "does this catch [ABC] Ana?" is answered before saving.
+  attr :condition, :any, required: true
+
+  defp regex_tester(assigns) do
+    pattern = Form.input_value(assigns.condition, :value)
+    sample = Form.input_value(assigns.condition, :sample)
+    blank? = pattern in [nil, ""]
+
+    assigns =
+      assign(assigns,
+        sample: sample,
+        verdict:
+          if(blank? or sample in [nil, ""], do: nil, else: Condition.test_regex(pattern, sample)),
+        invalid: if(blank?, do: nil, else: invalid_regex(pattern))
+      )
+
+    ~H"""
+    <div class="col-span-full space-y-1.5 rounded-field bg-base-100 p-2">
+      <label for={@condition[:sample].id} class="text-xs font-medium text-subtle">
+        {gettext("Try the pattern on some text")}
+      </label>
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          id={@condition[:sample].id}
+          name={@condition[:sample].name}
+          value={@sample}
+          autocomplete="off"
+          placeholder={gettext("A player name or a chat line")}
+          class="pc-text-input w-full font-mono text-sm"
+        />
+        <span
+          :if={@verdict}
+          id={"#{@condition[:sample].id}-verdict"}
+          data-match={match?({:ok, true}, @verdict)}
+          aria-live="polite"
+          class={[
+            "inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-0.5 text-xs font-medium",
+            verdict_class(@verdict)
+          ]}
+        >
+          <.icon name={verdict_icon(@verdict)} class="size-3.5" />{verdict_label(@verdict)}
+        </span>
+      </div>
+      <p :if={@invalid} class="flex items-center gap-1 text-xs text-error">
+        <.icon name="hero-exclamation-circle" class="size-3.5 shrink-0" />
+        {gettext("This pattern is not valid: %{reason}", reason: @invalid)}
+      </p>
+    </div>
+    """
+  end
+
+  defp verdict_class({:ok, true}), do: "bg-success/15 text-success"
+  defp verdict_class({:ok, false}), do: "bg-base-200 text-muted"
+  defp verdict_class(_error), do: "bg-error/15 text-error"
+
+  defp verdict_icon({:ok, true}), do: "hero-check"
+  defp verdict_icon({:ok, false}), do: "hero-x-mark"
+  defp verdict_icon(_error), do: "hero-exclamation-circle"
+
+  defp verdict_label({:ok, true}), do: gettext("Matches")
+  defp verdict_label({:ok, false}), do: gettext("No match")
+  defp verdict_label(_error), do: gettext("Invalid pattern")
+
+  defp invalid_regex(pattern) do
+    case Condition.test_regex(pattern, "") do
+      {:error, reason} -> reason
+      {:ok, _matched} -> nil
+    end
+  end
+
+  # A group of values for "is one of" / "is none of" on a field with known
+  # options - several weapon types, roles or teams at once. The condition
+  # still stores one comma separated value; the chips only edit it. The
+  # hidden input is the one the form posts, and each click fires `input` on
+  # it so the form's phx-change sees the new group.
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :options, :list, required: true
+
+  defp option_group(assigns) do
+    assigns = assign(assigns, :chosen, chosen_values(assigns.field.value))
+
+    ~H"""
+    <fieldset class="lg:col-span-1" id={"#{@field.id}-group"} x-data>
+      <legend class="sr-only">{gettext("Values")}</legend>
+      <input type="hidden" id={@field.id} name={@field.name} value={Enum.join(@chosen, ",")} />
+      <div class="flex flex-wrap gap-1.5">
+        <label :for={{label, value} <- @options} class="option-chip">
+          <input
+            type="checkbox"
+            value={value}
+            checked={value in @chosen}
+            class="peer sr-only"
+            x-on:change={"
+              const hidden = document.getElementById('#{@field.id}');
+              const picked = [...$root.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+              hidden.value = picked.join(',');
+              hidden.dispatchEvent(new Event('input', {bubbles: true}));
+            "}
+          /> <span>{label}</span>
+        </label>
+      </div>
+
+      <p :if={@chosen == []} class="mt-1 text-xs text-muted">{gettext("Pick one or more")}</p>
+    </fieldset>
+    """
+  end
+
+  defp chosen_values(value) when is_binary(value) do
+    value |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+  end
+
+  defp chosen_values(_value), do: []
+
+  defp weapon_options do
+    for {category, names} <- Weapons.catalog() do
+      {Labels.weapon_type(category), Enum.map(names, &{&1, &1})}
+    end
+  end
+
+  # Picking several weapons by name: every known weapon, grouped by type,
+  # with a search and "all / none" per type. Like `option_group/1`, it only
+  # edits the one comma separated value the condition stores.
+  attr :field, Phoenix.HTML.FormField, required: true
+
+  defp weapon_picker(assigns) do
+    assigns =
+      assign(assigns,
+        chosen: chosen_values(assigns.field.value),
+        catalog: Weapons.catalog()
+      )
+
+    ~H"""
+    <fieldset
+      id={"#{@field.id}-weapons"}
+      class="weapon-picker col-span-full"
+      x-data={"{
+        q: '',
+        sync() {
+          const hidden = document.getElementById('#{@field.id}');
+          hidden.value = [...$root.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value).join(',');
+          hidden.dispatchEvent(new Event('input', {bubbles: true}));
+        },
+        all(group, on) {
+          $root.querySelectorAll('[data-group=\"' + group + '\"] input[type=checkbox]').forEach(i => i.checked = on);
+          this.sync();
+        }
+      }"}
+    >
+      <legend class="sr-only">{gettext("Weapons")}</legend>
+      <input type="hidden" id={@field.id} name={@field.name} value={Enum.join(@chosen, ",")} />
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="relative min-w-48 flex-1">
+          <span class="sr-only">{gettext("Find a weapon")}</span>
+          <.icon
+            name="hero-magnifying-glass"
+            class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted"
+          />
+          <input
+            type="search"
+            x-model="q"
+            placeholder={gettext("Find a weapon")}
+            autocomplete="off"
+            class="pc-text-input w-full pl-8"
+          />
+        </label>
+
+        <span class="text-xs text-muted">
+          {ngettext("1 weapon picked", "%{count} weapons picked", length(@chosen))}
+        </span>
+      </div>
+
+      <div class="mt-2 max-h-80 space-y-1 overflow-y-auto pr-1">
+        <details
+          :for={{category, names} <- @catalog}
+          class="weapon-group"
+          data-group={category}
+          open={Enum.any?(names, &(&1 in @chosen))}
+          data-keep-attrs="open"
+          x-show={"!q || #{Jason.encode!(Enum.map(names, &fold/1))}.some(n => n.includes($fold(q)))"}
+        >
+          <summary class="flex cursor-pointer list-none items-center gap-2 py-1.5 text-sm [&::-webkit-details-marker]:hidden">
+            <.icon name="hero-chevron-right" class="weapon-group-chevron size-3.5 text-muted" />
+            <span class="font-medium">{Labels.weapon_type(category)}</span>
+            <span class="text-xs text-muted">
+              {Enum.count(names, &(&1 in @chosen))}/{length(names)}
+            </span>
+
+            <span class="ml-auto flex gap-1">
+              <button
+                type="button"
+                class="rounded-pill px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                x-on:click.prevent={"all('#{category}', true)"}
+              >
+                {gettext("All")}
+              </button>
+
+              <button
+                type="button"
+                class="rounded-pill px-2 py-0.5 text-xs text-muted hover:bg-base-200"
+                x-on:click.prevent={"all('#{category}', false)"}
+              >
+                {gettext("None")}
+              </button>
+            </span>
+          </summary>
+
+          <div class="flex flex-wrap gap-1.5 pb-2 pl-5">
+            <label
+              :for={name <- names}
+              class="option-chip"
+              x-show={"!q || #{Jason.encode!(fold(name))}.includes($fold(q))"}
+            >
+              <input
+                type="checkbox"
+                value={name}
+                checked={name in @chosen}
+                class="peer sr-only"
+                x-on:change="sync()"
+              /> <span>{name}</span>
+            </label>
+          </div>
+        </details>
+      </div>
+    </fieldset>
+    """
+  end
+
+  # "Which weapons are melee?" answered where the question comes up.
+  defp weapon_types_help(assigns) do
+    assigns = assign(assigns, :catalog, Weapons.catalog())
+
+    ~H"""
+    <details class="col-span-full text-xs">
+      <summary class="cursor-pointer text-muted hover:text-primary">
+        {gettext("Which weapons are in each type?")}
+      </summary>
+
+      <dl class="mt-2 grid gap-2 sm:grid-cols-2">
+        <div :for={{category, names} <- @catalog} class="rounded-field bg-base-100 p-2">
+          <dt class="font-medium">{Labels.weapon_type(category)}</dt>
+
+          <dd class="mt-0.5 text-muted">{Enum.join(names, ", ")}</dd>
+        </div>
+      </dl>
+    </details>
     """
   end
 
@@ -264,6 +844,13 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   attr :step, :any,
     default: false,
     doc: "the 1-based rung when the rule escalates, false when it does not"
+
+  attr :webhooks, :list, default: [], doc: "Discord webhooks as `{name, id}` pairs"
+  attr :batch?, :boolean, default: false, doc: "whether the trigger sweeps every player"
+
+  attr :example, :any,
+    default: nil,
+    doc: "a context to render the messages with, so the admin reads what the player will"
 
   def action_node(assigns) do
     type = Form.input_value(assigns.action, :type) || :message_player
@@ -313,15 +900,34 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
         </div>
       </div>
 
-      <div :for={{key, param_type, opts} <- @params} class="max-w-xl sm:pl-10">
+      <DiscordComponents.action_fields
+        :if={@type == :send_discord_webhook}
+        action={@action}
+        parameters={@parameters}
+        webhooks={@webhooks}
+        batch?={@batch?}
+      />
+      <div
+        :for={{key, param_type, opts} <- @params}
+        :if={@type != :send_discord_webhook}
+        class="max-w-xl sm:pl-10"
+      >
         <.action_param_input
           name={"#{@action.name}[parameters][#{key}]"}
           id={"#{@action.id}_parameters_#{key}"}
           label={Labels.action_param(key)}
+          key={key}
           type={param_type}
           value={parameter_value(@parameters, key, opts)}
           min={opts[:min]}
           required={opts[:required]}
+          template={opts[:template] == true}
+        />
+        <.message_preview
+          :if={param_type == :text and @example}
+          id={"#{@action.id}_parameters_#{key}_preview"}
+          text={parameter_value(@parameters, key, opts)}
+          example={@example}
         />
       </div>
 
@@ -333,6 +939,48 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
       </p>
     </div>
     """
+  end
+
+  attr :id, :string, required: true
+  attr :text, :any, required: true
+  attr :example, :any, required: true
+
+  # The message as the player will read it: placeholders filled in from the
+  # latest real event of the trigger, or from an example player.
+  defp message_preview(assigns) do
+    rendered = preview_text(assigns.text, assigns.example)
+
+    # What the game will actually draw: emoji and fancy symbols are dropped
+    # on the way out, so the preview drops them too and says so.
+    assigns =
+      assign(assigns,
+        rendered: GameText.clean(rendered),
+        stripped?: GameText.changes?(rendered)
+      )
+
+    ~H"""
+    <div :if={@rendered != ""} id={@id} class="mt-2">
+      <p class="flex items-center gap-1.5 text-xs text-muted">
+        <span class="live-dot"></span>
+        {if @example.event || @example.gamestate,
+          do: gettext("As the player sees it, with the latest real event"),
+          else: gettext("As the player sees it, with an example player")}
+      </p>
+      <p class="message-preview">{@rendered}</p>
+      <p :if={@stripped?} class="mt-1 flex items-center gap-1 text-xs text-warning">
+        <.icon name="hero-exclamation-triangle" class="size-3.5 shrink-0" />
+        {gettext("The game cannot show emoji or special symbols: they are removed.")}
+      </p>
+    </div>
+    """
+  end
+
+  defp preview_text(text, _example) when text in [nil, ""], do: ""
+
+  defp preview_text(text, example) do
+    Template.render(to_string(text), example)
+  rescue
+    _error -> to_string(text)
   end
 
   # "1st offence", and "4th offence and beyond" for the last rung, because
@@ -430,6 +1078,23 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   attr :value, :any, default: nil
   attr :min, :integer, default: nil
   attr :required, :boolean, default: false
+  attr :key, :atom, default: nil
+  attr :template, :boolean, default: false
+
+  defp action_param_input(%{type: :select} = assigns) do
+    ~H"""
+    <.input
+      type="select"
+      id={@id}
+      name={@name}
+      value={@value}
+      label={@label}
+      options={Labels.action_param_options(@key)}
+      no_margin
+      class="sm:max-w-48"
+    />
+    """
+  end
 
   defp action_param_input(%{type: :text} = assigns) do
     ~H"""
@@ -471,6 +1136,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
       value={@value}
       label={@label}
       required={@required}
+      data-template={@template}
       no_margin
     />
     """
@@ -480,14 +1146,30 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   The placeholder palette. Each chip is a button that inserts its
   placeholder into the message field that was focused last, at the cursor —
   the hook keeps track of which field that was.
+
+  The same hook opens a menu as soon as `{` is typed in a message field:
+  the placeholders this trigger can fill, filtered as the name is typed,
+  picked with the arrows and Enter (or Tab), or a click.
   """
+  attr :trigger, :atom, default: :player_connected
+
   def placeholders(assigns) do
-    assigns = assign(assigns, :placeholders, Template.known_placeholders())
+    assigns =
+      assign(assigns,
+        placeholders: Template.placeholders_for(assigns.trigger),
+        hint:
+          gettext(
+            "Click one to insert it into the message field you were editing, or type { in the message to pick one."
+          ),
+        leaderboard: Template.leaderboard_placeholders() ++ Template.progression_placeholders()
+      )
 
     ~H"""
     <div
       id="rule-placeholders"
       phx-hook=".PlaceholderInsert"
+      data-menu-label={gettext("Placeholders")}
+      data-empty-label={gettext("No placeholder starts like this")}
       class="rounded-box border border-base-300 bg-base-200/60 p-3"
     >
       <p class="eyebrow mb-1 text-muted">
@@ -495,7 +1177,7 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
       </p>
 
       <p class="mb-2 text-xs text-muted">
-        {gettext("Click one to insert it into the message field you were editing.")}
+        {@hint}
       </p>
 
       <div class="flex flex-wrap gap-1">
@@ -508,31 +1190,181 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
           {placeholder_text(placeholder)}
         </button>
       </div>
+
+      <p class="mt-3 mb-1 flex items-center gap-1.5 text-xs font-medium text-subtle">
+        <.icon name="hero-trophy" class="size-3.5" />{gettext("Leaderboard, achievements and season")}
+      </p>
+
+      <p class="mb-2 text-xs text-muted">
+        {gettext(
+          "Each one becomes a line like \"Ana (30), Bo (21), Cy (18)\". Write the headings yourself, in your server's language."
+        )}
+      </p>
+
+      <div class="flex flex-wrap gap-1">
+        <button
+          :for={placeholder <- @leaderboard}
+          type="button"
+          class="cursor-pointer rounded-selector border border-primary/25 bg-primary/5 px-1.5 py-0.5 font-mono text-xs text-primary transition-colors hover:border-primary/60"
+          data-placeholder={placeholder_text(placeholder)}
+        >
+          {placeholder_text(placeholder)}
+        </button>
+      </div>
+
       <script :type={Phoenix.LiveView.ColocatedHook} name=".PlaceholderInsert">
+        const FIELDS = "#rule-form textarea, #rule-form input[type=text][data-template]"
+        const PARTIAL = /\{([a-z0-9_]*)$/
+
         export default {
           mounted() {
             this.onFocus = (e) => {
-              const el = e.target
-              if (el.matches("#rule-form textarea, #rule-form input[type=text]")) {
-                this.target = el
-              }
+              if (e.target.matches(FIELDS)) this.target = e.target
             }
             document.addEventListener("focusin", this.onFocus)
 
             this.el.addEventListener("click", (e) => {
               const chip = e.target.closest("[data-placeholder]")
               if (!chip || !this.target || !document.contains(this.target)) return
-              const text = chip.dataset.placeholder
               const start = this.target.selectionStart ?? this.target.value.length
               const end = this.target.selectionEnd ?? start
-              this.target.setRangeText(text, start, end, "end")
-              this.target.focus()
-              // Let LiveView see the change as if it had been typed.
-              this.target.dispatchEvent(new Event("input", {bubbles: true}))
+              this.insert(this.target, chip.dataset.placeholder, start, end)
+            })
+
+            // The "{" menu: one listbox on <body>, outside anything LiveView
+            // patches, positioned under the field being typed in.
+            this.menu = document.createElement("ul")
+            this.menu.id = "placeholder-menu"
+            this.menu.setAttribute("role", "listbox")
+            this.menu.setAttribute("aria-label", this.el.dataset.menuLabel)
+            this.menu.className = "placeholder-menu"
+            this.menu.hidden = true
+            document.body.appendChild(this.menu)
+            this.menu.addEventListener("mousedown", (e) => {
+              const option = e.target.closest("[role=option]")
+              if (!option) return
+              e.preventDefault()
+              this.pick(option.dataset.value)
+            })
+
+            this.onInput = (e) => {
+              if (e.target.matches(FIELDS)) this.suggest(e.target)
+            }
+            this.onKeydown = (e) => {
+              if (this.menu.hidden || e.target !== this.field) return
+              if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault()
+                this.move(e.key === "ArrowDown" ? 1 : -1)
+              } else if (e.key === "Enter" || e.key === "Tab") {
+                const active = this.options()[this.active]
+                if (active) {
+                  e.preventDefault()
+                  this.pick(active.dataset.value)
+                }
+              } else if (e.key === "Escape") {
+                e.preventDefault()
+                this.close()
+              }
+            }
+            this.onBlur = (e) => {
+              if (e.target === this.field) this.close()
+            }
+            document.addEventListener("input", this.onInput)
+            document.addEventListener("keydown", this.onKeydown, true)
+            document.addEventListener("focusout", this.onBlur)
+          },
+
+          names() {
+            return [...this.el.querySelectorAll("[data-placeholder]")]
+              .map(chip => chip.dataset.placeholder.slice(1, -1))
+          },
+
+          options() {
+            return [...this.menu.querySelectorAll("[role=option]")]
+          },
+
+          suggest(field) {
+            const caret = field.selectionStart ?? field.value.length
+            const match = field.value.slice(0, caret).match(PARTIAL)
+            if (!match) return this.close()
+            const partial = match[1]
+            const names = this.names().filter(name => name.startsWith(partial))
+            this.field = field
+            this.from = caret - match[0].length
+            this.to = caret
+            this.menu.replaceChildren()
+            names.forEach((name, index) => {
+              const li = document.createElement("li")
+              li.id = `placeholder-option-${index}`
+              li.setAttribute("role", "option")
+              li.dataset.value = name
+              li.textContent = `{${name}}`
+              this.menu.appendChild(li)
+            })
+            if (names.length === 0) {
+              const li = document.createElement("li")
+              li.className = "placeholder-menu-empty"
+              li.textContent = this.el.dataset.emptyLabel
+              this.menu.appendChild(li)
+            }
+            const rect = field.getBoundingClientRect()
+            this.menu.style.left = `${rect.left + window.scrollX}px`
+            this.menu.style.top = `${rect.bottom + window.scrollY + 4}px`
+            this.menu.style.minWidth = `${Math.min(rect.width, 320)}px`
+            this.menu.hidden = false
+            field.setAttribute("aria-controls", this.menu.id)
+            field.setAttribute("aria-expanded", "true")
+            this.active = 0
+            this.highlight()
+          },
+
+          move(step) {
+            const count = this.options().length
+            if (count === 0) return
+            this.active = (this.active + step + count) % count
+            this.highlight()
+          },
+
+          highlight() {
+            this.options().forEach((option, index) => {
+              const on = index === this.active
+              option.setAttribute("aria-selected", on ? "true" : "false")
+              if (on) {
+                this.field.setAttribute("aria-activedescendant", option.id)
+                option.scrollIntoView({block: "nearest"})
+              }
             })
           },
+
+          pick(name) {
+            if (!this.field) return
+            const field = this.field
+            this.close()
+            this.insert(field, `{${name}}`, this.from, this.to)
+          },
+
+          close() {
+            this.menu.hidden = true
+            if (this.field) {
+              this.field.setAttribute("aria-expanded", "false")
+              this.field.removeAttribute("aria-activedescendant")
+            }
+            this.field = null
+          },
+
+          insert(field, text, start, end) {
+            field.setRangeText(text, start, end, "end")
+            field.focus()
+            // Let LiveView see the change as if it had been typed.
+            field.dispatchEvent(new Event("input", {bubbles: true}))
+          },
+
           destroyed() {
             document.removeEventListener("focusin", this.onFocus)
+            document.removeEventListener("input", this.onInput)
+            document.removeEventListener("keydown", this.onKeydown, true)
+            document.removeEventListener("focusout", this.onBlur)
+            this.menu.remove()
           }
         }
       </script>
@@ -600,28 +1432,106 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
               <.icon
                 name={Icons.action(action.type)}
                 class={["size-3.5 shrink-0", Icons.text(Icons.action_tone(action.type))]}
-              />
-              <span>{Labels.action(action.type)}</span>
+              /> <span>{Labels.action(action.type)}</span>
             </li>
           </ul>
+        </div>
+
+        <div :if={exemptions_text(@rule.exemptions)}>
+          <p class="eyebrow text-muted">{gettext("Doesn't apply to")}</p>
+
+          <p>{exemptions_text(@rule.exemptions)}</p>
         </div>
       </div>
 
       <div class="flex flex-wrap gap-1 border-t border-base-300 pt-3">
         <.tone_badge tone="ghost">{Labels.game(@game)}</.tone_badge>
+
         <.tone_badge tone="ghost">{scope_label(@rule, @servers)}</.tone_badge>
+
         <.tone_badge :if={@rule.simulation} tone="warning">{gettext("Simulation")}</.tone_badge>
+
         <.tone_badge :if={not @rule.enabled} tone="ghost">{gettext("Disabled")}</.tone_badge>
       </div>
     </.card>
     """
   end
 
+  @doc """
+  The whole rule as one plain-language sentence, for lists:
+  "When a player connects, if Level is below 10, then Warn."
+
+  Shares the condition wording with `rule_summary/1`, so the list and the
+  builder describe a rule the same way.
+  """
+  @spec rule_sentence(map(), atom() | nil) :: String.t()
+  def rule_sentence(rule, game \\ nil) do
+    game = game || rule.game
+
+    conditions =
+      case rule.conditions do
+        [] ->
+          gettext("no conditions yet")
+
+        conditions ->
+          joiner = " " <> Labels.logical_joiner(rule.logical_operator) <> " "
+          Enum.map_join(conditions, joiner, &condition_sentence(&1, game))
+      end
+
+    actions =
+      case rule.actions do
+        [] -> gettext("no actions yet")
+        actions -> Enum.map_join(actions, ", ", &Labels.action(&1.type))
+      end
+
+    sentence =
+      gettext("When %{trigger}, if %{conditions}, then %{actions}.",
+        trigger: lower_first(Labels.trigger(rule.trigger_event)),
+        conditions: conditions,
+        actions: lower_first(actions)
+      )
+
+    case exemptions_text(Map.get(rule, :exemptions)) do
+      nil -> sentence
+      text -> sentence <> " " <> gettext("Doesn't apply to %{who}.", who: text)
+    end
+  end
+
+  @doc """
+  Who a rule leaves alone, in words - "VIPs, players flagged staff, 2 listed
+  players" - or `nil` when it applies to everybody.
+  """
+  @spec exemptions_text(Exemptions.t() | nil) :: String.t() | nil
+  def exemptions_text(exemptions) do
+    if Exemptions.active?(exemptions) do
+      [
+        exemptions.exempt_vip && gettext("VIPs"),
+        exemptions.exempt_flags != [] &&
+          gettext("players flagged %{flags}", flags: Enum.join(exemptions.exempt_flags, ", ")),
+        exemptions.exempt_player_ids != [] &&
+          ngettext(
+            "1 listed player",
+            "%{count} listed players",
+            length(exemptions.exempt_player_ids)
+          )
+      ]
+      |> Enum.filter(&is_binary/1)
+      |> Enum.join(", ")
+    end
+  end
+
+  defp lower_first(<<first::utf8, rest::binary>>), do: String.downcase(<<first::utf8>>) <> rest
+  defp lower_first(text), do: text
+
   # "Kills is at least 5". Values that came from a picker are shown with the
   # label the picker used, so the summary matches what was chosen.
-  defp condition_sentence(%{field: :always_true}, _game), do: gettext("always")
+  @doc """
+  One condition in words: "Kills is at least 5".
+  """
+  @spec condition_sentence(map(), atom() | nil) :: String.t()
+  def condition_sentence(%{field: :always_true}, _game), do: gettext("always")
 
-  defp condition_sentence(condition, game) do
+  def condition_sentence(condition, game) do
     value =
       case Labels.value_options(condition.field, game) do
         nil -> condition.value
@@ -646,118 +1556,6 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
       server -> server.name
     end
   end
-
-  # ── Try it ─────────────────────────────────────────────────────────────────
-
-  @doc """
-  The dry-run panel: pick a server, pick a connected player, see which
-  conditions hold. Nothing is ever sent to the game from here.
-  """
-  attr :servers, :list, required: true
-  attr :game, :atom, required: true
-  attr :test_server_id, :any, default: nil
-  attr :test_players, :list, default: []
-  attr :test_loading?, :boolean, default: false
-  attr :test_result, :any, default: nil
-  attr :test_error, :any, default: nil
-  attr :test_player_name, :string, default: nil
-
-  def test_panel(assigns) do
-    ~H"""
-    <.card
-      title={gettext("Try it")}
-      icon="hero-play-circle"
-      subtitle={
-        gettext(
-          "Evaluates the rule as typed here, including unsaved changes, against a player connected right now. Nothing is sent to the game."
-        )
-      }
-    >
-      <form phx-change="load_test_players" id="test-server-picker">
-        <label>
-          <span class="sr-only">{gettext("Pick a server")}</span>
-          <select name="server_id" class="pc-text-input w-full">
-            <option value="">{gettext("Pick a server")}</option>
-
-            <option
-              :for={server <- Enum.filter(@servers, &(&1.game == @game))}
-              value={server.id}
-              selected={@test_server_id == to_string(server.id)}
-            >
-              {server.name}
-            </option>
-          </select>
-        </label>
-      </form>
-
-      <.skeleton :if={@test_loading?} lines={2} />
-
-      <form :if={@test_players != []} phx-change="run_test" id="test-player-picker">
-        <label>
-          <span class="sr-only">{gettext("Pick a player")}</span>
-          <select name="player_id" class="pc-text-input w-full">
-            <option value="">{gettext("Pick a player")}</option>
-
-            <option :for={{name, id} <- @test_players} value={id}>{name}</option>
-          </select>
-        </label>
-      </form>
-
-      <.alert :if={@test_error} color="warning" variant="soft" with_icon label={@test_error} />
-      <.test_result :if={@test_result} result={@test_result} player={@test_player_name} />
-    </.card>
-    """
-  end
-
-  attr :result, :map, required: true
-  attr :player, :string, default: nil
-
-  defp test_result(assigns) do
-    ~H"""
-    <div class="space-y-2" aria-live="polite">
-      <.alert
-        color={if @result.result, do: "success", else: "info"}
-        variant="soft"
-        with_icon
-        label={
-          if @result.result,
-            do: gettext("This rule would fire for %{player}.", player: @player),
-            else: gettext("This rule would not fire for %{player}.", player: @player)
-        }
-      />
-
-      <ul class="divide-y divide-base-300 text-xs">
-        <li :for={condition <- @result.conditions} class="flex items-start gap-2 py-1.5">
-          <.icon
-            name={if condition.result, do: "hero-check", else: "hero-x-mark"}
-            class={[
-              "mt-0.5 size-3.5 shrink-0",
-              if(condition.result, do: "text-success", else: "text-error")
-            ]}
-          />
-          <div class="min-w-0 flex-1">
-            <p class="leading-tight">
-              {Labels.field(condition.field)}
-              <span class="text-muted">{Labels.operator(condition.operator)}</span>
-              <span class="font-mono">{condition.expected}</span>
-            </p>
-
-            <p class="text-muted">
-              {gettext("actual")}: <span class="font-mono">{format_actual(condition.actual)}</span>
-            </p>
-          </div>
-        </li>
-      </ul>
-    </div>
-    """
-  end
-
-  defp format_actual(nil), do: "-"
-  defp format_actual(value) when is_list(value), do: Enum.join(value, ", ")
-  defp format_actual(true), do: "true"
-  defp format_actual(false), do: "false"
-  defp format_actual(value) when is_float(value), do: :erlang.float_to_binary(value, decimals: 2)
-  defp format_actual(value), do: to_string(value)
 
   # ── Shared helpers ─────────────────────────────────────────────────────────
 
@@ -790,7 +1588,8 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   end
 
   defp action_errors(action_form) do
-    for {:parameters, {message, _opts}} <- action_form.errors, do: message
+    for {:parameters, {message, opts}} <- action_form.errors,
+        do: translate_error({message, opts})
   end
 
   # A boolean field takes no picker from the catalog, but "Yes/No" beats

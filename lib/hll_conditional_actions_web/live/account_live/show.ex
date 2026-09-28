@@ -174,6 +174,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
 
   defp locale_label("en"), do: "English"
   defp locale_label("pt_BR"), do: "Português (Brasil)"
+  defp locale_label("es"), do: "Español"
   defp locale_label(locale), do: locale
 
   @impl Phoenix.LiveView
@@ -183,6 +184,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={gettext("My account")}
       page_subtitle={gettext("Your details, language and password")}
     >
@@ -394,7 +396,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
                 <li>{gettext("Type the six digit code it starts showing.")}</li>
               </ol>
 
-              <div class="flex justify-center rounded-box border border-base-300 bg-white p-3">
+              <div class="flex justify-center rounded-field border border-base-300 bg-white p-3">
                 {Phoenix.HTML.raw(@enrolment.qr_svg)}
               </div>
 

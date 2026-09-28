@@ -22,15 +22,27 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
 
   import HllConditionalActionsWeb.Overview
   import HllConditionalActionsWeb.RuleBuilder, only: [rule_summary: 1]
+  import HllConditionalActionsWeb.RuleDiff, only: [rule_diff: 1]
+
+  import HllConditionalActionsWeb.RulePause,
+    only: [pause_menu_items: 1, pause_note: 1, pause_modal: 1]
 
   alias HllConditionalActions.Accounts
   alias HllConditionalActions.Engine
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Rules.Audit
   alias HllConditionalActions.Rules.Health
+  alias HllConditionalActions.Rules.Snapshot
+  alias HllConditionalActions.Rules.Transfer
   alias HllConditionalActions.Servers
+  alias HllConditionalActionsWeb.RuleDiff
+  alias HllConditionalActionsWeb.RulePause
 
-  @tabs ~w(overview executions definition changes)
+  # The History tab is a short recent list; the full, filterable history
+  # lives on /executions.
+  @recent_executions 15
+
+  @tabs ~w(overview executions why definition changes)
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
@@ -46,6 +58,9 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
      |> assign(:editable?, Rules.editable_by?(rule, socket.assigns[:current_user]))
      |> assign(:tab, "overview")
      |> assign(:selected_execution, nil)
+     |> assign(:pause_open?, false)
+     |> assign(:json, nil)
+     |> assign(:json_errors, [])
      |> load()}
   end
 
@@ -76,6 +91,39 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
     end
   end
 
+  def handle_event("copy_to", %{"server_id" => server_id}, socket) do
+    rule = socket.assigns.rule
+
+    target =
+      Enum.find(
+        Rules.copy_targets(rule, socket.assigns.servers),
+        &(to_string(&1.id) == server_id)
+      )
+
+    if authorized?(socket) and target do
+      case Rules.duplicate_rule(rule, "",
+             server_id: target.id,
+             actor: socket.assigns.current_user
+           ) do
+        {:ok, copy} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             gettext("Copied to %{server}, switched off until you enable it there.",
+               server: target.name
+             )
+           )
+           |> push_navigate(to: ~p"/rules/#{copy}")}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not duplicate that rule."))}
+      end
+    else
+      {:noreply, deny(socket)}
+    end
+  end
+
   def handle_event("duplicate", _params, socket) do
     if authorized?(socket) do
       case Rules.duplicate_rule(socket.assigns.rule, gettext("(copy)"),
@@ -95,6 +143,126 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
     end
   end
 
+  def handle_event("pause", params, socket) do
+    if authorized?(socket) do
+      case RulePause.run(socket.assigns.rule, params, socket.assigns.current_user) do
+        {:ok, rule, message} ->
+          {:noreply,
+           socket
+           |> assign(:rule, Rules.get_rule!(rule.id))
+           |> assign(:pause_open?, false)
+           |> put_flash(:info, message)
+           |> load()}
+
+        {:error, message} ->
+          {:noreply, put_flash(socket, :error, message)}
+      end
+    else
+      {:noreply, deny(socket)}
+    end
+  end
+
+  def handle_event("open_pause", _params, socket),
+    do: {:noreply, assign(socket, :pause_open?, true)}
+
+  def handle_event("close_pause", _params, socket),
+    do: {:noreply, assign(socket, :pause_open?, false)}
+
+  # ── Drafts and versions ────────────────────────────────────────────────────
+
+  def handle_event("publish_draft", _params, socket) do
+    if authorized?(socket) do
+      case Rules.publish_draft(socket.assigns.rule, actor: socket.assigns.current_user) do
+        {:ok, rule} ->
+          {:noreply, socket |> put_flash(:info, gettext("Draft published.")) |> reload(rule)}
+
+        {:error, _reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("The draft no longer validates. Continue editing to fix it.")
+           )}
+      end
+    else
+      {:noreply, deny(socket)}
+    end
+  end
+
+  def handle_event("discard_draft", _params, socket) do
+    if authorized?(socket) do
+      {:ok, rule} = Rules.discard_draft(socket.assigns.rule)
+      {:noreply, socket |> put_flash(:info, gettext("Draft discarded.")) |> reload(rule)}
+    else
+      {:noreply, deny(socket)}
+    end
+  end
+
+  def handle_event("restore_version", %{"id" => id}, socket) do
+    if authorized?(socket) do
+      case Rules.restore_version(socket.assigns.rule, id, actor: socket.assigns.current_user) do
+        {:ok, rule} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             gettext("That version is now a draft. Review it and publish to make it live.")
+           )
+           |> reload(rule)}
+
+        {:error, _reason} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("That version can no longer be restored."))}
+      end
+    else
+      {:noreply, deny(socket)}
+    end
+  end
+
+  # ── Editing as JSON ────────────────────────────────────────────────────────
+
+  def handle_event("json_open", _params, socket) do
+    if authorized?(socket) do
+      {:noreply,
+       socket |> assign(:json, rule_json(socket.assigns.rule)) |> assign(:json_errors, [])}
+    else
+      {:noreply, deny(socket)}
+    end
+  end
+
+  def handle_event("json_close", _params, socket) do
+    {:noreply, socket |> assign(:json, nil) |> assign(:json_errors, [])}
+  end
+
+  def handle_event("json_validate", %{"json" => json}, socket) do
+    {:noreply,
+     socket
+     |> assign(:json, json)
+     |> assign(:json_errors, json_errors(socket.assigns.rule, json))}
+  end
+
+  def handle_event("json_save", %{"json" => json} = params, socket) do
+    with true <- authorized?(socket),
+         {:ok, attrs} <- Transfer.decode_rule(json),
+         {:ok, saved, message} <- save_json(socket.assigns.rule, attrs, params["intent"], socket) do
+      {:noreply,
+       socket
+       |> assign(:json, nil)
+       |> assign(:json_errors, [])
+       |> put_flash(:info, message)
+       |> reload(saved)}
+    else
+      false ->
+        {:noreply, deny(socket)}
+
+      {:error, message} when is_binary(message) ->
+        {:noreply, socket |> assign(:json, json) |> assign(:json_errors, [{nil, message}])}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, socket |> assign(:json, json) |> assign(:json_errors, error_paths(changeset))}
+    end
+  end
+
   def handle_event("delete", _params, socket) do
     if authorized?(socket) do
       {:ok, _rule} = Rules.delete_rule(socket.assigns.rule, actor: socket.assigns.current_user)
@@ -110,14 +278,108 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
   def handle_info({:rule_fired, _execution}, socket), do: {:noreply, load(socket)}
   def handle_info(_message, socket), do: {:noreply, socket}
 
+  defp reload(socket, rule) do
+    socket |> assign(:rule, Rules.get_rule!(rule.id)) |> load()
+  end
+
+  # A live rule keeps the draft/publish split; anything else saves directly.
+  defp save_json(rule, attrs, intent, socket) do
+    actor = socket.assigns.current_user
+
+    cond do
+      not Rules.draft_required?(rule) ->
+        with {:ok, saved} <- Rules.update_rule(rule, attrs, actor: actor),
+             do: {:ok, saved, gettext("Rule saved.")}
+
+      intent == "publish" ->
+        with {:ok, saved} <- Rules.publish(rule, attrs, actor: actor),
+             do: {:ok, saved, gettext("Rule published.")}
+
+      true ->
+        with {:ok, saved} <- Rules.save_draft(rule, attrs, actor: actor),
+             do:
+               {:ok, saved, gettext("Draft saved. The engine keeps running the published rule.")}
+    end
+  end
+
+  # The JSON starts from the draft when there is one, so edits pile onto it.
+  defp rule_json(rule) do
+    shown = Snapshot.to_rule(rule, rule.draft) || rule
+    shown |> Transfer.dump_rule() |> Map.delete("enabled") |> Jason.encode!(pretty: true)
+  end
+
+  defp json_errors(rule, json) do
+    case Transfer.decode_rule(json) do
+      {:ok, attrs} ->
+        changeset = Rules.change_rule(rule, attrs)
+        if changeset.valid?, do: [], else: error_paths(changeset)
+
+      {:error, message} ->
+        [{nil, message}]
+    end
+  end
+
+  # Changeset errors as `{"actions[1].parameters", message}`, so a mistake in
+  # a long JSON document can be found.
+  defp error_paths(changeset) do
+    changeset
+    |> Ecto.Changeset.traverse_errors(&HllConditionalActionsWeb.CoreComponents.translate_error/1)
+    |> flatten_errors(nil)
+  end
+
+  defp flatten_errors(errors, prefix) when is_map(errors) do
+    Enum.flat_map(errors, fn {key, value} -> flatten_errors(value, join_path(prefix, key)) end)
+  end
+
+  defp flatten_errors([first | _rest] = messages, path) when is_binary(first) do
+    Enum.map(messages, &{path, &1})
+  end
+
+  defp flatten_errors(list, path) when is_list(list) do
+    list
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {value, index} -> flatten_errors(value, "#{path}[#{index}]") end)
+  end
+
+  defp flatten_errors(_other, _path), do: []
+
+  defp join_path(nil, key), do: to_string(key)
+  defp join_path(prefix, key), do: "#{prefix}.#{key}"
+
+  # Each version compared with the one before it; entries from before
+  # snapshots existed fall back to the field list they recorded.
+  defp version_rows(versions, servers) do
+    older = Enum.drop(versions, 1) ++ [nil]
+
+    versions
+    |> Enum.zip(older)
+    |> Enum.map(fn {version, previous} ->
+      rows =
+        case {version.snapshot, previous && previous.snapshot} do
+          {now, before} when is_map(now) and is_map(before) ->
+            RuleDiff.rows(before, now, servers)
+
+          _no_snapshots ->
+            nil
+        end
+
+      {version, rows}
+    end)
+  end
+
   defp load(socket) do
     rule = socket.assigns.rule
 
     socket
     |> assign(:stats, Rules.execution_stats(rule_id: rule.id))
-    |> assign(:executions, Rules.list_executions(rule_id: rule.id, limit: 50))
+    |> assign(:executions, Rules.list_executions(rule_id: rule.id, limit: @recent_executions))
     |> assign(:issues, Health.for_rule(rule, socket.assigns.servers))
     |> assign(:versions, Audit.list_versions(rule.id))
+    |> then(&assign(&1, :version_rows, version_rows(&1.assigns.versions, &1.assigns.servers)))
+    |> assign(
+      :draft_rows,
+      rule.draft && RuleDiff.rows(Snapshot.take(rule), rule.draft, socket.assigns.servers)
+    )
   end
 
   defp tab_param(tab) when tab in @tabs, do: tab
@@ -141,6 +403,16 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
         %{id: "state", label: gettext("Disabled"), tone: "neutral"}
       end
     ] ++
+      if(HllConditionalActionsWeb.Ui.rule_paused?(rule),
+        do: [%{id: "paused", label: gettext("Paused"), tone: "info", icon: "hero-clock"}],
+        else: []
+      ) ++
+      if(rule.draft,
+        do: [
+          %{id: "draft", label: gettext("Draft pending"), tone: "warning", icon: "hero-pencil"}
+        ],
+        else: []
+      ) ++
       if(rule.simulation,
         do: [%{id: "sim", label: gettext("Simulation"), tone: "warning", icon: "hero-beaker"}],
         else: []
@@ -238,6 +510,9 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
     |> Enum.join(" · ")
   end
 
+  defp player_filter(%{player_id: id}) when is_binary(id), do: [player: id]
+  defp player_filter(execution), do: [player: execution.player_name]
+
   defp result_tone("ok"), do: "text-success"
   defp result_tone("skipped"), do: "text-muted"
   defp result_tone("simulated"), do: "text-info"
@@ -256,6 +531,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={@rule.name}
       page_subtitle={header_meta(@rule)}
       back={~p"/rules"}
@@ -289,8 +565,22 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
           :if={Accounts.can?(@current_user, :manage_rules) and @editable?}
           id="rule-show-menu"
         >
+          <.pause_menu_items rule={@rule} on_custom="open_pause" />
+
           <.menu_item icon="hero-document-duplicate" phx-click="duplicate">
             {gettext("Duplicate")}
+          </.menu_item>
+
+          <%!-- A rule proven on one server is usually wanted on its siblings;
+                the copy arrives switched off there. --%>
+          <.menu_item
+            :for={server <- Rules.copy_targets(@rule, @servers)}
+            id={"rule-copy-to-#{server.id}"}
+            icon="hero-arrow-right-circle"
+            phx-click="copy_to"
+            phx-value-server_id={server.id}
+          >
+            {gettext("Copy to %{server}", server: server.name)}
           </.menu_item>
 
           <.menu_item
@@ -313,6 +603,69 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
         label={Labels.health_explanation(issue.id)}
       />
 
+      <.pause_note rule={@rule} id="rule-paused-until" class="text-body-small" />
+
+      <.card
+        :if={@rule.draft}
+        id="rule-draft"
+        title={gettext("Draft pending")}
+        subtitle={
+          gettext(
+            "These edits are not live yet: the engine keeps running the published rule until the draft is published."
+          )
+        }
+        icon="hero-pencil"
+        class="border-warning"
+      >
+        <p :if={@rule.draft_user_name || @rule.draft_updated_at} class="text-label-small text-muted">
+          {@rule.draft_user_name || gettext("the system")}
+          <.local_time
+            :if={@rule.draft_updated_at}
+            id="rule-draft-at"
+            at={@rule.draft_updated_at}
+          />
+        </p>
+
+        <.rule_diff id="rule-draft-diff" rows={@draft_rows} />
+
+        <div
+          :if={Accounts.can?(@current_user, :manage_rules) and @editable?}
+          class="flex flex-wrap gap-2"
+        >
+          <.button
+            id="rule-draft-publish"
+            type="button"
+            size="sm"
+            color="primary"
+            icon="hero-rocket-launch"
+            phx-click="publish_draft"
+            data-confirm={gettext("Publish this draft? The engine starts using it right away.")}
+            label={gettext("Publish")}
+          />
+          <.button
+            id="rule-draft-discard"
+            type="button"
+            size="sm"
+            variant="outline"
+            color="gray"
+            icon="hero-trash"
+            phx-click="discard_draft"
+            data-confirm={gettext("Discard this draft?")}
+            label={gettext("Discard")}
+          />
+          <.button
+            id="rule-draft-continue"
+            link_type="live_redirect"
+            to={~p"/rules/#{@rule}/edit"}
+            size="sm"
+            variant="ghost"
+            color="gray"
+            icon="hero-pencil-square"
+            label={gettext("Continue editing")}
+          />
+        </div>
+      </.card>
+
       <.kpi_cards cards={kpi_list(@stats)} on_select="select_tab" />
 
       <.view_tabs
@@ -323,6 +676,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
         items={[
           %{id: "overview", label: gettext("Overview")},
           %{id: "executions", label: gettext("History"), count: @stats.total},
+          %{id: "why", label: gettext("Why didn't it fire?")},
           %{id: "definition", label: gettext("Definition")},
           %{id: "changes", label: gettext("Changes"), count: length(@versions)}
         ]}
@@ -463,7 +817,13 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
                 </td>
 
                 <td data-label={gettext("Player")} class="text-body-small">
-                  <span :if={execution.player_name}>{execution.player_name}</span>
+                  <.link
+                    :if={execution.player_name}
+                    navigate={~p"/executions?#{player_filter(execution)}"}
+                    class="hover:text-primary hover:underline"
+                  >
+                    {execution.player_name}
+                  </.link>
                   <span :if={is_nil(execution.player_name)} class="text-muted">
                     {gettext("server wide")}
                   </span>
@@ -496,9 +856,33 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
             </tbody>
           </table>
         </.card>
+
+        <div :if={@executions != []} class="mt-3 flex justify-end">
+          <.button
+            id="rule-view-all-executions"
+            link_type="live_redirect"
+            to={~p"/executions?#{[rule_id: @rule.id]}"}
+            size="sm"
+            variant="ghost"
+            color="gray"
+            icon="hero-arrow-right"
+            label={gettext("View all")}
+          />
+        </div>
       </div>
 
+      <.pause_modal :if={@pause_open?} rule={@rule} on_cancel={JS.push("close_pause")} />
+
       <%!-- ── Changes ───────────────────────────────────────────────────── --%>
+      <%!-- ── Why didn't it fire ─────────────────────────────────────────── --%>
+      <.live_component
+        :if={@tab == "why"}
+        module={HllConditionalActionsWeb.RuleLive.WhyNot}
+        id="why-not"
+        rule={@rule}
+        servers={@servers}
+      />
+
       <div :if={@tab == "changes"}>
         <.empty_state
           :if={@versions == []}
@@ -513,7 +897,11 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
 
         <.card :if={@versions != []} padded={false}>
           <ul class="divide-y divide-base-300">
-            <li :for={version <- @versions} class="flex flex-wrap items-start gap-x-3 gap-y-1 p-4">
+            <li
+              :for={{version, rows} <- @version_rows}
+              id={"version-row-#{version.id}"}
+              class="flex flex-wrap items-start gap-x-3 gap-y-1 p-4"
+            >
               <div class="min-w-0 flex-1">
                 <p class="text-body-small">
                   <span class="font-medium">{version.user_name || gettext("the system")}</span>
@@ -521,7 +909,11 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
                   <span class="text-muted">{gettext("this rule")}</span>
                 </p>
 
-                <ul :if={version.changes != %{}} class="mt-1 space-y-0.5">
+                <div :if={rows} class="mt-1">
+                  <.rule_diff id={"version-diff-#{version.id}"} rows={rows} />
+                </div>
+
+                <ul :if={is_nil(rows) and version.changes != %{}} class="mt-1 space-y-0.5">
                   <li :for={{field, change} <- version.changes} class="text-label-small text-muted">
                     <span class="text-base-content">{Labels.rule_field(field)}</span>
                     <span class="mx-1 line-through">{present(change["from"])}</span>
@@ -532,17 +924,129 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
                 </ul>
               </div>
 
-              <.local_time
-                id={"version-#{version.id}"}
-                at={version.inserted_at}
-                class="shrink-0 text-label-small text-muted"
-              />
+              <div class="flex shrink-0 flex-col items-end gap-2">
+                <.local_time
+                  id={"version-#{version.id}"}
+                  at={version.inserted_at}
+                  class="text-label-small text-muted"
+                />
+                <.button
+                  :if={
+                    is_map(version.snapshot) and Accounts.can?(@current_user, :manage_rules) and
+                      @editable?
+                  }
+                  id={"version-restore-#{version.id}"}
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  color="gray"
+                  icon="hero-arrow-uturn-left"
+                  phx-click="restore_version"
+                  phx-value-id={version.id}
+                  data-confirm={
+                    gettext("Load this version as a draft? Nothing changes until you publish it.")
+                  }
+                  label={gettext("Restore this version")}
+                />
+              </div>
             </li>
           </ul>
         </.card>
       </div>
 
       <%!-- ── Definition ─────────────────────────────────────────────────── --%>
+      <div
+        :if={@tab == "definition" and Accounts.can?(@current_user, :manage_rules) and @editable?}
+        class="flex justify-end"
+      >
+        <.button
+          :if={is_nil(@json)}
+          id="rule-json-open"
+          type="button"
+          size="sm"
+          variant="outline"
+          color="gray"
+          icon="hero-code-bracket"
+          phx-click="json_open"
+          label={gettext("Edit as JSON")}
+        />
+      </div>
+
+      <.card
+        :if={@tab == "definition" and @json}
+        id="rule-json"
+        title={gettext("Edit as JSON")}
+        subtitle={
+          gettext(
+            "Checked as you type with the same rules as the builder. The server and the enabled switch are not part of the text."
+          )
+        }
+        icon="hero-code-bracket"
+      >
+        <form id="rule-json-form" phx-change="json_validate" phx-submit="json_save" class="space-y-3">
+          <label for="rule-json-text" class="sr-only">{gettext("Rule as JSON")}</label>
+          <textarea
+            id="rule-json-text"
+            name="json"
+            rows="24"
+            spellcheck="false"
+            phx-debounce="400"
+            class="pc-text-input w-full font-mono text-xs"
+          >{@json}</textarea>
+
+          <p :if={@json_errors == []} id="rule-json-ok" class="text-label-small text-success">
+            <.icon name="hero-check-circle" class="size-4" /> {gettext("Valid")}
+          </p>
+
+          <ul :if={@json_errors != []} id="rule-json-errors" class="space-y-0.5">
+            <li :for={{path, message} <- @json_errors} class="text-label-small text-error">
+              <code :if={path} class="font-mono">{path}</code>
+              {message}
+            </li>
+          </ul>
+
+          <div class="flex flex-wrap gap-2">
+            <.button
+              type="button"
+              size="sm"
+              variant="outline"
+              color="gray"
+              phx-click="json_close"
+              label={gettext("Cancel")}
+            />
+            <.button
+              :if={Rules.draft_required?(@rule)}
+              id="rule-json-draft"
+              type="submit"
+              size="sm"
+              variant="outline"
+              color="primary"
+              name="intent"
+              value="draft"
+              label={gettext("Save draft")}
+            />
+            <.button
+              :if={Rules.draft_required?(@rule)}
+              id="rule-json-publish"
+              type="submit"
+              size="sm"
+              color="primary"
+              name="intent"
+              value="publish"
+              label={gettext("Publish")}
+            />
+            <.button
+              :if={not Rules.draft_required?(@rule)}
+              id="rule-json-save"
+              type="submit"
+              size="sm"
+              color="primary"
+              label={gettext("Save rule")}
+            />
+          </div>
+        </form>
+      </.card>
+
       <div :if={@tab == "definition"} class="grid items-start gap-4 lg:grid-cols-2">
         <.rule_summary rule={@rule} game={@rule.game} servers={@servers} />
 
@@ -573,6 +1077,10 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
   # An empty value reads as nothing at all in a diff, so it is named.
   defp present(nil), do: gettext("(empty)")
   defp present(""), do: gettext("(empty)")
+  # Switches are recorded as booleans (or their JSON text); shown raw they
+  # read "true → false" in every language.
+  defp present(value) when value in [true, "true"], do: gettext("yes")
+  defp present(value) when value in [false, "false"], do: gettext("no")
   defp present(value), do: value
 
   defp bar_tone("success"), do: "bg-success"

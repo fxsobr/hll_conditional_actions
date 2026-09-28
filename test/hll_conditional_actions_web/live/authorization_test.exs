@@ -18,7 +18,11 @@ defmodule HllConditionalActionsWeb.AuthorizationTest do
     {"/feed", :view_live_feed},
     {"/executions", :view_executions},
     {"/metrics", :view_executions},
-    {"/players/76561190000000000", :view_executions},
+    {"/players/76561190000000000", :view_stats},
+    {"/matches", :view_stats},
+    {"/leaderboard", :view_stats},
+    {"/seasons", :view_progression},
+    {"/discord", :manage_integrations},
     {"/users", :manage_users},
     {"/roles", :manage_roles}
   ]

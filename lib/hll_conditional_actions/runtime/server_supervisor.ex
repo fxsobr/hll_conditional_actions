@@ -1,7 +1,7 @@
 defmodule HllConditionalActions.Runtime.ServerSupervisor do
   @moduledoc """
-  Supervises the two processes that serve one CRCON server: its log stream and
-  its rule runner.
+  Supervises the processes that serve one CRCON server: its log stream, its
+  rule runner and its ticket listener.
 
   Registered under `{:supervisor, server_id}` so
   `HllConditionalActions.Runtime` can find and stop the subtree when the server
@@ -12,7 +12,9 @@ defmodule HllConditionalActions.Runtime.ServerSupervisor do
 
   alias HllConditionalActions.Crcon.LogStream
   alias HllConditionalActions.Engine.Runner
+  alias HllConditionalActions.Features
   alias HllConditionalActions.Servers.Server
+  alias HllConditionalActions.Tickets.Listener
 
   @registry HllConditionalActions.Runtime.Registry
 
@@ -30,9 +32,17 @@ defmodule HllConditionalActions.Runtime.ServerSupervisor do
 
   @impl Supervisor
   def init(%Server{} = server) do
+    # The ticket listener only makes sense with a stream to read chat from,
+    # and only on a server that installed the tickets module.
+    tickets? = Features.installed?(server.id, :tickets)
+
     children =
       [{Runner, server: server}] ++
-        if server.log_stream_enabled, do: [{LogStream, server: server}], else: []
+        if server.log_stream_enabled,
+          do:
+            if(tickets?, do: [{Listener, server: server}], else: []) ++
+              [{LogStream, server: server}],
+          else: []
 
     # The runner subscribes to the stream's topic when it starts, so if either
     # dies they both restart and the subscription is guaranteed to exist.

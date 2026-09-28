@@ -11,8 +11,9 @@ defmodule HllConditionalActions.Engine do
   For each rule, in priority order:
 
     1. the rule's trigger matches the event
-    2. the rate limits allow it (`HllConditionalActions.Engine.Limiter`)
-    3. the conditions hold (`HllConditionalActions.Engine.Evaluator`)
+    2. the player is not exempt (`HllConditionalActions.Rules.Exemptions`)
+    3. the rate limits allow it (`HllConditionalActions.Engine.Limiter`)
+    4. the conditions hold (`HllConditionalActions.Engine.Evaluator`)
 
   Limits are checked before conditions because they are a cheap indexed query,
   while evaluating conditions may need the player's profile.
@@ -32,10 +33,12 @@ defmodule HllConditionalActions.Engine do
   alias HllConditionalActions.Engine.Evaluator
   alias HllConditionalActions.Engine.Executor
   alias HllConditionalActions.Engine.Limiter
+  alias HllConditionalActions.Engine.Samples
   alias HllConditionalActions.Engine.Snapshot
   alias HllConditionalActions.PubSub
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Rules.Catalog
+  alias HllConditionalActions.Rules.Exemptions
   alias HllConditionalActions.Rules.Rule
   alias HllConditionalActions.Servers.Server
 
@@ -63,25 +66,45 @@ defmodule HllConditionalActions.Engine do
   def process_player_trigger(%Server{} = server, rules, trigger, opts) do
     player_id = Keyword.get(opts, :player_id)
     snapshot = Keyword.get(opts, :snapshot)
+    matching = rules_for(rules, trigger)
 
-    case rules_for(rules, trigger) do
-      [] ->
-        []
+    context =
+      Context.build(server, trigger,
+        player_id: player_id,
+        player_name: Keyword.get(opts, :player_name),
+        player: player_for(snapshot, player_id, opts),
+        player_profile: maybe_player_profile(server, player_id, matching, snapshot),
+        gamestate: snapshot && snapshot.gamestate,
+        roster: roster(snapshot),
+        event: Keyword.get(opts, :event)
+      )
 
-      matching ->
-        context =
-          Context.build(server, trigger,
-            player_id: player_id,
-            player_name: Keyword.get(opts, :player_name),
-            player: player_for(snapshot, player_id, opts),
-            player_profile: maybe_player_profile(server, player_id, matching, snapshot),
-            gamestate: snapshot && snapshot.gamestate,
-            roster: roster(snapshot),
-            event: Keyword.get(opts, :event)
-          )
+    Samples.record(context)
 
-        run_rules(matching, context)
-    end
+    run_rules(matching, context)
+  end
+
+  @doc """
+  Keeps a sample of a player trigger nobody listens for, so the builder can
+  replay a new rule against it. Uses only the snapshot passed in and never
+  fetches a profile: an unheard event must not cost a CRCON call.
+  """
+  @spec record_sample(Server.t(), atom(), keyword()) :: :ok
+  def record_sample(%Server{} = server, trigger, opts) do
+    player_id = Keyword.get(opts, :player_id)
+    snapshot = Keyword.get(opts, :snapshot)
+
+    server
+    |> Context.build(trigger,
+      player_id: player_id,
+      player_name: Keyword.get(opts, :player_name),
+      player: player_for(snapshot, player_id, opts),
+      player_profile: embedded_profile(snapshot, player_id),
+      gamestate: snapshot && snapshot.gamestate,
+      roster: roster(snapshot),
+      event: Keyword.get(opts, :event)
+    )
+    |> Samples.record()
   end
 
   @doc """
@@ -92,29 +115,43 @@ defmodule HllConditionalActions.Engine do
   def process_batch_trigger(%Server{} = server, rules, trigger, opts) do
     snapshot = Keyword.get(opts, :snapshot)
     event = Keyword.get(opts, :event)
+    matching = rules_for(rules, trigger)
 
-    case rules_for(rules, trigger) do
-      [] ->
-        []
+    # A sweep evaluates each rule once per player, but an action aimed at the
+    # whole server - a message to everybody, the broadcast, Discord - must go
+    # out once per event, not once per player who matched. The set carries the
+    # rules that already fired in this sweep, and the executor skips their
+    # server wide actions from then on.
+    # Discord actions marked "one message for the whole sweep" collect a line
+    # per player here and are posted once the sweep is over.
+    {:ok, batch} = Agent.start_link(fn -> %{} end)
 
-      matching ->
-        snapshot
-        |> Snapshot.players()
-        |> Enum.flat_map(fn {player_id, player} ->
-          context =
-            Context.build(server, trigger,
-              player_id: player_id,
-              player_name: Map.get(player, "name"),
-              player: player,
-              player_profile: maybe_player_profile(server, player_id, matching, snapshot),
-              gamestate: snapshot && snapshot.gamestate,
-              roster: roster(snapshot),
-              event: event
-            )
+    {executions, _fired} =
+      snapshot
+      |> Snapshot.players()
+      |> Enum.flat_map_reduce(MapSet.new(), fn {player_id, player}, fired ->
+        context =
+          Context.build(server, trigger,
+            player_id: player_id,
+            player_name: Map.get(player, "name"),
+            player: player,
+            player_profile: maybe_player_profile(server, player_id, matching, snapshot),
+            gamestate: snapshot && snapshot.gamestate,
+            roster: roster(snapshot),
+            event: event,
+            extra: %{server_wide_fired: fired, discord_batch: batch}
+          )
 
-          run_rules(matching, context)
-        end)
-    end
+        Samples.record(context)
+
+        executions = run_rules(matching, context)
+        {executions, Enum.reduce(executions, fired, &MapSet.put(&2, &1.rule_id))}
+      end)
+
+    Executor.flush_batch(batch)
+    Agent.stop(batch)
+
+    executions
   end
 
   @doc """
@@ -125,13 +162,32 @@ defmodule HllConditionalActions.Engine do
   @spec run_rule(Rule.t(), Context.t()) ::
           {:ok, term()} | {:skip, atom()} | {:error, Ecto.Changeset.t()}
   def run_rule(%Rule{} = rule, %Context{} = context) do
-    with :ok <- Limiter.check(rule, context.player_id),
+    with :ok <- check_exemptions(rule, context),
+         :ok <- Limiter.check(rule, context.player_id),
          true <- Evaluator.evaluate(rule, context) do
       record_and_execute(rule, context)
     else
       false -> skip(rule, context, :conditions_not_met)
       {:skip, reason} -> skip(rule, context, reason)
     end
+  end
+
+  @doc """
+  Whether the player of a context is exempt from a rule: a VIP, a player
+  carrying one of its exempt flags, or one listed by id.
+  """
+  @spec exempt?(Rule.t(), Context.t()) :: boolean()
+  def exempt?(%Rule{exemptions: exemptions}, %Context{} = context) do
+    Exemptions.active?(exemptions) and
+      Exemptions.exempt?(exemptions, %{
+        player_id: context.player_id,
+        is_vip: Evaluator.field_value(:is_vip, context),
+        flags: Evaluator.field_value(:flags, context)
+      })
+  end
+
+  defp check_exemptions(rule, context) do
+    if exempt?(rule, context), do: {:skip, :exempt}, else: :ok
   end
 
   defp skip(rule, context, reason) do
@@ -171,7 +227,7 @@ defmodule HllConditionalActions.Engine do
   @spec rules_for([Rule.t()], atom()) :: [Rule.t()]
   def rules_for(rules, trigger) do
     rules
-    |> Enum.filter(&(&1.enabled and &1.trigger_event == trigger))
+    |> Enum.filter(&(&1.enabled and &1.trigger_event == trigger and not Rule.paused?(&1)))
     |> Rule.sort()
   end
 
@@ -219,7 +275,15 @@ defmodule HllConditionalActions.Engine do
     # would count as one of the player's earlier offences.
     steps = Escalation.steps_for(rule, context.player_id)
 
-    with {:ok, execution} <- record(rule, context) do
+    fired = Map.get(context.extra, :server_wide_fired, MapSet.new())
+    context = put_in(context.extra[:server_wide_sent?], MapSet.member?(fired, rule.id))
+
+    with {:ok, execution} <- record(rule, context, trace(rule, context)) do
+      # Queued deliveries report back to this row, and an edited Discord
+      # message is keyed by the rule by default.
+      context =
+        update_in(context.extra, &Map.merge(&1, %{execution_id: execution.id, rule_id: rule.id}))
+
       results =
         if rule.simulation do
           Executor.preview(steps, context)
@@ -227,15 +291,17 @@ defmodule HllConditionalActions.Engine do
           Executor.run(steps, context)
         end
 
-      execution = finalize(execution, results, context, rule)
-      emit_fired(rule, context, execution, System.monotonic_time() - started_at)
+      duration = System.monotonic_time() - started_at
+      execution = finalize(execution, results, context, rule, duration)
+      emit_fired(rule, context, execution, duration)
 
       {:ok, execution}
     end
   end
 
-  defp record(rule, context) do
+  defp record(rule, context, trace) do
     Rules.record_execution(%{
+      trace: trace,
       rule_id: rule.id,
       server_id: context.server.id,
       player_id: context.player_id,
@@ -246,9 +312,15 @@ defmodule HllConditionalActions.Engine do
     })
   end
 
-  defp finalize(execution, results, context, rule) do
+  defp finalize(execution, results, context, rule, duration) do
     attrs = %{
       results: Enum.map(results, &stringify_result/1),
+      trace:
+        Map.put(
+          execution.trace,
+          "duration_ms",
+          System.convert_time_unit(duration, :native, :millisecond)
+        ),
       status: overall_status(results, rule),
       error: first_error(results)
     }
@@ -256,6 +328,7 @@ defmodule HllConditionalActions.Engine do
     case Rules.update_execution(execution, attrs) do
       {:ok, updated} ->
         Phoenix.PubSub.broadcast(PubSub, topic(context.server.id), {:rule_fired, updated})
+        HllConditionalActions.Attention.notify_changed()
         updated
 
       {:error, changeset} ->
@@ -263,6 +336,51 @@ defmodule HllConditionalActions.Engine do
         execution
     end
   end
+
+  # The history's "why did this fire": every condition with the value the
+  # engine read, plus the escalation rung. Stored as plain JSON, so values are
+  # flattened to text here rather than trusted to encode.
+  #
+  #     %{"logical_operator" => "and",
+  #       "conditions" => [%{"field" => "kills", "operator" => "greater_than",
+  #                          "expected" => "10", "actual" => "12", "result" => true}],
+  #       "step" => 2, "steps" => 3, "duration_ms" => 140}
+  defp trace(rule, context) do
+    explained = Evaluator.explain(rule, context)
+
+    base = %{
+      "logical_operator" => to_string(rule.logical_operator),
+      "conditions" =>
+        Enum.map(explained.conditions, fn condition ->
+          %{
+            "field" => to_string(condition.field),
+            "operator" => condition.operator && to_string(condition.operator),
+            "expected" => condition.expected,
+            "actual" => trace_value(condition.actual),
+            "result" => condition.result
+          }
+        end)
+    }
+
+    if Escalation.escalating?(rule) and context.player_id do
+      Map.merge(base, %{
+        "step" => Escalation.step_index(rule, context.player_id) + 1,
+        "steps" => length(rule.actions)
+      })
+    else
+      base
+    end
+  end
+
+  defp trace_value(nil), do: nil
+  defp trace_value(value) when is_binary(value), do: String.slice(value, 0, 200)
+  defp trace_value(value) when is_number(value) or is_boolean(value), do: value
+  defp trace_value(value) when is_atom(value), do: to_string(value)
+
+  defp trace_value(value) when is_list(value),
+    do: value |> Enum.map_join(", ", &to_string(trace_value(&1))) |> String.slice(0, 200)
+
+  defp trace_value(value), do: value |> inspect() |> String.slice(0, 200)
 
   defp overall_status(_results, %Rule{simulation: true}), do: :simulated
 
