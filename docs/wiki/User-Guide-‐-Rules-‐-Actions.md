@@ -257,11 +257,14 @@ No parameters. Needs `can_remove_vip`.
 
 ### Send a Discord message
 
-Posts to a Discord webhook. The only action that does not touch CRCON, and so
+Posts to a Discord channel through a webhook registered under
+**Automation → Discord**. The only action that does not touch CRCON, and so
 the only one that needs no CRCON permission.
 
-- **Webhook URL** — required.
-- **Message** — required, accepts placeholders.
+- **Webhook** — picked from the registered ones; the URL itself is stored
+  encrypted and never typed into a rule.
+- **Message** — accepts placeholders, and can be sent as an embed, edit an
+  earlier message or go to a thread.
 
 ```
 Message: 🚨 {player_name} ({player_id}) — {teamkills} team kills on {map_name}
@@ -270,10 +273,8 @@ Message: 🚨 {player_name} ({player_id}) — {teamkills} team kills on {map_nam
 Delivery is queued as a background job with retries and backoff, so a Discord
 outage does not slow the rule down or lose the message.
 
-> [!NOTE]
-> Create a webhook in Discord under *Channel → Edit → Integrations →
-> Webhooks*. Anybody holding that URL can post to the channel, so treat it as
-> a secret.
+Registering webhooks and every option of this action:
+[Discord](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Discord).
 
 ---
 

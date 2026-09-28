@@ -11,6 +11,7 @@ Running it in production.
 | **[Configuration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration)** | Every environment variable. |
 | **[Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security)** | What is throttled, what is encrypted, what two factor covers. |
 | **[Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups)** | The three things worth keeping, and how. |
+| **[Commands](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Commands)** | Start, stop, logs, upgrade, backup, console — every command in one page. |
 
 ***
 

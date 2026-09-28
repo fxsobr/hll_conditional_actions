@@ -14,7 +14,7 @@ See [`.env.example`](https://github.com/fxsobr/hll_conditional_actions/blob/main
 | `PHX_HOST` | prod | `example.com` | Public hostname |
 | `PORT` | no | `4000` | HTTP port |
 | `POOL_SIZE` | no | `10` | Database pool |
-| `DEFAULT_LOCALE` | no | `en` | `en` or `pt_BR` |
+| `DEFAULT_LOCALE` | no | `en` | `en`, `pt_BR` or `es` |
 | `ENGINE_ENABLED` | no | `true` | `false` serves the UI without connecting to CRCON |
 | `EXECUTION_RETENTION_DAYS` | no | `30` | How long the rule history is kept |
 | `CONNECT_DELAY_MS` | no | `5000` | How long to wait after a connect before evaluating rules |

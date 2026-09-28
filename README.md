@@ -11,13 +11,29 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 
 ![Overview](docs/screenshots/overview.png)
 
-*When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Welcome new players, warn team killers, escalate on repeat offenders, reward the people who seed, or post to Discord when something needs a human.
+*When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Welcome new players, warn team killers, escalate on repeat offenders, reward the people who seed, or post to Discord when something needs a human. Next to the rules: player support tickets from the in-game chat, achievements and seasons, leaderboards and match history.
 
 No scripting. A rule is built from dropdowns, reads back as a sentence, and can be tried against a player who is connected right now — or left in simulation, where it records everything it *would* have done without touching the game.
 
 > [!IMPORTANT]
 > **This app does not talk to Hell Let Loose. It talks to CRCON.**
 > You need a working [CRCON](https://github.com/MarechJ/hll_rcon_tool) installation first: it is what holds the RCON connection, parses the game logs and exposes both as an API. Without one there is nothing for this app to read from or act on.
+
+## Features
+
+Everything beyond the core is a **module** each server installs from its marketplace. A new server starts with none; turn on only what your community uses.
+
+| Module | What it adds |
+| --- | --- |
+| **Conditional rules** | *When* something happens, *if* it matches, *then* act: messages, punishments, kicks, bans, broadcasts, Discord posts. Simulation, a "why didn't it fire?" diagnosis, drafts and version history included. |
+| **Tickets** | Players call an admin from the in-game chat; admins answer, assign and close tickets from the browser. |
+| **Achievements and seasons** | Goals players unlock by playing, and ranked seasons that reward the best with VIP. |
+| **Leaderboard and matches** | The live top players and squads, and the scoreboard of every past match. |
+| **Live feed** | Kills, chat and connections as they happen. |
+
+Always there: the servers and their overview, the Attention inbox, Discord webhooks, metrics, users, roles and two factor.
+
+![The marketplace](docs/screenshots/marketplace.png)
 
 ## Documentation
 
@@ -43,13 +59,22 @@ No scripting. A rule is built from dropdowns, reads back as a sentence, and can 
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions">If — conditions</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators">Operators</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions">Then — actions</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features"><strong>Features</strong></a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Tickets">Tickets</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons">Achievements and seasons</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Leaderboard-and-matches">Leaderboard and matches</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed">Live feed</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Discord">Discord</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history">Attention and history</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules">Testing rules</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor">Users and two factor</a>
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Production-deployment">Production deployment</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration">Configuration</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security">Security</a><br />
-        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups">Backups</a>
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups">Backups</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Commands">Commands</a>
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Architecture">Architecture</a><br />
@@ -76,9 +101,27 @@ docker compose up -d
 
 It answers on `http://<your machine>:4000`, leaving ports 80 and 443 alone. Sign in with `admin` / `admin` and you are asked to pick a new password immediately.
 
+Every command for running, upgrading and backing it up: [Commands](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Commands).
+
 Full walkthrough: [Installation](https://github.com/fxsobr/hll_conditional_actions/wiki/Getting-Started-%E2%80%90-Installation).
 
 ## Screenshots
+
+**A server's tickets** — players who called an admin from the game, by state.
+
+![Tickets](docs/screenshots/tickets.png)
+
+**Achievements** — the gallery, who unlocked what, and what is still in simulation.
+
+![Achievements](docs/screenshots/achievements.png)
+
+**A match** — the result and the best players of every category.
+
+![A match](docs/screenshots/match.png)
+
+**Attention** — everything that needs a human, from every server, in one inbox.
+
+![Attention](docs/screenshots/attention.png)
 
 **The rule builder** — setup, trigger, conditions, actions and limits as steps, with the rule reading back in plain words beside them.
 
@@ -103,6 +146,6 @@ If you run a Hell Let Loose server, go and use CRCON. It is excellent.
 
 Any contribution is welcome — code, documentation, or a translation.
 
-The interface goes through gettext and ships in **English** and **Brazilian Portuguese**. Adding a language does not require knowing Elixir; see [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
+The interface goes through gettext and ships in **English**, **Brazilian Portuguese** and **Spanish**. Adding a language does not require knowing Elixir; see [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
 
 Hell Let Loose is a trademark of Team17 / Expression Games. This is an unofficial community tool, not affiliated with either.

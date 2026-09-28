@@ -5,6 +5,7 @@
 
 ## Menu
 
+- [Beyond rules: the modules](#beyond-rules-the-modules)
 - [How it connects to CRCON](#how-it-connects-to-crcon)
 - [Requirements on the CRCON side](#requirements-on-the-crcon-side)
 
@@ -33,6 +34,32 @@ with the rule reading back in plain words beside them.
 failed, and every change ever made to it.
 
 ![A rule](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/rule.png)
+
+## Beyond rules: the modules
+
+Rules are one module among several. Each server installs the ones it wants
+from its **marketplace**; a new server starts with none, and removing a module
+hides its pages and stops its work without deleting its data.
+
+![The marketplace](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/marketplace.png)
+
+| Module | |
+| --- | --- |
+| **Conditional rules** | Everything above, plus the simulator and the "why didn't it fire?" diagnosis. |
+| **[Tickets](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Tickets)** | Players type a command in the game chat to call an admin; the conversation continues from the browser. |
+| **[Achievements and seasons](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons)** | Goals unlocked by playing, and seasons that reward the best. |
+| **[Leaderboard and matches](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Leaderboard-and-matches)** | The current match's best players and squads, and every past scoreboard. |
+| **[Live feed](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed)** | The game's events as they happen. |
+
+**Tickets** — who is waiting on an admin, and who has one.
+
+![Tickets](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/tickets.png)
+
+**A finished match** — the result and the best players of every category.
+
+![A match](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/match.png)
+
+The whole list: [Features](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features).
 
 ---
 

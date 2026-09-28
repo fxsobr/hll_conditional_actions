@@ -9,7 +9,9 @@ The source language is English. After adding or changing a `gettext` call:
 mix gettext.extract --merge
 ```
 
-Then fill in the new entries in `priv/gettext/pt_BR/LC_MESSAGES/default.po`.
+Then fill in the new entries in `priv/gettext/pt_BR/LC_MESSAGES/default.po` and
+`priv/gettext/es/LC_MESSAGES/default.po`. Recipe texts live in their own
+`recipes` domain, next to `default` and `errors`.
 
 Visitors pick their language from **My account**; without a choice the app
 follows the browser's `Accept-Language` header and falls back to

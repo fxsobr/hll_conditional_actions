@@ -17,6 +17,8 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 
 ![Overview](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/overview.png)
 
+Rules, player support tickets, achievements and seasons, leaderboards, match history and a live feed — each one a module a server installs from its **marketplace**, so a community only sees what it uses.
+
 *When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Rules are built from dropdowns, read back as a sentence, and can be tried against a player who is connected right now — or left in simulation, where everything is recorded and nothing reaches the game.
 
 > [!IMPORTANT]
@@ -51,6 +53,14 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions">If — conditions</a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators">Operators</a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions">Then — actions</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features"><strong>Features</strong></a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Tickets">Tickets</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons">Achievements and seasons</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Leaderboard-and-matches">Leaderboard and matches</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed">Live feed</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Discord">Discord</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history">Attention and history</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules">Testing rules</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor">Users and two factor</a><br />
         <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide"><em>All of it →</em></a>
       </td>
@@ -59,6 +69,7 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Configuration">Configuration</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security">Security</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups">Backups</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Commands">Commands</a><br />
         <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/Administration"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>
@@ -90,6 +101,6 @@ If you run a Hell Let Loose server, go and use CRCON. It is excellent.
 
 Any contribution is welcome — code, documentation, or a translation.
 
-The interface goes through gettext and ships in **English** and **Brazilian Portuguese**. Adding a language is a `mix gettext.merge` away and does not require knowing Elixir; see [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
+The interface goes through gettext and ships in **English**, **Brazilian Portuguese** and **Spanish**. Adding a language is a `mix gettext.merge` away and does not require knowing Elixir; see [Translations](https://github.com/fxsobr/hll_conditional_actions/wiki/Developer-Guides-%E2%80%90-Translations).
 
 Hell Let Loose is a trademark of Team17 / Expression Games. This is an unofficial community tool, not affiliated with either.

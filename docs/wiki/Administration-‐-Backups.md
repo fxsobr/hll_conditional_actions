@@ -23,4 +23,4 @@ server.
 
 ***
 
-**←** [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security) · **↑** [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration)
+**←** [Security](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Security) · **↑** [Administration](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration) · [Commands](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Commands) **→**

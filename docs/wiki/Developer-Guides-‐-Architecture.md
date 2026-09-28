@@ -6,6 +6,7 @@
 ## Menu
 
 - [The supervision tree](#the-supervision-tree)
+- [Modules and the marketplace](#modules-and-the-marketplace)
 - [Where the work happens](#where-the-work-happens)
 - [Stack](#stack)
 - [Artwork](#artwork)
@@ -15,45 +16,73 @@
 
 ```
 lib/hll_conditional_actions/
-├── games/                  Game profiles, one module per game
-│   ├── hll.ex              Hell Let Loose (WW2): roles, teams, game modes
-│   ├── hllv.ex             Hell Let Loose: Vietnam
-│   └── profile.ex          The behaviour and struct they both implement
+├── games/                  Game profiles, one module per game (HLL, HLLV)
 ├── crcon/                  Everything that talks to CRCON
 │   ├── client.ex           REST, bearer auth, envelope unwrapping
 │   ├── log_stream.ex       WebSocket consumer with backoff (Mint.WebSocket)
 │   └── events.ex           Raw log line → domain event
 ├── engine/                 The rule engine
 │   ├── snapshot.ex         Cached players + game state, shared per cycle
-│   ├── context.ex          What one rule is evaluated against
 │   ├── evaluator.ex        Fields, operators, logical combination
-│   ├── template.ex         {placeholder} rendering
-│   ├── limiter.ex          Cooldown and per-player caps
 │   ├── executor.ex         Runs the actions
-│   └── runner.ex           One process per server, owns the periodic sweep
+│   ├── limiter.ex          Cooldown and per-player caps
+│   ├── simulator.ex        Replays a rule against saved or sample events
+│   ├── diagnosis.ex        "Why did this not fire?"
+│   └── runner.ex           One process per server: events, sweep, progression
+├── features.ex             The marketplace: modules installed per server
 ├── runtime.ex              Starts/stops a subtree per enabled server
 ├── servers.ex              CRCON deployments
-├── rules.ex                Rules and execution history
-└── accounts.ex             Users, roles, permissions
+├── rules.ex                Rules, versions, drafts and execution history
+├── attention.ex            The inbox of what needs an admin
+├── tickets.ex              In-game support tickets
+├── progression.ex          Achievements, seasons and ratings
+├── leaderboards.ex         Rankings from a live roster
+├── matches.ex              Match history
+├── discord.ex              Registered webhooks and messages
+├── workers/                Oban jobs (webhooks, pruning, seasons, tickets)
+└── accounts.ex             Users, roles, permissions, two factor
 ```
 
 ## The supervision tree
 
 ```
 HllConditionalActions.Supervisor
+├── Telemetry, RateLimit
 ├── Vault                     Encryption for stored API keys
 ├── Repo
 ├── Accounts.Bootstrap        Seeds roles + the first admin
 ├── Oban                      Background jobs (Postgres backed)
-├── PubSub
+├── PubSub, Presence
+├── Metrics, Engine.Samples
+├── Updates                   Checks GitHub for newer releases
 ├── Runtime.Registry
 ├── Runtime.ServerSupervisor  DynamicSupervisor
 │   └── (one subtree per enabled server)
-│       ├── Crcon.LogStream
-│       └── Engine.Runner
-├── Runtime                   Follows the database, starts/stops subtrees
+│       ├── Engine.Runner     rules only if installed, progression only if installed
+│       ├── Tickets.Listener  only with the tickets module and a log stream
+│       └── Crcon.LogStream
+├── Runtime                   Follows servers and installed modules, restarts subtrees
 └── Endpoint
 ```
+
+## Modules and the marketplace
+
+`HllConditionalActions.Features` holds the catalog (`:rules`, `:tickets`,
+`:progression`, `:stats`, `:live_feed`) and one `feature_installations` row
+per server and module. Three places honour it:
+
+- **The runtime.** Installing or removing a module broadcasts
+  `{:features_changed, server_id}`; `Runtime` restarts that server's subtree,
+  and the subtree only starts what is installed.
+- **The router.** `HllConditionalActionsWeb.FeatureGuard` is mounted for every
+  authenticated LiveView and maps each page namespace to its module; a page of
+  a missing module redirects to the server's marketplace.
+- **The navigation.** Menu entries carry a `feature:` key and are hidden when
+  the module is not installed.
+
+A new module needs an entry in the catalog, its labels in
+`HllConditionalActionsWeb.Labels`, its pages in `FeatureGuard`, and a check
+wherever it does background work.
 
 A server that is unreachable only affects its own subtree; the rest of the
 fleet keeps running.
@@ -74,7 +103,7 @@ fleet keeps running.
 
 Phoenix 1.8 · LiveView 1.2 · Tailwind CSS 4 + Petal Components · Alpine.js ·
 Ecto/PostgreSQL · Oban · Caddy · TOTP two factor ·
-Gettext (English + Brazilian Portuguese)
+Gettext (English, Brazilian Portuguese, Spanish)
 
 ## Artwork
 
@@ -95,7 +124,7 @@ Loose server owners.
 
 ## Observability
 
-**Monitoring → Metrics** is the built-in view, no external tooling required:
+**Automation → Metrics** is the built-in view, no external tooling required:
 rule firings by outcome and how long their actions take, why rules were
 skipped, game events by kind, log stream connection changes, and CRCON latency
 per endpoint. Counters are cumulative since the node started, and the page is

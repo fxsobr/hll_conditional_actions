@@ -40,6 +40,12 @@ newer one.
 > rest as written above. Your containers and your database are untouched: the
 > project name did not change, so the same volumes are still there.
 
+> [!NOTE]
+> **Coming from v0.1.x to v0.2.0**, every server you already have gets every
+> module installed by the upgrade, so nothing disappears. Servers you add
+> afterwards start empty: open the server's **Marketplace** and install what
+> it needs. See [Features](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features).
+
 Nothing is compiled on your machine. The images are built when a release is
 published and downloaded ready to run, so an upgrade takes about as long as
 the download.
