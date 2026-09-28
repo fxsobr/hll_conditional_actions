@@ -572,7 +572,9 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
       </p>
 
       <p class="mt-2 opacity-60">
-        {gettext("Wording and names are CRCON's own, so they match its admin screen.")}
+        {gettext(
+          "Names are CRCON's own. In its admin, open Users, pick the user and look under User permissions: each one reads as shown here, starting with \"api | rcon user |\"."
+        )}
       </p>
 
       <p class="mt-3 font-medium">{gettext("Required")}</p>
@@ -599,7 +601,7 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
 
     ~H"""
     <div class="flex flex-wrap items-baseline gap-x-2 py-0.5">
-      <span class="opacity-90">{Labels.crcon_permission(@permission)}</span>
+      <span class="opacity-90">{Labels.crcon_admin_permission(@permission)}</span>
       <code class="font-mono opacity-60">{@permission}</code>
       <span :if={@actions != []} class="opacity-50">
         &middot; {Enum.map_join(@actions, ", ", &Labels.action/1)}

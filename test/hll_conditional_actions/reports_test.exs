@@ -97,6 +97,22 @@ defmodule HllConditionalActions.ReportsTest do
       assert state_of(steps, :simulation) == :locked
     end
 
+    test "a server without modules asks for the marketplace before any rule" do
+      user = user_fixture()
+      server = server_fixture(%{features: []})
+
+      steps = Onboarding.steps(user, [server], %{server.id => :connected})
+
+      assert %{id: :modules, state: :current} = Onboarding.focus(steps)
+      assert state_of(steps, :rule) == :locked
+
+      :ok = HllConditionalActions.Features.install(server.id, :tickets)
+      steps = Onboarding.steps(user, [server], %{server.id => :connected})
+
+      assert state_of(steps, :modules) == :done
+      assert %{id: :rule, context: %{rules_installed?: false}} = Onboarding.focus(steps)
+    end
+
     test "a stream in error is flagged with what CRCON said" do
       user = user_fixture()
       server = server_fixture()

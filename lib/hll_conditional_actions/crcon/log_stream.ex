@@ -330,7 +330,7 @@ defmodule HllConditionalActions.Crcon.LogStream do
   # log stream disabled, so say that instead of "unexpected status".
   defp upgrade_error_message(status, error) when status in [401, 403] do
     "log stream refused the API key (HTTP #{status}); " <>
-      "check the key's can_view_structured_logs permission - #{Exception.message(error)}"
+      "check that the key has \"api | rcon user | Can view the get_structured_logs endpoint\" (can_view_structured_logs) - #{Exception.message(error)}"
   end
 
   defp upgrade_error_message(_status, error), do: Exception.message(error)
