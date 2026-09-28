@@ -4,7 +4,7 @@ defmodule HllConditionalActions.MixProject do
   def project do
     [
       app: :hll_conditional_actions,
-      version: "0.2.3",
+      version: "0.2.4",
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

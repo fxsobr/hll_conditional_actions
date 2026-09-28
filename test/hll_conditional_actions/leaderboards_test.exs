@@ -115,6 +115,8 @@ defmodule HllConditionalActions.LeaderboardsTest do
 
       assert Template.render("Kills: {top_kills} | Armor: {top_armor_squads}", context) ==
                "Kills: \n1. bo (25)\n2. ana (10) | Armor: -"
+
+      assert Template.render("Kills: {top_kills:1}", context) == "Kills: \n1. bo (25)"
     end
   end
 
