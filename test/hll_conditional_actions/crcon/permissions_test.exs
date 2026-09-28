@@ -5,6 +5,10 @@ defmodule HllConditionalActions.Crcon.PermissionsTest do
   alias HllConditionalActions.Rules.Catalog
 
   doctest HllConditionalActions.Crcon.Permissions
+  doctest HllConditionalActions.Crcon.PermissionNames
+
+  doctest HllConditionalActionsWeb.Labels,
+    only: [crcon_permission: 1, crcon_admin_permission: 1, crcon_permission_with_code: 1]
 
   defp payload(permissions, opts \\ []) do
     %{

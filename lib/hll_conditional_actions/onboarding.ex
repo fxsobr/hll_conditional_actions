@@ -26,6 +26,7 @@ defmodule HllConditionalActions.Onboarding do
   import Ecto.Query
 
   alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Features
   alias HllConditionalActions.Repo
   alias HllConditionalActions.Rules
 
@@ -42,6 +43,7 @@ defmodule HllConditionalActions.Onboarding do
     server = List.first(servers)
     simulating = Enum.find(rules, &(&1.enabled and &1.simulation))
     simulated? = simulated_anything?(user)
+    installed = Features.installed_by_server(Enum.map(servers, & &1.id))
 
     [
       %{
@@ -58,12 +60,21 @@ defmodule HllConditionalActions.Onboarding do
         requires: :server,
         context: stream_context(servers, stream_status)
       },
+      # A new server starts with no module, so nothing past this point has
+      # a page to open until one is installed from its marketplace.
+      %{
+        id: :modules,
+        permission: :manage_servers,
+        done: Enum.any?(installed, fn {_id, set} -> MapSet.size(set) > 0 end),
+        requires: :server,
+        context: %{server: server}
+      },
       %{
         id: :rule,
         permission: :manage_rules,
         done: rules != [],
-        requires: :server,
-        context: %{server: server}
+        requires: :modules,
+        context: %{server: server, rules_installed?: rules_installed?(installed, server)}
       },
       %{
         id: :simulation,
@@ -160,6 +171,11 @@ defmodule HllConditionalActions.Onboarding do
   @doc "The step to focus on: current, waiting or blocked, or `nil`."
   @spec focus([step()]) :: step() | nil
   def focus(steps), do: Enum.find(steps, &(&1.state in [:current, :waiting, :blocked]))
+
+  defp rules_installed?(_installed, nil), do: false
+
+  defp rules_installed?(installed, server),
+    do: :rules in Map.get(installed, server.id, MapSet.new())
 
   defp simulated_anything?(user) do
     user

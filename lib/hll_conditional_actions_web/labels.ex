@@ -11,6 +11,7 @@ defmodule HllConditionalActionsWeb.Labels do
   use Gettext, backend: HllConditionalActionsWeb.Gettext
 
   alias HllConditionalActions.Accounts.Permission
+  alias HllConditionalActions.Crcon.PermissionNames
   alias HllConditionalActions.Rules.Catalog
 
   # ── Triggers ───────────────────────────────────────────────────────────────
@@ -818,49 +819,38 @@ defmodule HllConditionalActionsWeb.Labels do
   # ── CRCON permissions ──────────────────────────────────────────────────────
 
   @doc """
-  The description CRCON itself gives a permission.
+  The name CRCON itself gives a permission, as its Django admin lists it.
 
-  Copied verbatim from CRCON's `RconUser` permission list
-  (`rconweb/api/migrations/0024_alter_rconuser_options.py`), which is what the
-  Django admin displays next to each checkbox. Using its exact wording rather
-  than our own means the operator can match what they read here against what
-  they see there, without translating twice.
+  Taken from CRCON's own permission list (see
+  `HllConditionalActions.Crcon.PermissionNames`) so the operator can match
+  what they read here against the admin, where each checkbox reads
+  `api | rcon user | <name>`. Not run through gettext for the same reason:
+  CRCON's admin is English only.
 
-  Not run through gettext for the same reason: CRCON's admin is English only.
+      iex> HllConditionalActionsWeb.Labels.crcon_permission("can_view_structured_logs")
+      "Can view the get_structured_logs endpoint"
+      iex> HllConditionalActionsWeb.Labels.crcon_permission("auth.add_user")
+      "auth.add_user"
   """
   @spec crcon_permission(String.t()) :: String.t()
-  def crcon_permission("can_view_structured_logs"),
-    do: "Can view the get_structured_logs endpoint"
+  def crcon_permission(permission),
+    do: PermissionNames.name(permission) || permission
 
-  def crcon_permission("can_view_detailed_players"),
-    do: "Can view get_detailed_players endpoint"
+  @doc """
+  A permission exactly as CRCON's Django admin prints it.
 
-  def crcon_permission("can_view_gamestate"), do: "Can view the current gamestate"
-  def crcon_permission("can_view_player_profile"), do: "View the detailed player profile page"
-  def crcon_permission("can_view_broadcast_message"), do: "Can view the current broadcast message"
-
-  def crcon_permission("can_view_get_status"),
-    do: "Can view the get_status endpoint (server name, current map, player count)"
-
-  def crcon_permission("can_message_players"), do: "Can message players"
-  def crcon_permission("can_punish_players"), do: "Can punish players"
-  def crcon_permission("can_kick_players"), do: "Can kick players"
-  def crcon_permission("can_temp_ban_players"), do: "Can temporarily ban players"
-  def crcon_permission("can_perma_ban_players"), do: "Can permanently ban players"
-  def crcon_permission("can_switch_players_immediately"), do: "Can immediately switch players"
-  def crcon_permission("can_switch_players_on_death"), do: "Can switch players on death"
-  def crcon_permission("can_flag_player"), do: "Can add flags to players"
-  def crcon_permission("can_unflag_player"), do: "Can remove flags from players"
-  def crcon_permission("can_add_player_watch"), do: "Can add a watch to players"
-  def crcon_permission("can_remove_player_watch"), do: "Can remove a watch from players"
-  def crcon_permission("can_change_broadcast_message"), do: "Can change the broadcast message"
-  def crcon_permission("can_change_welcome_message"), do: "Can change the welcome (rules) message"
-  def crcon_permission("can_add_vip"), do: "Can add VIP status to players"
-  def crcon_permission("can_remove_vip"), do: "Can remove VIP status from players"
-  def crcon_permission("can_add_blacklist_records"), do: "Can add players to blacklists"
-  # Anything outside the catalog is a permission this app never asks for, so
-  # the codename is the most honest thing to show.
-  def crcon_permission(permission), do: permission
+      iex> HllConditionalActionsWeb.Labels.crcon_admin_permission("can_kick_players")
+      "api | rcon user | Can kick players"
+      iex> HllConditionalActionsWeb.Labels.crcon_admin_permission("auth.add_user")
+      "auth.add_user"
+  """
+  @spec crcon_admin_permission(String.t()) :: String.t()
+  def crcon_admin_permission(permission) do
+    case PermissionNames.name(permission) do
+      nil -> permission
+      name -> "api | rcon user | " <> name
+    end
+  end
 
   @doc """
   What stops working when a key lacks one of the engine's read permissions.
@@ -896,14 +886,17 @@ defmodule HllConditionalActionsWeb.Labels do
   def crcon_read_impact(_permission), do: gettext("part of what the engine reads will fail")
 
   @doc """
-  A permission with its codename, for listing one on a single line.
+  A permission as the admin shows it, with its codename, on a single line.
 
       iex> HllConditionalActionsWeb.Labels.crcon_permission_with_code("can_kick_players")
-      "Can kick players (can_kick_players)"
+      "api | rcon user | Can kick players (can_kick_players)"
   """
   @spec crcon_permission_with_code(String.t()) :: String.t()
   def crcon_permission_with_code(permission) do
-    "#{crcon_permission(permission)} (#{permission})"
+    case PermissionNames.name(permission) do
+      nil -> permission
+      _name -> "#{crcon_admin_permission(permission)} (#{permission})"
+    end
   end
 
   # ── Permissions ────────────────────────────────────────────────────────────

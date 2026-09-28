@@ -581,6 +581,43 @@ defmodule HllConditionalActionsWeb.DashboardLive do
     """
   end
 
+  defp step_actions(%{step: %{id: :modules}} = assigns) do
+    ~H"""
+    <.button
+      :if={@step.context[:server]}
+      link_type="live_redirect"
+      to={~p"/servers/#{@step.context.server}/marketplace"}
+      size="sm"
+      color={if @primary, do: "primary", else: "gray"}
+      variant={if @primary, do: "solid", else: "outline"}
+      icon="hero-squares-plus"
+      label={gettext("Open the marketplace")}
+    />
+    <span class="text-xs text-muted">
+      {gettext("Rules, tickets, achievements, leaderboards: install only what you need.")}
+    </span>
+    """
+  end
+
+  # Rules are a module too: without it, the recipes would open a page that
+  # is not installed, so the step points at the marketplace instead.
+  defp step_actions(
+         %{step: %{id: :rule, context: %{rules_installed?: false, server: server}}} = assigns
+       )
+       when not is_nil(server) do
+    ~H"""
+    <.button
+      link_type="live_redirect"
+      to={~p"/servers/#{@step.context.server}/marketplace"}
+      size="sm"
+      color={if @primary, do: "primary", else: "gray"}
+      variant={if @primary, do: "solid", else: "outline"}
+      icon="hero-bolt"
+      label={gettext("Install Conditional rules")}
+    />
+    """
+  end
+
   defp step_actions(%{step: %{id: :rule}} = assigns) do
     assigns =
       assign(assigns, :server_id, assigns.step.context.server && assigns.step.context.server.id)
@@ -674,6 +711,7 @@ defmodule HllConditionalActionsWeb.DashboardLive do
   defp hero_title(_focus, 0), do: gettext("Welcome! Start by connecting your server")
   defp hero_title(%{id: :stream, state: :blocked}, _done), do: gettext("The server needs a look")
   defp hero_title(%{id: :stream}, _done), do: gettext("Waiting for the game's events")
+  defp hero_title(%{id: :modules}, _done), do: gettext("Pick what your server needs")
   defp hero_title(%{id: :rule}, _done), do: gettext("Now, your first rule")
   defp hero_title(%{id: :simulation}, _done), do: gettext("Your rule is watching in simulation")
   defp hero_title(%{id: :live}, _done), do: gettext("Ready to let it act")
@@ -689,6 +727,7 @@ defmodule HllConditionalActionsWeb.DashboardLive do
 
   defp step_title(:server), do: gettext("Connect a CRCON server")
   defp step_title(:stream), do: gettext("Receive the game's events")
+  defp step_title(:modules), do: gettext("Install modules from the marketplace")
   defp step_title(:rule), do: gettext("Create your first rule")
   defp step_title(:simulation), do: gettext("See what it would have done")
   defp step_title(:live), do: gettext("Let it act for real")
@@ -714,6 +753,18 @@ defmodule HllConditionalActionsWeb.DashboardLive do
   defp step_hint(%{id: :stream}),
     do:
       gettext("Once the live log stream connects, kills, chat and connections reach the engine.")
+
+  defp step_hint(%{id: :modules}),
+    do:
+      gettext(
+        "A new server starts with nothing installed. Each module adds its pages and its work; removing one later keeps its data."
+      )
+
+  defp step_hint(%{id: :rule, context: %{rules_installed?: false}}),
+    do:
+      gettext(
+        "Rules are a module as well: install Conditional rules from the marketplace to write the first one."
+      )
 
   defp step_hint(%{id: :rule}),
     do:
