@@ -310,11 +310,43 @@ defmodule HllConditionalActions.Engine.Evaluator do
       true
       iex> Evaluator.compare(nil, :equal, "anything", :player_name)
       false
+      iex> Evaluator.compare("top", :equal, "!top", :command)
+      true
+      iex> Evaluator.compare("vip", :in_list, "!TOP, @vip", :command)
+      true
   """
   @spec compare(term(), atom(), String.t() | nil, atom()) :: boolean()
   def compare(nil, _operator, _expected, _field), do: false
 
-  def compare(actual, operator, expected, field) do
+  # The command is stored without its prefix and downcased, but people write
+  # the rule the way players type it: "!top". Read the value the same way, so
+  # "!top", "top" and "TOP" all mean the same command.
+  def compare(actual, operator, expected, :command)
+      when is_binary(expected) and operator in [:equal, :not_equal, :in_list, :not_in_list] do
+    expected =
+      expected
+      |> String.split(",")
+      |> Enum.map_join(",", &normalize_command/1)
+
+    compare_scalar_or_list(actual, operator, expected, :command)
+  end
+
+  def compare(actual, operator, expected, field),
+    do: compare_scalar_or_list(actual, operator, expected, field)
+
+  defp normalize_command(value) do
+    value = String.trim(value)
+
+    value =
+      case Enum.find(Context.command_prefixes(), &String.starts_with?(value, &1)) do
+        nil -> value
+        prefix -> String.replace_prefix(value, prefix, "")
+      end
+
+    String.downcase(value)
+  end
+
+  defp compare_scalar_or_list(actual, operator, expected, field) do
     type = Catalog.field_type(field)
 
     cond do
