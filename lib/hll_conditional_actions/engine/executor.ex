@@ -139,7 +139,9 @@ defmodule HllConditionalActions.Engine.Executor do
 
   defp execute(%Action{type: :message_player} = action, context) do
     with_player(context, fn player_id ->
-      Crcon.message_player(context.server, player_id, text(action, :message, context))
+      context.server
+      |> Crcon.message_player(player_id, text(action, :message, context))
+      |> player_gone_is_skip()
     end)
   end
 
@@ -399,6 +401,14 @@ defmodule HllConditionalActions.Engine.Executor do
   # Every player-scoped action needs somebody to act on. Match-wide triggers
   # can produce a context without a player id, and skipping is the honest
   # outcome there.
+  # The game server refuses a private message to a player who is still
+  # loading in or already left, and CRCON relays that as a bare HTTP 500.
+  # That is routine on connect and disconnect rules, not a failure.
+  defp player_gone_is_skip({:error, %Error{reason: :http_error, status: 500}}),
+    do: {:skip, "player not reachable in game (still loading or already left)"}
+
+  defp player_gone_is_skip(result), do: result
+
   defp with_player(%Context{player_id: nil}, _fun), do: {:skip, "no player in this event"}
   defp with_player(%Context{player_id: player_id}, fun), do: fun.(player_id)
 
