@@ -26,9 +26,13 @@ defmodule HllConditionalActions.Engine.Executor do
 
   alias HllConditionalActions.Crcon
   alias HllConditionalActions.Crcon.Error
+  alias HllConditionalActions.Discord.Message
   alias HllConditionalActions.Engine.Context
   alias HllConditionalActions.Engine.Template
   alias HllConditionalActions.Rules.Action
+  alias HllConditionalActions.Rules.Rule
+  alias HllConditionalActions.Tickets
+  alias HllConditionalActions.Tickets.Ticket
   alias HllConditionalActions.Workers.DeliverWebhook
   alias HllConditionalActions.Workers.RestoreBroadcast
 
@@ -43,7 +47,45 @@ defmodule HllConditionalActions.Engine.Executor do
   """
   @spec run([Action.t()], Context.t()) :: [result()]
   def run(actions, %Context{} = context) do
-    Enum.map(actions, &run_action(&1, context))
+    actions
+    |> Enum.with_index()
+    |> Enum.map(fn {action, index} ->
+      if already_sent?(action, context),
+        do: already_sent(action),
+        else: run_action(action, put_in(context.extra[:action_index], index))
+    end)
+  end
+
+  # Actions aimed at the whole server rather than at the player. In a sweep
+  # (match start or end, periodic) they go out for the first player the rule
+  # matches and are skipped for the rest.
+  @server_wide [
+    :message_all_players,
+    :broadcast_message,
+    :temporary_broadcast,
+    :set_welcome_message,
+    :send_discord_webhook
+  ]
+
+  @doc "Whether an action speaks to the whole server rather than to one player."
+  @spec server_wide?(atom()) :: boolean()
+  def server_wide?(type), do: type in @server_wide
+
+  defp already_sent?(%Action{type: type} = action, context) do
+    type in @server_wide and not aggregated?(action, context) and
+      Map.get(context.extra, :server_wide_sent?, false)
+  end
+
+  # A Discord action that gathers the whole sweep into one message has to see
+  # every matching player, not only the first.
+  defp aggregated?(%Action{type: :send_discord_webhook} = action, context) do
+    truthy?(Action.param(action, :aggregate)) and is_pid(context.extra[:discord_batch])
+  end
+
+  defp aggregated?(_action, _context), do: false
+
+  defp already_sent(action) do
+    %{type: action.type, status: :skipped, detail: "already sent for this event"}
   end
 
   @doc """
@@ -56,7 +98,9 @@ defmodule HllConditionalActions.Engine.Executor do
   @spec preview([Action.t()], Context.t()) :: [result()]
   def preview(actions, %Context{} = context) do
     Enum.map(actions, fn action ->
-      %{type: action.type, status: :simulated, detail: detail(action, context)}
+      if already_sent?(action, context),
+        do: already_sent(action),
+        else: %{type: action.type, status: :simulated, detail: detail(action, context)}
     end)
   end
 
@@ -230,17 +274,125 @@ defmodule HllConditionalActions.Engine.Executor do
     with_player(context, &Crcon.unwatch_player(context.server, &1))
   end
 
+  defp execute(%Action{type: :open_ticket} = action, context) do
+    with_player(context, fn player_id ->
+      rule =
+        context.extra[:rule_id] && HllConditionalActions.Repo.get(Rule, context.extra[:rule_id])
+
+      result =
+        Tickets.open_from_rule(
+          context.server,
+          %{player_id: player_id, player_name: context.player_name},
+          note: text(action, :note, context),
+          priority: Ticket.parse_priority(Action.param(action, :priority)),
+          rule_id: rule && rule.id,
+          rule_name: rule && rule.name
+        )
+
+      case result do
+        {kind, _ticket} when kind in [:opened, :added] -> :ok
+        {:error, reason} -> {:error, inspect(reason)}
+      end
+    end)
+  end
+
   # ── Outbound notification ──────────────────────────────────────────────────
 
   defp execute(%Action{type: :send_discord_webhook} = action, context) do
-    with {:ok, _job} <-
-           DeliverWebhook.enqueue(
-             Action.param(action, :webhook_url),
-             text(action, :message, context)
-           ) do
-      {:ok, :queued}
+    render = discord_render(context)
+
+    if aggregated?(action, context),
+      do: collect(action, context, render),
+      else: enqueue(action, context, render, Message.build(action.parameters, render))
+  end
+
+  defp enqueue(action, context, render, payload) do
+    if Message.empty?(payload) do
+      {:skip, "the Discord message came out empty"}
+    else
+      options = delivery_options(action, context, render)
+
+      with {:ok, _job} <-
+             DeliverWebhook.enqueue(Action.param(action, :webhook_id), payload, options) do
+        {:ok, :queued}
+      end
     end
   end
+
+  @doc """
+  Posts the Discord messages an aggregated sweep collected, one per rule and
+  action.
+  """
+  @spec flush_batch(pid()) :: :ok
+  def flush_batch(batch) do
+    batch
+    |> Agent.get(& &1)
+    |> Enum.each(fn {_key, entry} ->
+      payload = Message.build(entry.params, entry.render, lines: Enum.reverse(entry.lines))
+
+      unless Message.empty?(payload) do
+        DeliverWebhook.enqueue(entry.webhook_id, payload, entry.options)
+      end
+    end)
+  end
+
+  # The first player of the sweep supplies everything but the lines, so the
+  # header reads the same as a one-off message would.
+  defp collect(action, context, render) do
+    key = {context.extra[:rule_id], context.extra[:action_index]}
+    line = render.(Action.param(action, :message))
+
+    Agent.update(context.extra.discord_batch, fn batch ->
+      Map.update(
+        batch,
+        key,
+        %{
+          params: action.parameters,
+          render: render,
+          webhook_id: Action.param(action, :webhook_id),
+          options: delivery_options(action, context, render),
+          lines: [line]
+        },
+        &%{&1 | lines: [line | &1.lines]}
+      )
+    end)
+
+    {:ok, :collected}
+  end
+
+  defp delivery_options(action, context, render) do
+    [
+      edit_key: edit_key(action, context, render),
+      thread_id: blank_to_nil(Action.param(action, :thread_id)),
+      thread_name: blank_to_nil(render.(Action.param(action, :thread_name))),
+      execution_id: context.extra[:execution_id],
+      action_index: context.extra[:action_index]
+    ]
+  end
+
+  # One message per rule and server unless the rule says otherwise, so two
+  # servers never overwrite each other's scoreboard.
+  defp edit_key(action, context, render) do
+    if Action.param(action, :mode) == "edit" do
+      custom = blank_to_nil(render.(Action.param(action, :edit_key)))
+      base = "rule:#{context.extra[:rule_id]}:server:#{context.server.id}"
+      if custom, do: base <> ":" <> String.slice(custom, 0, 120), else: base
+    end
+  end
+
+  # Values from players are escaped so their names cannot inject markdown;
+  # the author's own markdown around the placeholders is untouched.
+  defp discord_render(context) do
+    fn template -> Template.render(template, context, escape: &Message.escape_markdown/1) end
+  end
+
+  defp blank_to_nil(value) when is_binary(value) do
+    if String.trim(value) == "", do: nil, else: String.trim(value)
+  end
+
+  defp blank_to_nil(_value), do: nil
+
+  defp truthy?(value), do: value in [true, "true", "on", "1"]
 
   # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -282,6 +434,8 @@ defmodule HllConditionalActions.Engine.Executor do
 
   @reason_actions [:punish_player, :kick_player, :perma_ban_player, :add_to_watchlist]
 
+  defp detail(%Action{type: :open_ticket} = action, context), do: text(action, :note, context)
+
   defp detail(%Action{type: type} = action, context) do
     case type do
       type when type in @message_actions ->
@@ -289,6 +443,9 @@ defmodule HllConditionalActions.Engine.Executor do
 
       type when type in @reason_actions ->
         text(action, :reason, context)
+
+      :send_discord_webhook ->
+        action.parameters |> Message.build(discord_render(context)) |> Message.summary()
 
       :temp_ban_player ->
         "#{integer(action, :duration_hours, 2)}h - #{text(action, :reason, context)}"

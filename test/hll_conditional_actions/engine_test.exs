@@ -41,6 +41,29 @@ defmodule HllConditionalActions.EngineTest do
       assert detail == "Nice, Chris!"
     end
 
+    test "records what each condition read, for the history", %{server: server} do
+      rule =
+        rule_fixture(%{conditions: [%{field: :kills, operator: :greater_than, value: "5"}]})
+
+      assert {:ok, execution} = Engine.run_rule(rule, context(server))
+
+      assert %{
+               "logical_operator" => "and",
+               "conditions" => [
+                 %{
+                   "field" => "kills",
+                   "operator" => "greater_than",
+                   "expected" => "5",
+                   "actual" => 10,
+                   "result" => true
+                 }
+               ],
+               "duration_ms" => duration
+             } = execution.trace
+
+      assert is_integer(duration)
+    end
+
     test "skips silently when the conditions do not hold", %{server: server} do
       rule =
         rule_fixture(%{conditions: [%{field: :kills, operator: :greater_than, value: "500"}]})

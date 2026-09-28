@@ -33,6 +33,9 @@ config :hll_conditional_actions, :bootstrap_on_boot, false
 # tests drive it directly instead.
 config :hll_conditional_actions, :engine_enabled, false
 
+# Samples are kept in memory only; tests exercise SavedEvents directly.
+config :hll_conditional_actions, :persist_samples, false
+
 # No test may reach GitHub. The update checker is not started, and the tests
 # that cover it call the fetch directly with `Req.Test` answering.
 config :hll_conditional_actions, :updates_enabled, false
@@ -40,6 +43,14 @@ config :hll_conditional_actions, :updates_enabled, false
 config :hll_conditional_actions, :updates_req_options,
   plug: {Req.Test, HllConditionalActions.Updates},
   retry: false
+
+# The legacy webhook migration runs outside the Ecto sandbox; its tests call
+# it directly.
+config :hll_conditional_actions, :adopt_legacy_webhooks, false
+
+# No test may reach Discord either.
+config :hll_conditional_actions, :discord_req_options,
+  plug: {Req.Test, HllConditionalActions.Discord}
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

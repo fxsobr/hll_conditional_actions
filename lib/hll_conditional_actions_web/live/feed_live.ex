@@ -20,8 +20,9 @@ defmodule HllConditionalActionsWeb.FeedLive do
   @limit 300
 
   @impl Phoenix.LiveView
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     servers = Servers.list_servers_for(socket.assigns[:current_user])
+    scope = Enum.find(servers, &(to_string(&1.id) == params["server_id"]))
 
     if connected?(socket), do: Enum.each(servers, &LogStream.subscribe(&1.id))
 
@@ -31,7 +32,8 @@ defmodule HllConditionalActionsWeb.FeedLive do
      |> assign(:servers, Map.new(servers, &{&1.id, &1}))
      |> assign(:paused?, false)
      |> assign(:type_filter, nil)
-     |> assign(:server_filter, nil)
+     |> assign(:scope, scope)
+     |> assign(:server_filter, scope && to_string(scope.id))
      |> assign(:count, 0)
      |> stream(:events, [], limit: @limit)}
   end
@@ -49,7 +51,13 @@ defmodule HllConditionalActionsWeb.FeedLive do
     {:noreply,
      socket
      |> assign(:type_filter, blank_to_nil(params["type"]))
-     |> assign(:server_filter, blank_to_nil(params["server_id"]))}
+     |> assign(
+       :server_filter,
+       if(socket.assigns.scope,
+         do: to_string(socket.assigns.scope.id),
+         else: blank_to_nil(params["server_id"])
+       )
+     )}
   end
 
   @impl Phoenix.LiveView
@@ -137,6 +145,7 @@ defmodule HllConditionalActionsWeb.FeedLive do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={gettext("Live feed")}
       page_subtitle={gettext("Events arriving from CRCON, as they happen")}
     >
@@ -164,6 +173,7 @@ defmodule HllConditionalActionsWeb.FeedLive do
 
       <.filter_bar id="feed-filters" on_change="filter">
         <.filter_select
+          :if={is_nil(@scope)}
           name="server_id"
           label={gettext("Server")}
           value={@server_filter}

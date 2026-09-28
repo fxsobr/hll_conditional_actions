@@ -15,7 +15,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
   use HllConditionalActionsWeb, :live_view
 
   # Enforced server side on mount; the sidebar merely hides the link.
-  on_mount {HllConditionalActionsWeb.UserAuth, {:ensure_permission, :view_executions}}
+  on_mount {HllConditionalActionsWeb.UserAuth, {:ensure_permission, :view_stats}}
 
   import HllConditionalActionsWeb.Overview
 
@@ -76,6 +76,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
     |> assign(:executions, executions)
     |> assign(:stats, Rules.execution_stats(player_id: player_id))
     |> assign(:rules, Rules.rules_for_player(player_id))
+    |> assign(:achievements, HllConditionalActions.Progression.player_achievements(player_id))
     |> assign(:player_name, player_name(executions))
     |> assign(:page_title, player_name(executions) || player_id)
   end
@@ -176,6 +177,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={@player_name || @player_id}
       page_subtitle={gettext("What this app has done to this player, and why")}
       back={~p"/executions"}
@@ -251,30 +253,61 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
             </.card>
           </div>
 
-          <.card title={gettext("Which rules hit them")} icon="hero-bolt">
-            <ul class="divide-y divide-base-300">
-              <li :for={row <- @rules} class="flex items-center justify-between gap-3 py-2">
-                <div class="min-w-0">
-                  <.link
-                    navigate={~p"/rules/#{row.rule_id}"}
-                    class="truncate text-body-small font-medium hover:text-primary hover:underline"
-                  >
-                    {row.rule_name}
-                  </.link>
-
+          <div class="space-y-4">
+            <.card title={gettext("Achievements")} icon="hero-trophy" id="player-achievements">
+              <p :if={@achievements == []} class="py-2 text-sm text-muted">
+                {gettext("None unlocked yet.")}
+              </p>
+              <ul :if={@achievements != []} class="grid gap-2">
+                <li
+                  :for={unlock <- @achievements}
+                  class="achievement-card"
+                  data-tier={unlock.achievement.tier}
+                >
+                  <span class="achievement-medal size-9!">
+                    <.icon name={unlock.achievement.icon} class="size-4" />
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium">{unlock.achievement.name}</p>
+                    <p class="text-xs text-muted">
+                      {Labels.tier(unlock.achievement.tier)}
+                      <span :if={unlock.simulated}>· {gettext("simulated")}</span>
+                    </p>
+                  </div>
                   <.local_time
-                    id={"player-rule-#{row.rule_id}"}
-                    at={row.last_executed_at}
-                    class="block text-label-small text-muted"
+                    id={"player-unlock-#{unlock.id}"}
+                    at={unlock.unlocked_at}
+                    class="shrink-0 text-xs text-muted"
                   />
-                </div>
+                </li>
+              </ul>
+            </.card>
 
-                <.tone_badge tone="ghost">
-                  {ngettext("%{count} time", "%{count} times", row.count, count: row.count)}
-                </.tone_badge>
-              </li>
-            </ul>
-          </.card>
+            <.card title={gettext("Which rules hit them")} icon="hero-bolt">
+              <ul class="divide-y divide-base-300">
+                <li :for={row <- @rules} class="flex items-center justify-between gap-3 py-2">
+                  <div class="min-w-0">
+                    <.link
+                      navigate={~p"/rules/#{row.rule_id}"}
+                      class="truncate text-body-small font-medium hover:text-primary hover:underline"
+                    >
+                      {row.rule_name}
+                    </.link>
+
+                    <.local_time
+                      id={"player-rule-#{row.rule_id}"}
+                      at={row.last_executed_at}
+                      class="block text-label-small text-muted"
+                    />
+                  </div>
+
+                  <.tone_badge tone="ghost">
+                    {ngettext("%{count} time", "%{count} times", row.count, count: row.count)}
+                  </.tone_badge>
+                </li>
+              </ul>
+            </.card>
+          </div>
         </div>
 
         <div :if={@tab == "executions"}>

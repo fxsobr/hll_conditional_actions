@@ -118,6 +118,7 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={gettext("Roles")}
       page_subtitle={gettext("What each kind of account is allowed to do")}
     >
@@ -137,7 +138,7 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
           <div class="flex h-full flex-col gap-3 p-4 sm:p-5">
             <div class="flex items-start justify-between gap-2">
               <div class="flex min-w-0 items-center gap-2.5">
-                <div class="flex size-9 shrink-0 items-center justify-center rounded-box bg-base-200 text-subtle">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-field bg-base-200 text-subtle">
                   <.icon name="hero-shield-check" class="size-4" />
                 </div>
 

@@ -177,6 +177,7 @@ defmodule HllConditionalActionsWeb.UserLive.Index do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={gettext("Users")}
       page_subtitle={gettext("Who can sign in, and which servers they administer")}
     >
@@ -191,7 +192,31 @@ defmodule HllConditionalActionsWeb.UserLive.Index do
         />
       </:actions>
 
-      <.card padded={false}>
+      <div id="user-kpis" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <.stat icon="hero-users" label={gettext("Accounts")} value={length(@users)} />
+        <.stat
+          icon="hero-check-circle"
+          tone="success"
+          label={gettext("Active")}
+          value={Enum.count(@users, & &1.active)}
+          hint={gettext("allowed to sign in")}
+        />
+        <.stat
+          icon="hero-shield-check"
+          tone={if Enum.all?(@users, & &1.totp_confirmed_at), do: "success", else: "warning"}
+          label={gettext("Two factor")}
+          value={Enum.count(@users, & &1.totp_confirmed_at)}
+          hint={gettext("accounts with a second factor")}
+        />
+        <.stat
+          icon="hero-server-stack"
+          label={gettext("Restricted")}
+          value={Enum.count(@users, &(&1.servers != []))}
+          hint={gettext("limited to some servers")}
+        />
+      </div>
+
+      <.card title={gettext("Accounts")} icon="hero-users" padded={false}>
         <.data_table id="users" rows={@users}>
           <:col :let={user} label={gettext("User")}>
             <div class="flex flex-wrap items-center gap-1.5">

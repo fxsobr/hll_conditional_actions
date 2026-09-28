@@ -18,6 +18,18 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
   end
 
   describe "the builder" do
+    # A rule needs a server to run on; without one the builder sends the
+    # admin to connect it first (tested on its own below).
+    setup do
+      %{server: server_fixture()}
+    end
+
+    test "sends somebody with no server to connect one first", %{conn: conn, server: server} do
+      HllConditionalActions.Servers.delete_server(server)
+
+      assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/rules/new")
+    end
+
     test "offers the condition fields the trigger can actually provide", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/rules/new")
 
@@ -77,6 +89,47 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
 
       assert text =~ "starts with"
       refute text =~ "is greater than"
+    end
+
+    test "replays the rule as typed against recent events", %{conn: conn} do
+      server = server_fixture()
+
+      for kills <- [2, 12, 40] do
+        server
+        |> HllConditionalActions.Engine.Context.build(:player_connected,
+          player: player(%{"kills" => kills})
+        )
+        |> HllConditionalActions.Engine.Samples.record()
+      end
+
+      {:ok, view, _html} = live(conn, ~p"/rules/new?server_id=#{server.id}")
+
+      # The value input only appears once the field is not "always".
+      view
+      |> form("#rule-form",
+        rule: %{server_id: server.id, conditions: %{"0" => %{field: "kills"}}}
+      )
+      |> render_change()
+
+      view
+      |> form("#rule-form",
+        rule: %{conditions: %{"0" => %{operator: "greater_than", value: "10"}}}
+      )
+      |> render_change()
+
+      html = view |> element("#rule-replay") |> render()
+      assert html =~ "Of the last 3"
+      assert html =~ "2 would take Then"
+
+      # Live from then on: the next edit re-judges the same events.
+      html =
+        view
+        |> form("#rule-form",
+          rule: %{conditions: %{"0" => %{field: "kills", operator: "greater_than", value: "30"}}}
+        )
+        |> render_change()
+
+      assert html =~ "1 would take Then"
     end
 
     test "adding a condition keeps the ones already there", %{conn: conn} do
@@ -159,9 +212,9 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
 
       view
       |> form("#rule-form", rule: %{enabled: false, simulation: true})
-      |> render_submit()
+      |> render_submit(%{"intent" => "publish"})
 
-      assert_redirect(view, ~p"/rules")
+      assert_redirect(view, ~p"/rules/#{rule}")
 
       updated = Rules.get_rule!(rule.id)
       refute updated.enabled
@@ -191,9 +244,9 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
 
       view
       |> form("#rule-form", rule: %{name: "After", priority: "7"})
-      |> render_submit()
+      |> render_submit(%{"intent" => "publish"})
 
-      assert_redirect(view, ~p"/rules")
+      assert_redirect(view, ~p"/rules/#{rule}")
 
       updated = Rules.get_rule!(rule.id)
       assert updated.name == "After"

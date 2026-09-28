@@ -87,7 +87,7 @@ defmodule HllConditionalActions.Crcon.PermissionsTest do
       unmapped =
         Enum.reject(
           Catalog.action_types(),
-          &(&1 == :send_discord_webhook or Permissions.for_action(&1))
+          &(&1 in [:send_discord_webhook, :open_ticket] or Permissions.for_action(&1))
         )
 
       assert unmapped == [],
@@ -123,8 +123,8 @@ defmodule HllConditionalActions.Crcon.PermissionsTest do
         Catalog.action_types()
         |> Enum.reject(&Permissions.permission_for/1)
 
-      # Discord is the one action that reaches somewhere other than CRCON.
-      assert unmapped == [:send_discord_webhook]
+      # Discord and tickets are the actions that never reach CRCON.
+      assert Enum.sort(unmapped) == [:open_ticket, :send_discord_webhook]
     end
   end
 end

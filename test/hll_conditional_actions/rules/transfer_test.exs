@@ -50,6 +50,35 @@ defmodule HllConditionalActions.Rules.TransferTest do
       assert attrs["server_id"] == nil
     end
 
+    test "carries the group and the escalation window" do
+      _rule = rule_fixture(%{group: "Seeding", escalation_window_seconds: 900})
+
+      json = Rules.export_rules(Rules.list_rules())
+      assert {:ok, [attrs]} = Rules.preview_import(json)
+      assert attrs["group"] == "Seeding"
+      assert attrs["escalation_window_seconds"] == 900
+    end
+
+    test "a file from before groups and escalation imports with the defaults" do
+      json =
+        Jason.encode!(%{
+          "rules" => [
+            %{
+              "name" => "Old rule",
+              "trigger_event" => "player_connected",
+              "conditions" => [
+                %{"field" => "player_level", "operator" => "less_than", "value" => "10"}
+              ],
+              "actions" => [%{"type" => "message_player", "parameters" => %{"message" => "Hi"}}]
+            }
+          ]
+        })
+
+      assert {:ok, [rule]} = Rules.import_rules(json)
+      assert rule.group == nil
+      assert rule.escalation_window_seconds == 0
+    end
+
     test "carries the game, since a Vietnam rule is not valid for WW2" do
       _rule = rule_fixture(%{game: :hllv})
 

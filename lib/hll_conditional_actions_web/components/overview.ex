@@ -1,6 +1,6 @@
 defmodule HllConditionalActionsWeb.Overview do
   @moduledoc """
-  The "360 view" building blocks, ported from the mono-repo's health
+  The "360 view" building blocks, ported from the rules repos's health
   `patient-360` components (`Patient360Header`, `Patient360Tabs`,
   `ClinicalKpiCards`, `ClinicalTimelineCard`).
 
@@ -70,7 +70,7 @@ defmodule HllConditionalActionsWeb.Overview do
           </.link>
 
           <div class={[
-            "flex size-10 shrink-0 items-center justify-center rounded-full",
+            "flex size-11 shrink-0 items-center justify-center rounded-field",
             avatar_tone(@tone)
           ]}>
             <.icon :if={@icon} name={@icon} class="size-5" />
@@ -81,7 +81,7 @@ defmodule HllConditionalActionsWeb.Overview do
 
           <div class="flex min-w-0 flex-col gap-1">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="truncate text-title-large">{@title}</h2>
+              <h2 class="truncate text-2xl font-semibold tracking-tight">{@title}</h2>
 
               <.tone_badge
                 :for={badge <- @badges}
@@ -130,7 +130,7 @@ defmodule HllConditionalActionsWeb.Overview do
     <nav
       id={@id}
       aria-label={@label}
-      class="-mx-4 flex items-end gap-0 overflow-x-auto border-b border-base-300 px-4 sm:-mx-6 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      class="flex max-w-full gap-1 overflow-x-auto rounded-box bg-base-100 p-1 shadow-figma-card [scrollbar-width:none] sm:w-fit [&::-webkit-scrollbar]:hidden"
     >
       <button
         :for={item <- @items}
@@ -139,10 +139,10 @@ defmodule HllConditionalActionsWeb.Overview do
         phx-value-tab={item.id}
         aria-pressed={to_string(item.id == @active)}
         class={[
-          "-mb-px inline-flex h-12 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 px-3.5 text-label-medium transition-colors",
+          "inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-field px-3.5 text-sm transition-colors",
           if(item.id == @active,
-            do: "border-primary font-semibold text-base-content",
-            else: "border-transparent text-muted hover:text-base-content"
+            do: "bg-primary font-medium text-primary-content",
+            else: "text-subtle hover:bg-base-200 hover:text-base-content"
           )
         ]}
       >
@@ -152,7 +152,7 @@ defmodule HllConditionalActionsWeb.Overview do
           class={[
             "rounded-pill px-1.5 py-0.5 text-label-small tabular-nums",
             if(item.id == @active,
-              do: "bg-primary/10 text-primary",
+              do: "bg-primary-content/20 text-primary-content",
               else: "bg-base-200 text-muted"
             )
           ]}
@@ -192,7 +192,7 @@ defmodule HllConditionalActionsWeb.Overview do
       type="button"
       phx-click={@on_select}
       phx-value-tab={@card.event}
-      class="cursor-pointer rounded-box bg-base-100 p-4 text-left shadow-figma-card transition-shadow hover:shadow-figma-card-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      class="cursor-pointer rounded-box bg-base-100 p-4 text-left shadow-figma-card transition-shadow hover:shadow-figma-card-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-5"
     >
       <.kpi_body card={@card} linked />
     </button>
@@ -201,7 +201,7 @@ defmodule HllConditionalActionsWeb.Overview do
 
   defp kpi_card(assigns) do
     ~H"""
-    <div class="rounded-box bg-base-100 p-4 shadow-figma-card">
+    <div class="rounded-box bg-base-100 p-4 shadow-figma-card sm:p-5">
       <.kpi_body card={@card} />
     </div>
     """
@@ -212,30 +212,34 @@ defmodule HllConditionalActionsWeb.Overview do
 
   defp kpi_body(assigns) do
     ~H"""
-    <div class="flex items-start gap-3">
-      <div class={[
-        "flex size-10 shrink-0 items-center justify-center rounded-box",
-        kpi_tone(@card[:tone])
-      ]}>
-        <.icon name={@card.icon} class="size-5" />
-      </div>
+    <div class="flex flex-col gap-3">
+      <p class="overview-card-title border-b border-base-300 pb-3">
+        <span class={[
+          "flex size-6 items-center justify-center rounded-selector",
+          kpi_tone(@card[:tone])
+        ]}>
+          <.icon name={@card.icon} class="size-3.5" />
+        </span>
+        <span class="truncate">{@card.label}</span>
+      </p>
 
-      <div class="min-w-0 flex-1">
-        <p class="flex items-center gap-1 truncate text-label-medium text-muted">
-          {@card.label}
-          <.icon :if={@linked} name="hero-arrow-up-right" class="size-3 shrink-0" />
-        </p>
-
-        <p class="truncate text-headline-large tabular-nums">
+      <div class="flex items-end justify-between gap-2">
+        <p class="truncate text-3xl font-semibold tracking-tight tabular-nums">
           <%= if @card.value == :loading do %>
-            <.skeleton_block class="h-7 w-16" />
+            <.skeleton_block class="h-8 w-16" />
           <% else %>
             {@card.value}
           <% end %>
         </p>
-
-        <p :if={@card[:hint]} class="truncate text-label-small text-muted">{@card.hint}</p>
+        <span
+          :if={@linked}
+          class="flex size-8 shrink-0 items-center justify-center rounded-field border border-base-300 text-muted"
+        >
+          <.icon name="hero-arrow-up-right" class="size-4" />
+        </span>
       </div>
+
+      <p :if={@card[:hint]} class="truncate text-xs text-muted">{@card.hint}</p>
     </div>
     """
   end
@@ -246,6 +250,57 @@ defmodule HllConditionalActionsWeb.Overview do
   defp kpi_tone("warning"), do: "bg-gradient-warning text-warning"
   defp kpi_tone("error"), do: "bg-gradient-destructive text-error"
   defp kpi_tone(_neutral), do: "bg-base-200 text-muted"
+
+  # ── Ranked lists ────────────────────────────────────────────────────────────
+
+  @doc """
+  A ranked list with podium medals: `rows` are `%{name, team, value, note}`,
+  best first. Shared by the live leaderboard and the match report.
+  """
+  attr :id, :string, required: true
+  attr :title, :string, required: true
+  attr :placeholder, :string, default: nil
+  attr :rows, :list, required: true
+
+  # One category: the podium in the colours of the medals, then the rest.
+  def rank_board(assigns) do
+    ~H"""
+    <section id={@id} class="rounded-box border border-base-300 p-3">
+      <header class="mb-2 flex items-center justify-between gap-2">
+        <h3 class="text-sm font-medium">{@title}</h3>
+        <code
+          :if={@placeholder}
+          class="rounded-selector bg-base-200 px-1.5 py-0.5 text-[0.6875rem] text-muted"
+        >
+          {@placeholder}
+        </code>
+      </header>
+
+      <p :if={@rows == []} class="py-4 text-center text-xs text-muted">
+        {gettext("Nobody ranked yet")}
+      </p>
+
+      <ol class="space-y-1">
+        <li
+          :for={{row, index} <- Enum.with_index(@rows, 1)}
+          class="flex items-center gap-2 rounded-field px-1.5 py-1 text-sm odd:bg-base-200/50"
+        >
+          <span class={["leaderboard-medal", "leaderboard-medal-#{min(index, 4)}"]}>{index}</span>
+          <span class={["size-1.5 shrink-0 rounded-full", team_dot(row.team)]}></span>
+          <span class="min-w-0 flex-1 truncate">
+            {row.name}
+            <span :if={row.note} class="text-xs text-muted">· {row.note}</span>
+          </span>
+          <span class="font-mono text-xs tabular-nums">{row.value}</span>
+        </li>
+      </ol>
+    </section>
+    """
+  end
+
+  defp team_dot("allies"), do: "bg-info"
+  defp team_dot("axis"), do: "bg-error"
+  defp team_dot(_team), do: "bg-base-300"
 
   # ── Activity timeline ──────────────────────────────────────────────────────
 

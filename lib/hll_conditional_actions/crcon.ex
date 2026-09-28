@@ -15,6 +15,7 @@ defmodule HllConditionalActions.Crcon do
 
   alias HllConditionalActions.Crcon.Client
   alias HllConditionalActions.Crcon.Error
+  alias HllConditionalActions.Crcon.GameText
   alias HllConditionalActions.Crcon.Permissions
 
   @type conn :: Client.connection()
@@ -57,6 +58,25 @@ defmodule HllConditionalActions.Crcon do
   end
 
   @doc """
+  Past matches of the server, newest first, without their player stats.
+  """
+  @spec get_scoreboard_maps(conn(), keyword()) :: result()
+  def get_scoreboard_maps(conn, opts \\ []) do
+    Client.request(conn, "get_scoreboard_maps", %{
+      page: Keyword.get(opts, :page, 1),
+      limit: Keyword.get(opts, :limit, 20)
+    })
+  end
+
+  @doc """
+  One past match with every player's stats.
+  """
+  @spec get_map_scoreboard(conn(), term()) :: result()
+  def get_map_scoreboard(conn, map_id) do
+    Client.request(conn, "get_map_scoreboard", %{map_id: map_id})
+  end
+
+  @doc """
   Returns the public server info (name, player slots, current map, score).
 
   Useful as a connectivity check that does not require elevated permissions.
@@ -95,6 +115,9 @@ defmodule HllConditionalActions.Crcon do
 
   # ── Player actions ─────────────────────────────────────────────────────────
 
+  # Everything below that puts text on a player's screen cleans it first:
+  # the game cannot draw emoji or most symbols (see `GameText`).
+
   @doc """
   Sends a private in-game message to one player.
   """
@@ -102,7 +125,7 @@ defmodule HllConditionalActions.Crcon do
   def message_player(conn, player_id, message, opts \\ []) do
     Client.request(conn, "message_player", %{
       player_id: player_id,
-      message: message,
+      message: GameText.clean(message),
       save_message: Keyword.get(opts, :save_message, false)
     })
   end
@@ -112,7 +135,7 @@ defmodule HllConditionalActions.Crcon do
   """
   @spec message_all_players(conn(), String.t()) :: result()
   def message_all_players(conn, message) do
-    Client.request(conn, "message_all_players", %{message: message})
+    Client.request(conn, "message_all_players", %{message: GameText.clean(message)})
   end
 
   @doc """
@@ -120,7 +143,11 @@ defmodule HllConditionalActions.Crcon do
   """
   @spec punish(conn(), String.t(), String.t(), keyword()) :: result()
   def punish(conn, player_id, reason, opts \\ []) do
-    Client.request(conn, "punish", params(%{player_id: player_id, reason: reason}, opts))
+    Client.request(
+      conn,
+      "punish",
+      params(%{player_id: player_id, reason: GameText.clean(reason)}, opts)
+    )
   end
 
   @doc """
@@ -128,7 +155,11 @@ defmodule HllConditionalActions.Crcon do
   """
   @spec kick(conn(), String.t(), String.t(), keyword()) :: result()
   def kick(conn, player_id, reason, opts \\ []) do
-    Client.request(conn, "kick", params(%{player_id: player_id, reason: reason}, opts))
+    Client.request(
+      conn,
+      "kick",
+      params(%{player_id: player_id, reason: GameText.clean(reason)}, opts)
+    )
   end
 
   @doc """
@@ -140,7 +171,7 @@ defmodule HllConditionalActions.Crcon do
       conn,
       "temp_ban",
       params(
-        %{player_id: player_id, duration_hours: duration_hours, reason: reason},
+        %{player_id: player_id, duration_hours: duration_hours, reason: GameText.clean(reason)},
         opts
       )
     )
@@ -151,7 +182,11 @@ defmodule HllConditionalActions.Crcon do
   """
   @spec perma_ban(conn(), String.t(), String.t(), keyword()) :: result()
   def perma_ban(conn, player_id, reason, opts \\ []) do
-    Client.request(conn, "perma_ban", params(%{player_id: player_id, reason: reason}, opts))
+    Client.request(
+      conn,
+      "perma_ban",
+      params(%{player_id: player_id, reason: GameText.clean(reason)}, opts)
+    )
   end
 
   @doc """
@@ -267,7 +302,7 @@ defmodule HllConditionalActions.Crcon do
   """
   @spec set_broadcast(conn(), String.t()) :: result()
   def set_broadcast(conn, message) do
-    Client.request(conn, "set_broadcast", %{message: message})
+    Client.request(conn, "set_broadcast", %{message: GameText.clean(message)})
   end
 
   @doc """
@@ -275,7 +310,7 @@ defmodule HllConditionalActions.Crcon do
   """
   @spec set_welcome_message(conn(), String.t()) :: result()
   def set_welcome_message(conn, message) do
-    Client.request(conn, "set_welcome_message", %{message: message})
+    Client.request(conn, "set_welcome_message", %{message: GameText.clean(message)})
   end
 
   # ── Helpers ────────────────────────────────────────────────────────────────

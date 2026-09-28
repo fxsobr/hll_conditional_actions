@@ -46,16 +46,21 @@ defmodule HllConditionalActionsWeb.Ui do
     ~H"""
     <section class="rounded-box bg-base-100 shadow-figma-card" {@rest}>
       <div class={["flex flex-col gap-3", if(@padded, do: "p-4 sm:p-5", else: "p-0"), @class]}>
+        <%!-- The caption row of the overview: small uppercase title with its
+              icon, a hairline under it, controls on the right. --%>
         <div
           :if={@title || @action != []}
-          class={["flex flex-wrap items-center justify-between gap-2", not @padded && "px-4 pt-4"]}
+          class={[
+            "flex flex-wrap items-center justify-between gap-2 border-b border-base-300 pb-3",
+            not @padded && "px-4 pt-4 sm:px-5"
+          ]}
         >
           <div class="min-w-0">
-            <h2 :if={@title} class="flex items-center gap-2 text-title-medium">
-              <.icon :if={@icon} name={@icon} class="size-4 shrink-0 text-primary" /> {@title}
+            <h2 :if={@title} class="overview-card-title">
+              <.icon :if={@icon} name={@icon} class="size-4 shrink-0" /> {@title}
             </h2>
 
-            <p :if={@subtitle} class="mt-0.5 text-label-small text-muted">{@subtitle}</p>
+            <p :if={@subtitle} class="mt-1 text-xs text-muted">{@subtitle}</p>
           </div>
 
           <div :if={@action != []} class="flex shrink-0 items-center gap-2">
@@ -84,34 +89,28 @@ defmodule HllConditionalActionsWeb.Ui do
 
   def stat(assigns) do
     ~H"""
-    <div class="rounded-box bg-base-100 p-4 shadow-figma-card transition-shadow hover:shadow-figma-card-medium">
-      <div class="flex items-start gap-3">
-        <div class={[
-          "flex size-10 shrink-0 items-center justify-center rounded-box",
-          icon_box(@tone)
-        ]}>
-          <.icon name={@icon} class="size-5" />
-        </div>
+    <div class="flex flex-col gap-3 rounded-box bg-base-100 p-4 shadow-figma-card sm:p-5">
+      <p class="overview-card-title border-b border-base-300 pb-3">
+        <span class={["flex size-6 items-center justify-center rounded-selector", icon_box(@tone)]}>
+          <.icon name={@icon} class="size-3.5" />
+        </span>
+        <span class="truncate">{@label}</span>
+      </p>
 
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-label-medium text-muted">{@label}</p>
+      <p class="truncate text-3xl font-semibold tracking-tight tabular-nums">
+        <%= if @inner_block != [] do %>
+          {render_slot(@inner_block)}
+        <% else %>
+          {@value}
+        <% end %>
+      </p>
 
-          <p class="truncate text-headline-large tabular-nums">
-            <%= if @inner_block != [] do %>
-              {render_slot(@inner_block)}
-            <% else %>
-              {@value}
-            <% end %>
-          </p>
-
-          <p :if={@hint} class="truncate text-label-small text-muted">{@hint}</p>
-        </div>
-      </div>
+      <p :if={@hint} class="truncate text-xs text-muted">{@hint}</p>
     </div>
     """
   end
 
-  # The VTIX icon box: a tinted gradient square carrying the tone.
+  # The rules icon box: a tinted gradient square carrying the tone.
   defp icon_box("primary"), do: "bg-gradient-primary text-primary"
   defp icon_box("info"), do: "bg-gradient-info text-info"
   defp icon_box("success"), do: "bg-gradient-success text-success"
@@ -136,7 +135,7 @@ defmodule HllConditionalActionsWeb.Ui do
       "flex flex-col items-center gap-2 py-12 text-center",
       @card && "rounded-box bg-base-100 shadow-figma-card"
     ]}>
-      <div class="flex size-12 items-center justify-center rounded-box bg-gradient-primary">
+      <div class="flex size-12 items-center justify-center rounded-field bg-gradient-primary">
         <.icon name={@icon} class="size-6 text-primary" />
       </div>
 
@@ -265,7 +264,7 @@ defmodule HllConditionalActionsWeb.Ui do
     <form
       id={@id}
       phx-change={@on_change}
-      class="flex flex-wrap items-center gap-2 rounded-box border border-base-300 bg-base-100 p-2"
+      class="flex flex-wrap items-center gap-2 rounded-box bg-base-100 p-2 shadow-figma-card"
     >
       <span class="hidden px-1 text-muted sm:inline-flex" aria-hidden="true">
         <.icon name="hero-funnel" class="size-4" />
@@ -495,7 +494,10 @@ defmodule HllConditionalActionsWeb.Ui do
   """
   attr :tone, :string, default: "neutral", values: ~w(neutral error)
   attr :icon, :string, default: nil
-  attr :rest, :global, include: ~w(navigate patch href method phx-click phx-value-id data-confirm)
+
+  attr :rest, :global,
+    include: ~w(navigate patch href method phx-click phx-value-id phx-value-preset data-confirm)
+
   slot :inner_block, required: true
 
   def menu_item(assigns) do
@@ -580,17 +582,41 @@ defmodule HllConditionalActionsWeb.Ui do
   `neutral` off.
   """
   @spec rule_state_tone(map()) :: String.t()
-  def rule_state_tone(%{enabled: false}), do: "neutral"
-  def rule_state_tone(%{simulation: true}), do: "warning"
-  def rule_state_tone(_rule), do: "success"
+  def rule_state_tone(rule) do
+    cond do
+      not rule.enabled -> "neutral"
+      rule_paused?(rule) -> "info"
+      rule.simulation -> "warning"
+      true -> "success"
+    end
+  end
 
-  defp rule_state_icon(%{enabled: false}), do: "hero-pause-circle"
-  defp rule_state_icon(%{simulation: true}), do: "hero-beaker"
-  defp rule_state_icon(_rule), do: "hero-bolt"
+  @doc """
+  Whether a rule (or anything shaped like one) is in a temporary pause now.
+  """
+  @spec rule_paused?(map()) :: boolean()
+  def rule_paused?(%{paused_until: %DateTime{} = until}),
+    do: DateTime.compare(until, DateTime.utc_now()) == :gt
 
-  defp rule_state_label(%{enabled: false}), do: gettext("Off")
-  defp rule_state_label(%{simulation: true}), do: gettext("Simulating")
-  defp rule_state_label(_rule), do: gettext("Live")
+  def rule_paused?(_rule), do: false
+
+  defp rule_state_icon(rule) do
+    case rule_state_tone(rule) do
+      "neutral" -> "hero-pause-circle"
+      "info" -> "hero-clock"
+      "warning" -> "hero-beaker"
+      _live -> "hero-bolt"
+    end
+  end
+
+  defp rule_state_label(rule) do
+    case rule_state_tone(rule) do
+      "neutral" -> gettext("Off")
+      "info" -> gettext("Paused")
+      "warning" -> gettext("Simulating")
+      _live -> gettext("Live")
+    end
+  end
 
   @doc """
   The little status dot that leads list rows; always carries a text label
@@ -743,22 +769,56 @@ defmodule HllConditionalActionsWeb.Ui do
   # ── Artwork ────────────────────────────────────────────────────────────────
 
   @doc """
-  Deterministic Hell Let Loose map artwork for a server, so a server keeps
-  the same banner between visits. Decorative: always render with `alt=""`
+  The picture of the map a server is playing, with its time of day; before
+  the engine has read the game state, one of the game's maps, always the
+  same for a server. Decorative: always render with `alt=""`
   or as a background under a scrim.
   """
-  def server_art(%{id: id}) when is_integer(id) do
-    Enum.at(
-      [
-        "/images/hll/map-carentan.webp",
-        "/images/hll/map-foy.webp",
-        "/images/hll/map-stalingrad.webp"
-      ],
-      rem(id, 3)
-    )
+  @hll_art ~w(carentan-day foy-day stmereeglise-day omahabeach-day utahbeach-day
+              purpleheartlane-day hurtgenforest-day kursk-day stalingrad-day remagen-day
+              elalamein-day driel-day elsenbornridge-day mortain-day hill400-day)
+  @hllv_art ~w(wdeva-day wdevb-day wdevc-day wdevd-day wdeve-day wdevf-day)
+
+  def server_art(%{id: id} = server) when is_integer(id) do
+    case HllConditionalActions.Engine.Runner.current_map(id) do
+      nil -> fallback_art(server)
+      map -> HllConditionalActionsWeb.MapArt.url(Map.get(server, :game), map)
+    end
   end
 
   def server_art(_server), do: "/images/hll/banner.webp"
+
+  # Until the engine reads the game state: one of the game's maps, always
+  # the same for a server.
+  defp fallback_art(%{id: id} = server) do
+    {game, pictures} =
+      if Map.get(server, :game) == :hllv, do: {"hllv", @hllv_art}, else: {"hll", @hll_art}
+
+    "/images/maps/#{game}/#{Enum.at(pictures, rem(id, length(pictures)))}.webp"
+  end
+
+  @doc """
+  The app's mark: a shield with a bolt, the same drawing as the favicon.
+  Decorative; the product name always sits next to it.
+  """
+  attr :class, :any, default: "size-9"
+
+  def logo_mark(assigns) do
+    ~H"""
+    <svg viewBox="0 0 64 64" fill="none" class={@class} aria-hidden="true">
+      <rect width="64" height="64" rx="16" fill="#0f5132" />
+      <path
+        d="M32 9 50 16v14c0 12.2-7.6 21.4-18 25-10.4-3.6-18-12.8-18-25V16l18-7Z"
+        fill="#10b981"
+        fill-opacity=".18"
+        stroke="#34d399"
+        stroke-width="2.5"
+        stroke-linejoin="round"
+      />
+      <path d="M35.5 17 24 35h8.5l-3 12L41 29h-8.5l3-12Z" fill="#ecfdf5" />
+    </svg>
+    """
+  end
 
   # ── Paging ─────────────────────────────────────────────────────────────────
 

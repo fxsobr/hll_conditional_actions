@@ -31,10 +31,14 @@ defmodule HllConditionalActions.Engine.Runner do
 
   use GenServer, restart: :transient
 
+  require Logger
+
   alias HllConditionalActions.Crcon.Events
   alias HllConditionalActions.Crcon.LogStream
   alias HllConditionalActions.Engine
   alias HllConditionalActions.Engine.Snapshot
+  alias HllConditionalActions.Features
+  alias HllConditionalActions.Progression
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Rules.Rule
 
@@ -48,7 +52,14 @@ defmodule HllConditionalActions.Engine.Runner do
 
   defmodule State do
     @moduledoc false
-    defstruct [:server, rules: [], snapshot: nil, periodic_last_run: %{}]
+    defstruct [
+      :server,
+      :progression_at,
+      rules: [],
+      snapshot: nil,
+      periodic_last_run: %{},
+      features: MapSet.new()
+    ]
   end
 
   @doc """
@@ -94,7 +105,8 @@ defmodule HllConditionalActions.Engine.Runner do
     Rules.subscribe()
     schedule_tick()
 
-    {:ok, %State{server: server, rules: Rules.list_active_rules_for(server)}}
+    features = Features.installed(server.id)
+    {:ok, %State{server: server, features: features, rules: active_rules(server, features)}}
   end
 
   @impl GenServer
@@ -109,12 +121,12 @@ defmodule HllConditionalActions.Engine.Runner do
 
   @impl GenServer
   def handle_cast({:update_server, server}, state) do
-    {:noreply, %{state | server: server, rules: Rules.list_active_rules_for(server)}}
+    {:noreply, %{state | server: server, rules: active_rules(server, state.features)}}
   end
 
   @impl GenServer
   def handle_info({:crcon_event, event}, state) do
-    {:noreply, handle_event(event, state)}
+    {:noreply, guarded(state, "event #{event.type}", &handle_event(event, &1))}
   end
 
   def handle_info({:crcon_stream_status, _server_id, _status}, state), do: {:noreply, state}
@@ -122,26 +134,81 @@ defmodule HllConditionalActions.Engine.Runner do
   # Any rule change may add or remove rules for this server, so reload rather
   # than trying to patch the cached list.
   def handle_info({:rules_changed, _rule}, state) do
-    {:noreply, %{state | rules: Rules.list_active_rules_for(state.server)}}
+    {:noreply, %{state | rules: active_rules(state.server, state.features)}}
   end
 
   def handle_info(:tick, state) do
     schedule_tick()
-    {:noreply, run_periodic_rules(state)}
+    {:noreply, guarded(state, "tick", &(&1 |> watch_vehicles() |> run_periodic_rules()))}
   end
 
   # A connect that waited for the game server to catch up.
   def handle_info({:deferred_event, event}, state) do
     # Force a refresh: the cached snapshot may well predate the connect we
     # just waited out.
-    {:noreply, process_player_event(event, state, &refresh_snapshot/1)}
+    {:noreply,
+     guarded(state, "event #{event.type}", fn state ->
+       process_player_event(event, state, &refresh_snapshot/1)
+     end)}
   end
 
   def handle_info(_message, state), do: {:noreply, state}
 
+  # One bad event - a CRCON answer shaped differently, a bug in a rule's
+  # evaluation - is logged and skipped, and the runner keeps its state. Left
+  # to crash, the same event pattern repeating would exhaust the server's
+  # restart budget and take its log stream down with it.
+  defp guarded(state, what, fun) do
+    case fun.(state) do
+      %State{} = next ->
+        next
+
+      other ->
+        Logger.error(
+          "[engine] #{state.server.name}: #{what} returned #{inspect(other)}, state kept"
+        )
+
+        state
+    end
+  rescue
+    exception ->
+      Logger.error("""
+      [engine] #{state.server.name}: #{what} failed, skipped: #{Exception.message(exception)}
+      #{Exception.format_stacktrace(__STACKTRACE__)}
+      """)
+
+      state
+  end
+
   # ── Event handling ─────────────────────────────────────────────────────────
 
-  defp handle_event(%{type: type} = event, state) when type in [:match_start, :match_end] do
+  # The end of a match is also when achievements and seasons are counted,
+  # rules or not. It is read from a fresh snapshot, the match's final
+  # numbers, and only once per match: CRCON can repeat the line.
+  defp handle_event(%{type: :match_end} = event, state) do
+    state = record_progression(state)
+    run_match_rules(event, state)
+  end
+
+  defp handle_event(%{type: :match_start} = event, state), do: run_match_rules(event, state)
+
+  # A connect is worth nothing until the player exists in CRCON's view, so it
+  # is deferred rather than evaluated against a snapshot that predates them.
+  defp handle_event(%{type: :player_connected} = event, state) do
+    if Engine.rules_for(state.rules, :player_connected) == [] do
+      sample_unheard(event, state)
+      state
+    else
+      Process.send_after(self(), {:deferred_event, event}, connect_delay_ms())
+      state
+    end
+  end
+
+  defp handle_event(event, state) do
+    process_player_event(event, state, &ensure_snapshot/1)
+  end
+
+  defp run_match_rules(%{type: type} = event, state) do
     case Engine.rules_for(state.rules, type) do
       [] ->
         state
@@ -158,25 +225,12 @@ defmodule HllConditionalActions.Engine.Runner do
     end
   end
 
-  # A connect is worth nothing until the player exists in CRCON's view, so it
-  # is deferred rather than evaluated against a snapshot that predates them.
-  defp handle_event(%{type: :player_connected} = event, state) do
-    if Engine.rules_for(state.rules, :player_connected) == [] do
-      state
-    else
-      Process.send_after(self(), {:deferred_event, event}, connect_delay_ms())
-      state
-    end
-  end
-
-  defp handle_event(event, state) do
-    process_player_event(event, state, &ensure_snapshot/1)
-  end
-
   # Shared by the immediate and the deferred path; the caller decides how fresh
   # the snapshot has to be. The snapshot is only prepared once a trigger is
   # known to have rules, so an event nobody listens for costs nothing.
   defp process_player_event(event, state, prepare_snapshot) do
+    sample_unheard(event, state)
+
     event
     |> Events.triggers()
     |> Enum.filter(fn {trigger, _player_id, _name} ->
@@ -200,6 +254,55 @@ defmodule HllConditionalActions.Engine.Runner do
 
         state
     end
+  end
+
+  @progression_gap_ms :timer.minutes(10)
+
+  # A server without the rules module runs none, whatever is written for it.
+  defp active_rules(server, features) do
+    if MapSet.member?(features, :rules), do: Rules.list_active_rules_for(server), else: []
+  end
+
+  defp record_progression(state) do
+    if MapSet.member?(state.features, :progression),
+      do: do_record_progression(state),
+      else: state
+  end
+
+  defp do_record_progression(state) do
+    now = System.monotonic_time(:millisecond)
+
+    if state.progression_at && now - state.progression_at < @progression_gap_ms do
+      state
+    else
+      state = refresh_snapshot(state)
+
+      if state.snapshot && not state.snapshot.stale? do
+        Progression.record_match(state.server, state.snapshot.players,
+          gamestate: state.snapshot.gamestate
+        )
+      end
+
+      %{state | progression_at: now}
+    end
+  end
+
+  # Triggers nobody listens for still leave a sample for the builder's replay,
+  # built from whatever snapshot is already cached - never a CRCON call, so an
+  # unheard event keeps costing nothing.
+  defp sample_unheard(event, state) do
+    event
+    |> Events.triggers()
+    |> Enum.each(fn {trigger, player_id, player_name} ->
+      if Engine.rules_for(state.rules, trigger) == [] do
+        Engine.record_sample(state.server, trigger,
+          player_id: player_id,
+          player_name: player_name,
+          snapshot: state.snapshot,
+          event: event
+        )
+      end
+    end)
   end
 
   # ── Periodic rules ─────────────────────────────────────────────────────────
@@ -231,11 +334,72 @@ defmodule HllConditionalActions.Engine.Runner do
   # ── Snapshot ───────────────────────────────────────────────────────────────
 
   defp ensure_snapshot(state) do
-    %{state | snapshot: Snapshot.fetch(state.server, state.snapshot)}
+    replace_snapshot(state, Snapshot.fetch(state.server, state.snapshot))
   end
 
   defp refresh_snapshot(state) do
-    %{state | snapshot: Snapshot.refresh(state.server, state.snapshot)}
+    replace_snapshot(state, Snapshot.refresh(state.server, state.snapshot))
+  end
+
+  # Every new snapshot is compared with the last one: HLL writes no log line
+  # when a vehicle is destroyed, so a player's `vehicles_destroyed` counter
+  # going up between two reads is the only trace the event leaves.
+  defp replace_snapshot(state, snapshot) do
+    if snapshot != state.snapshot and Engine.rules_for(state.rules, :vehicle_destroyed) != [] do
+      state.snapshot
+      |> vehicle_destroyers(snapshot)
+      |> Enum.each(fn {player_id, player} ->
+        Engine.process_player_trigger(state.server, state.rules, :vehicle_destroyed,
+          player_id: player_id,
+          player_name: player["name"],
+          snapshot: snapshot
+        )
+      end)
+    end
+
+    publish_map(state.server.id, snapshot)
+    %{state | snapshot: snapshot}
+  end
+
+  # The map being played, for pages that only need that - the sidebar's
+  # server picture - without a CRCON call of their own. Kept in a
+  # persistent term, written only when the map changes (every hour or so).
+  defp publish_map(server_id, %{gamestate: %{"current_map" => map}}) when is_map(map) do
+    key = {__MODULE__, :map, server_id}
+    if :persistent_term.get(key, nil) != map, do: :persistent_term.put(key, map)
+  end
+
+  defp publish_map(_server_id, _snapshot), do: :ok
+
+  @doc """
+  The map a server is playing, as CRCON describes it (`current_map` of the
+  game state), or nil before its engine has read it.
+  """
+  @spec current_map(term()) :: map() | nil
+  def current_map(server_id), do: :persistent_term.get({__MODULE__, :map, server_id}, nil)
+
+  # Players whose counter rose. A player missing from the old snapshot, or a
+  # counter that went down (a new match), is not a destruction.
+  defp vehicle_destroyers(%Snapshot{stale?: false} = old, %Snapshot{stale?: false} = new) do
+    Enum.filter(new.players, fn {player_id, player} ->
+      case Map.get(old.players, player_id) do
+        %{"vehicles_destroyed" => before} when is_integer(before) ->
+          is_integer(player["vehicles_destroyed"]) and player["vehicles_destroyed"] > before
+
+        _unknown ->
+          false
+      end
+    end)
+  end
+
+  defp vehicle_destroyers(_old, _new), do: []
+
+  # With a rule listening for destroyed vehicles, the snapshot is refreshed
+  # on every tick, so the window between two reads stays around ten seconds.
+  defp watch_vehicles(state) do
+    if Engine.rules_for(state.rules, :vehicle_destroyed) == [],
+      do: state,
+      else: refresh_snapshot(state)
   end
 
   defp schedule_tick, do: Process.send_after(self(), :tick, @tick_ms)

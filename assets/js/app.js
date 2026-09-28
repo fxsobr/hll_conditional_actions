@@ -11,11 +11,13 @@ import {hooks as colocatedHooks} from "phoenix-colocated/hll_conditional_actions
 import PetalHooks from "../../deps/petal_components/assets/js/petal_components.js"
 import Alpine from "../vendor/alpine"
 import topbar from "../vendor/topbar"
+import registerRuleBuilder from "./rule_builder"
 
 // Alpine.js is the "A" of the PETAL stack. It owns small, purely client-side
 // interactions (menus, disclosure, copy-to-clipboard) so they never require a
 // server round trip. LiveView owns everything with server state.
 window.Alpine = Alpine
+registerRuleBuilder(Alpine)
 Alpine.start()
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -36,6 +38,17 @@ const liveSocket = new LiveSocket("/live", Socket, {
       // and the modal survives its own contents re-rendering.
       if (from.tagName === "DIALOG" && from.open) {
         to.setAttribute("open", "")
+      }
+      // Purely client-side view state (the rule workbench's selected node and
+      // tab, a palette group the user folded) lives in attributes the server
+      // renders only once. Elements list them in data-keep-attrs so a patch
+      // keeps whatever the browser has now.
+      const keep = from.getAttribute && from.getAttribute("data-keep-attrs")
+      if (keep) {
+        keep.split(" ").forEach(name => {
+          if (from.hasAttribute(name)) to.setAttribute(name, from.getAttribute(name))
+          else to.removeAttribute(name)
+        })
       }
     },
   },

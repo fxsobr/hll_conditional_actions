@@ -21,6 +21,8 @@ defmodule HllConditionalActions.Rules.Condition do
     field :field, Ecto.Enum, values: Catalog.fields(), default: :always_true
     field :operator, Ecto.Enum, values: Catalog.operators(), default: :equal
     field :value, :string, default: ""
+    # Text the builder's regex tester runs the pattern against; never stored.
+    field :sample, :string, virtual: true
   end
 
   @doc """
@@ -29,10 +31,26 @@ defmodule HllConditionalActions.Rules.Condition do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(condition, attrs) do
     condition
-    |> cast(attrs, [:field, :operator, :value])
+    |> cast(attrs, [:field, :operator, :value, :sample])
     |> validate_required([:field, :operator])
     |> validate_operator_matches_field()
     |> validate_value()
+  end
+
+  @doc """
+  Runs a `regex_match` pattern against sample text, the way the engine
+  would: `{:ok, true | false}`, or `{:error, reason}` for a bad pattern.
+
+      iex> alias HllConditionalActions.Rules.Condition
+      iex> {Condition.test_regex("^ana", "ana b"), Condition.test_regex("(", "x")}
+      {{:ok, true}, {:error, "missing closing parenthesis"}}
+  """
+  @spec test_regex(String.t() | nil, String.t() | nil) :: {:ok, boolean()} | {:error, String.t()}
+  def test_regex(pattern, sample) do
+    case Regex.compile(to_string(pattern)) do
+      {:ok, regex} -> {:ok, Regex.match?(regex, to_string(sample))}
+      {:error, {reason, _at}} -> {:error, to_string(reason)}
+    end
   end
 
   defp validate_operator_matches_field(changeset) do
@@ -76,8 +94,11 @@ defmodule HllConditionalActions.Rules.Condition do
 
   defp validate_regex(changeset, value) do
     case Regex.compile(value) do
-      {:ok, _regex} -> changeset
-      {:error, {reason, _at}} -> add_error(changeset, :value, "is not a valid regex: #{reason}")
+      {:ok, _regex} ->
+        changeset
+
+      {:error, {reason, _at}} ->
+        add_error(changeset, :value, "is not a valid regex: %{reason}", reason: to_string(reason))
     end
   end
 

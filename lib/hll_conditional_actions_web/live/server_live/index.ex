@@ -61,11 +61,14 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
     |> assign(:form, nil)
   end
 
-  defp apply_action(socket, :new, _params) do
+  defp apply_action(socket, :new, params) do
     if Accounts.can?(socket.assigns.current_user, :manage_servers) do
       server = %Server{}
 
       socket
+      # Arriving from the overview's checklist, saving goes back there, where
+      # the next step is waiting.
+      |> assign(:from_onboarding?, params["from"] == "onboarding")
       |> assign(:page_title, gettext("New server"))
       |> assign(:server, server)
       |> assign(:form_params, %{})
@@ -176,10 +179,17 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
   defp save_server(socket, %Server{id: nil} = server, params) do
     case Servers.create_server(server_params(server, params)) do
       {:ok, _server} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Server added."))
-         |> push_navigate(to: ~p"/servers")}
+        if socket.assigns[:from_onboarding?] do
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Server connected. Next: create your first rule."))
+           |> push_navigate(to: ~p"/")}
+        else
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Server added."))
+           |> push_navigate(to: ~p"/servers")}
+        end
 
       {:error, changeset} ->
         {:noreply, assign_form(socket, changeset)}
@@ -270,6 +280,14 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
 
   defp assign_form(socket, changeset), do: assign(socket, :form, to_form(changeset))
 
+  defp count_stream(servers, stream_status, wanted) do
+    Enum.count(servers, &(&1.enabled and stream_status[&1.id] == wanted))
+  end
+
+  defp count_errors(servers, stream_status) do
+    Enum.count(servers, &(&1.enabled and match?({:error, _reason}, stream_status[&1.id])))
+  end
+
   defp authorize(socket) do
     if Accounts.can?(socket.assigns.current_user, :manage_servers), do: :ok, else: :error
   end
@@ -287,6 +305,7 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={gettext("Servers")}
       page_subtitle={gettext("The CRCON instances this engine talks to")}
     >
@@ -324,75 +343,106 @@ defmodule HllConditionalActionsWeb.ServerLive.Index do
         </:action>
       </.empty_state>
 
-      <.card :if={@servers != []} padded={false}>
-        <.data_table id="servers" rows={@servers}>
-          <:col :let={server} label={gettext("Name")}>
-            <.link navigate={~p"/servers/#{server}"} class="font-medium hover:underline">
-              {server.name}
-            </.link>
+      <div :if={@servers != []} class="space-y-4">
+        <div id="server-kpis" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <.stat icon="hero-server-stack" label={gettext("Servers")} value={length(@servers)} />
+          <.stat
+            icon="hero-signal"
+            tone="success"
+            label={gettext("Streaming")}
+            value={count_stream(@servers, @stream_status, :connected)}
+            hint={gettext("live log stream connected")}
+          />
+          <.stat
+            icon="hero-exclamation-triangle"
+            tone={if count_errors(@servers, @stream_status) > 0, do: "error", else: "neutral"}
+            label={gettext("With errors")}
+            value={count_errors(@servers, @stream_status)}
+            hint={gettext("open one to see what CRCON answered")}
+          />
+          <.stat
+            icon="hero-pause-circle"
+            label={gettext("Disabled")}
+            value={Enum.count(@servers, &(not &1.enabled))}
+            hint={gettext("ignored by the engine")}
+          />
+        </div>
 
-            <.tone_badge :if={not server.enabled} tone="ghost" size="xs">
-              {gettext("Disabled")}
-            </.tone_badge>
-          </:col>
-
-          <:col :let={server} label={gettext("Game")}>
-            <.tone_badge tone="ghost">{Labels.game(server.game)}</.tone_badge>
-          </:col>
-
-          <:col :let={server} label={gettext("Address")}>
-            <span class="block max-w-xs truncate text-sm text-subtle">
-              {server.base_url}
-            </span>
-          </:col>
-
-          <:col :let={server} label={gettext("Stream")}>
-            <span class="inline-flex items-center gap-1.5 text-sm">
-              <.status_dot
-                tone={stream_tone(@stream_status[server.id], server.enabled)}
-                label={Labels.stream_status(@stream_status[server.id])}
-              />
-              {Labels.stream_status(@stream_status[server.id])}
-            </span>
-          </:col>
-
-          <:action :let={server}>
-            <.button
-              link_type="live_patch"
-              to={~p"/servers/#{server}/edit"}
-              size="xs"
-              variant="ghost"
-              color="gray"
-              label={gettext("Edit")}
-            />
-
-            <.row_menu
-              :if={Accounts.can?(@current_user, :manage_servers)}
-              id={"server-menu-#{server.id}"}
+        <.card title={gettext("Your servers")} icon="hero-server-stack">
+          <ul id="servers" class="grid gap-3 md:grid-cols-2">
+            <li
+              :for={server <- @servers}
+              id={"server-#{server.id}"}
+              class="group relative flex items-center gap-3 rounded-box border border-base-300 p-3 transition-colors hover:border-primary/40 hover:bg-base-200/40"
             >
-              <.menu_item
-                icon="hero-power"
-                phx-click="toggle"
-                phx-value-id={server.id}
-              >
-                {if server.enabled, do: gettext("Disable"), else: gettext("Enable")}
-              </.menu_item>
+              <img
+                src={server_art(server)}
+                alt=""
+                class="size-14 shrink-0 rounded-field object-cover"
+                loading="lazy"
+              />
 
-              <.menu_item
-                tone="error"
-                icon="hero-trash"
-                phx-click="delete"
-                phx-value-id={server.id}
-                data-confirm={
-                  gettext("Remove %{name} along with its rules and history?", name: server.name)
-                }
-              >
-                {gettext("Remove")}
-              </.menu_item>
-            </.row_menu>
-          </:action>
-        </.data_table>
-      </.card>
+              <div class="min-w-0 flex-1">
+                <.link
+                  navigate={~p"/servers/#{server}"}
+                  class="block truncate font-medium after:absolute after:inset-0 hover:underline"
+                >
+                  {server.name}
+                </.link>
+                <p class="truncate text-xs text-muted">
+                  {Labels.game(server.game)} · {server.base_url}
+                </p>
+                <p class="mt-1.5 flex items-center gap-1.5 text-xs text-subtle">
+                  <.status_dot
+                    tone={stream_tone(@stream_status[server.id], server.enabled)}
+                    label={Labels.stream_status(@stream_status[server.id])}
+                  />
+                  {if server.enabled,
+                    do: Labels.stream_status(@stream_status[server.id]),
+                    else: gettext("Disabled")}
+                </p>
+              </div>
+
+              <div class="relative z-10 flex shrink-0 items-center gap-1">
+                <.button
+                  :if={Accounts.can?(@current_user, :manage_servers)}
+                  link_type="live_patch"
+                  to={~p"/servers/#{server}/edit"}
+                  size="xs"
+                  variant="ghost"
+                  color="gray"
+                  label={gettext("Edit")}
+                />
+
+                <.row_menu
+                  :if={Accounts.can?(@current_user, :manage_servers)}
+                  id={"server-menu-#{server.id}"}
+                >
+                  <.menu_item
+                    icon="hero-power"
+                    phx-click="toggle"
+                    phx-value-id={server.id}
+                  >
+                    {if server.enabled, do: gettext("Disable"), else: gettext("Enable")}
+                  </.menu_item>
+
+                  <.menu_item
+                    tone="error"
+                    icon="hero-trash"
+                    phx-click="delete"
+                    phx-value-id={server.id}
+                    data-confirm={
+                      gettext("Remove %{name} along with its rules and history?", name: server.name)
+                    }
+                  >
+                    {gettext("Remove")}
+                  </.menu_item>
+                </.row_menu>
+              </div>
+            </li>
+          </ul>
+        </.card>
+      </div>
 
       <.form_modal
         :if={@live_action in [:new, :edit]}

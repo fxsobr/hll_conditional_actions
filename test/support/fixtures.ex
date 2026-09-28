@@ -7,6 +7,7 @@ defmodule HllConditionalActions.Fixtures do
   """
 
   alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Features
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Servers
 
@@ -14,6 +15,10 @@ defmodule HllConditionalActions.Fixtures do
   A CRCON server. Defaults to Hell Let Loose (WW2).
   """
   def server_fixture(attrs \\ %{}) do
+    # Every marketplace module is installed unless the test says otherwise,
+    # so a test about a feature does not have to install it first.
+    {features, attrs} = attrs |> Map.new() |> Map.pop(:features, Features.catalog())
+
     {:ok, server} =
       attrs
       |> Enum.into(%{
@@ -24,6 +29,7 @@ defmodule HllConditionalActions.Fixtures do
       })
       |> Servers.create_server()
 
+    Enum.each(features, &Features.install(server.id, &1))
     server
   end
 

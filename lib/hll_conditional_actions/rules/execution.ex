@@ -28,7 +28,15 @@ defmodule HllConditionalActions.Rules.Execution do
       default: :executed
 
     field :results, {:array, :map}, default: []
+
+    # What the conditions read when the rule fired, and how long it took. See
+    # `HllConditionalActions.Engine` for the shape; empty on older rows.
+    field :trace, :map, default: %{}
     field :error, :string
+    # How each queued action (Discord) ended, by action index:
+    # %{"0" => %{"status" => "delivered", "detail" => nil, "at" => "..."}}.
+    # Written by the delivery job alone, never through `changeset/2`.
+    field :deliveries, :map, default: %{}
     field :executed_at, :utc_datetime_usec
 
     belongs_to :rule, Rule
@@ -51,6 +59,7 @@ defmodule HllConditionalActions.Rules.Execution do
       :trigger_event,
       :status,
       :results,
+      :trace,
       :error,
       :executed_at
     ])

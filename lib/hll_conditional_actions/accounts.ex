@@ -370,14 +370,16 @@ defmodule HllConditionalActions.Accounts do
       operator:
         upsert_system_role!(
           "Operator",
-          "Writes rules and watches what they do. Cannot change server credentials or access.",
-          ~w(view_servers manage_rules view_executions view_live_feed)
+          "Runs the servers day to day: rules, seasons, achievements and player tickets. Cannot change server credentials, integrations or access.",
+          ~w(view_servers manage_rules view_executions view_live_feed view_stats) ++
+            ~w(manage_progression manage_tickets)
         ),
       viewer:
         upsert_system_role!(
           "Viewer",
-          "Read only access to servers, rules and history.",
-          ~w(view_servers view_rules view_executions view_live_feed)
+          "Read only access to servers, rules, history, statistics, seasons and tickets.",
+          ~w(view_servers view_rules view_executions view_live_feed view_stats) ++
+            ~w(view_progression view_tickets)
         )
     }
   end

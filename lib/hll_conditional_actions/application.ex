@@ -20,13 +20,21 @@ defmodule HllConditionalActions.Application do
         # Seeds the built-in roles and the first administrator on a fresh
         # database, so a new deployment is never locked out.
         HllConditionalActions.Accounts.Bootstrap,
+        # Moves webhook URLs that older rules kept in their actions into
+        # encrypted, registered webhooks. A no-op once that is done.
+        legacy_webhooks(),
         {DNSCluster,
          query: Application.get_env(:hll_conditional_actions, :dns_cluster_query) || :ignore},
         {Oban, Application.fetch_env!(:hll_conditional_actions, Oban)},
         {Phoenix.PubSub, name: HllConditionalActions.PubSub},
+        # Who has a ticket open, so admins do not answer the same player twice.
+        HllConditionalActionsWeb.Presence,
         # Aggregates our telemetry events so the metrics page has something to
         # show without an external reporter.
-        HllConditionalActions.Metrics
+        HllConditionalActions.Metrics,
+        # The last evaluations per server and trigger, which the rule builder
+        # replays an edited rule against.
+        HllConditionalActions.Engine.Samples
       ] ++
         update_checker() ++
         Runtime.children() ++
@@ -37,6 +45,12 @@ defmodule HllConditionalActions.Application do
 
     opts = [strategy: :one_for_one, name: HllConditionalActions.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp legacy_webhooks do
+    if Application.get_env(:hll_conditional_actions, :adopt_legacy_webhooks, true),
+      do: {Task, &HllConditionalActions.Discord.adopt_legacy_urls/0},
+      else: {Task, fn -> :ok end}
   end
 
   # Asks GitHub about newer releases on a timer. Off in test, where nothing

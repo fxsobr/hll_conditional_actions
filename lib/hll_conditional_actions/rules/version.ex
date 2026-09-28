@@ -22,13 +22,27 @@ defmodule HllConditionalActions.Rules.Version do
 
   @type t :: %__MODULE__{}
 
-  @actions [:created, :updated, :enabled, :disabled, :duplicated, :deleted, :imported]
+  @actions [
+    :created,
+    :updated,
+    :enabled,
+    :disabled,
+    :duplicated,
+    :deleted,
+    :imported,
+    :paused,
+    :resumed,
+    :published
+  ]
 
   schema "rule_versions" do
     field :rule_name, :string
     field :user_name, :string
     field :action, Ecto.Enum, values: @actions
     field :changes, :map, default: %{}
+    # The whole definition right after the change, so the version can be
+    # restored. Null on entries written before snapshots existed.
+    field :snapshot, :map
 
     belongs_to :rule, Rule
     belongs_to :user, User
@@ -46,7 +60,7 @@ defmodule HllConditionalActions.Rules.Version do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(version, attrs) do
     version
-    |> cast(attrs, [:rule_id, :rule_name, :user_id, :user_name, :action, :changes])
+    |> cast(attrs, [:rule_id, :rule_name, :user_id, :user_name, :action, :changes, :snapshot])
     |> validate_required([:rule_name, :action])
     # A rule deleted between the check and the insert must not raise into the
     # caller: recording is best effort by design.

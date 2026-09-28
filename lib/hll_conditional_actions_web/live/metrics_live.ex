@@ -52,6 +52,7 @@ defmodule HllConditionalActionsWeb.MetricsLive do
   defp skip_reason(:cooldown), do: gettext("Cooldown")
   defp skip_reason(:max_executions), do: gettext("Per-player cap")
   defp skip_reason(:conditions_not_met), do: gettext("Conditions did not hold")
+  defp skip_reason(:exempt), do: gettext("Player exempt")
   defp skip_reason(reason), do: to_string(reason)
 
   defp outcome_label(:ok), do: gettext("Succeeded")
@@ -92,6 +93,7 @@ defmodule HllConditionalActionsWeb.MetricsLive do
       flash={@flash}
       current_user={@current_user}
       current_path={@current_path}
+      nav={assigns[:nav]}
       page_title={gettext("Metrics")}
       page_subtitle={gettext("What your rules have been doing")}
     >

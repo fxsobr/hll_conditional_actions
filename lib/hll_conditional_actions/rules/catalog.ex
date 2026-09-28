@@ -20,6 +20,8 @@ defmodule HllConditionalActions.Rules.Catalog do
   """
 
   alias HllConditionalActions.Games
+  alias HllConditionalActions.Games.Weapons
+  alias HllConditionalActions.Leaderboards
 
   # ── Trigger events ─────────────────────────────────────────────────────────
 
@@ -32,6 +34,7 @@ defmodule HllConditionalActions.Rules.Catalog do
     player_chat: %{scope: :player},
     chat_command: %{scope: :player},
     team_switch: %{scope: :player},
+    vehicle_destroyed: %{scope: :player},
     match_start: %{scope: :all_players},
     match_end: %{scope: :all_players},
     periodic: %{scope: :all_players}
@@ -100,6 +103,19 @@ defmodule HllConditionalActions.Rules.Catalog do
     kills_per_minute: %{group: :match_stats, type: :float},
     deaths_per_minute: %{group: :match_stats, type: :float},
     playtime_seconds: %{group: :match_stats, type: :integer},
+    vehicles_destroyed: %{group: :match_stats, type: :integer},
+    rank_kills: %{group: :leaderboard, type: :integer},
+    rank_kill_death_ratio: %{group: :leaderboard, type: :integer},
+    rank_kills_per_minute: %{group: :leaderboard, type: :integer},
+    rank_combat: %{group: :leaderboard, type: :integer},
+    rank_offense: %{group: :leaderboard, type: :integer},
+    rank_defense: %{group: :leaderboard, type: :integer},
+    rank_support: %{group: :leaderboard, type: :integer},
+    rank_vehicles_destroyed: %{group: :leaderboard, type: :integer},
+    rank_teamplay: %{group: :leaderboard, type: :integer},
+    rank_offdef: %{group: :leaderboard, type: :integer},
+    squad_rank: %{group: :leaderboard, type: :integer},
+    squad_type: %{group: :leaderboard, type: :string, options: :squad_types},
     total_playtime_seconds: %{group: :profile, type: :integer},
     sessions_count: %{group: :profile, type: :integer},
     penalty_count: %{group: :profile, type: :integer},
@@ -111,6 +127,10 @@ defmodule HllConditionalActions.Rules.Catalog do
     allied_score: %{group: :server, type: :integer},
     axis_score: %{group: :server, type: :integer},
     team_player_count: %{group: :server, type: :integer},
+    team_objectives: %{group: :server, type: :integer},
+    enemy_objectives: %{group: :server, type: :integer},
+    attacking_last_sector: %{group: :server, type: :boolean},
+    defending_last_sector: %{group: :server, type: :boolean},
     queue_count: %{group: :server, type: :integer},
     map_name: %{group: :server, type: :string},
     game_mode: %{group: :server, type: :string, options: :game_modes},
@@ -130,6 +150,12 @@ defmodule HllConditionalActions.Rules.Catalog do
       type: :string,
       requires: [:player_kill, :player_death, :player_team_kill]
     },
+    weapon_type: %{
+      group: :event,
+      type: :string,
+      requires: [:player_kill, :player_death, :player_team_kill],
+      options: :weapon_types
+    },
     target_player_name: %{
       group: :event,
       type: :string,
@@ -143,7 +169,17 @@ defmodule HllConditionalActions.Rules.Catalog do
 
   @days_of_week ~w(monday tuesday wednesday thursday friday saturday sunday)
 
-  @field_groups [:general, :player, :squad, :match_stats, :profile, :server, :schedule, :event]
+  @field_groups [
+    :general,
+    :player,
+    :squad,
+    :match_stats,
+    :leaderboard,
+    :profile,
+    :server,
+    :schedule,
+    :event
+  ]
 
   @doc """
   Every condition field.
@@ -225,6 +261,8 @@ defmodule HllConditionalActions.Rules.Catalog do
   def field_options(field, game) do
     case Keyword.fetch!(@fields, field) do
       %{options: :days_of_week} -> days_of_week()
+      %{options: :squad_types} -> Enum.map(Leaderboards.squad_types(), &{"#{&1}", "#{&1}"})
+      %{options: :weapon_types} -> Enum.map(Weapons.categories(), &{"#{&1}", "#{&1}"})
       %{options: source} -> profile_options(source, game)
       _no_options -> nil
     end
@@ -359,6 +397,12 @@ defmodule HllConditionalActions.Rules.Catalog do
       {:reason, :text, required: true, template: true}
     ],
     remove_from_watchlist: [],
+    # A note for the admins, not a message to the player.
+    open_ticket: [
+      {:note, :text, required: false, template: true},
+      {:priority, :select,
+       required: false, default: "normal", options: ~w(low normal high urgent)}
+    ],
     grant_vip: [
       {:description, :string, required: true, template: true},
       {:duration_hours, :integer, required: false, default: 24, min: 0}
@@ -369,9 +413,27 @@ defmodule HllConditionalActions.Rules.Catalog do
       {:reason, :text, required: true, template: true},
       {:duration_hours, :integer, required: false, default: 0, min: 0}
     ],
+    # Message or embed (at least one); the builder lays these out in
+    # sections of its own rather than one field after another.
     send_discord_webhook: [
-      {:webhook_url, :string, required: true},
-      {:message, :text, required: true, template: true}
+      {:webhook_id, :discord_webhook, required: true},
+      {:message, :text, required: false, template: true},
+      {:embed_title, :string, required: false, template: true},
+      {:embed_description, :text, required: false, template: true},
+      {:embed_fields, :text, required: false, template: true},
+      {:embed_footer, :string, required: false, template: true},
+      {:embed_color, :color, required: false, default: "#5865F2"},
+      {:embed_thumbnail_url, :url, required: false},
+      {:embed_timestamp, :boolean, required: false, default: true},
+      {:username, :string, required: false, template: true},
+      {:avatar_url, :url, required: false},
+      {:mention_role_ids, :string, required: false},
+      {:silent, :boolean, required: false, default: false},
+      {:mode, :select, required: false, default: "send", options: ~w(send edit)},
+      {:edit_key, :string, required: false, template: true},
+      {:thread_id, :string, required: false},
+      {:thread_name, :string, required: false, template: true},
+      {:aggregate, :boolean, required: false, default: false}
     ]
   ]
 
@@ -404,6 +466,7 @@ defmodule HllConditionalActions.Rules.Catalog do
       :remove_player_flag,
       :add_to_watchlist,
       :remove_from_watchlist,
+      :open_ticket,
       :grant_vip,
       :remove_vip
     ],

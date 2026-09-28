@@ -9,11 +9,13 @@ defmodule HllConditionalActions.Rules do
 
   import Ecto.Query
 
+  alias HllConditionalActions.Progression.PlayerTotal
   alias HllConditionalActions.PubSub
   alias HllConditionalActions.Repo
   alias HllConditionalActions.Rules.Audit
   alias HllConditionalActions.Rules.Execution
   alias HllConditionalActions.Rules.Rule
+  alias HllConditionalActions.Rules.Snapshot
   alias HllConditionalActions.Rules.Transfer
   alias HllConditionalActions.Servers.Server
 
@@ -43,6 +45,56 @@ defmodule HllConditionalActions.Rules do
     |> filter_rules(opts)
     |> order_by([r], desc: r.priority, asc: r.name)
     |> preload(:server)
+    |> Repo.all()
+  end
+
+  # What a new install is most likely to reach for, before any rule exists
+  # to learn from.
+  @curated_fields [
+    :player_level,
+    :teamkills,
+    :is_vip,
+    :player_team,
+    :server_player_count,
+    :kills
+  ]
+
+  @doc """
+  The condition fields used most across every rule, most used first, for the
+  top of the builder's field picker. `:always_true` is never counted; with
+  no rule to learn from, a curated list stands in.
+  """
+  @spec most_used_fields(pos_integer()) :: [atom()]
+  def most_used_fields(limit \\ 6) do
+    used =
+      Rule
+      |> select([r], r.conditions)
+      |> Repo.all()
+      |> List.flatten()
+      |> Enum.map(& &1.field)
+      |> Enum.reject(&(&1 in [nil, :always_true]))
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {field, count} -> {-count, field} end)
+      |> Enum.map(fn {field, _count} -> field end)
+
+    case used do
+      [] -> Enum.take(@curated_fields, limit)
+      fields -> Enum.take(fields, limit)
+    end
+  end
+
+  @doc """
+  Players this install has seen, as `{player_id, player_name}` pairs, most
+  recently seen first - for autocompleting ids and names in the builder.
+  """
+  @spec known_players(pos_integer()) :: [{String.t(), String.t()}]
+  def known_players(limit \\ 300) do
+    PlayerTotal
+    |> where([p], not is_nil(p.player_name))
+    |> group_by([p], p.player_id)
+    |> order_by([p], desc: max(p.updated_at))
+    |> select([p], {p.player_id, max(p.player_name)})
+    |> limit(^limit)
     |> Repo.all()
   end
 
@@ -120,6 +172,19 @@ defmodule HllConditionalActions.Rules do
     end
   end
 
+  # Only when the caller sent a group: attrs may use atom or string keys.
+  defp canonicalize_group(attrs) do
+    Enum.reduce([:group, "group"], attrs, fn key, acc ->
+      case acc do
+        %{^key => value} when is_binary(value) ->
+          Map.put(acc, key, canonical_group(value, list_groups()) || "")
+
+        _other ->
+          acc
+      end
+    end)
+  end
+
   defp games_of(server_ids) do
     Repo.all(
       from s in HllConditionalActions.Servers.Server,
@@ -140,6 +205,8 @@ defmodule HllConditionalActions.Rules do
   """
   @spec create_rule(map()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
   def create_rule(attrs, opts \\ []) do
+    attrs = canonicalize_group(attrs)
+
     %Rule{}
     |> Rule.changeset(attrs)
     |> Repo.insert()
@@ -152,7 +219,7 @@ defmodule HllConditionalActions.Rules do
   """
   @spec update_rule(Rule.t(), map()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
   def update_rule(%Rule{} = rule, attrs, opts \\ []) do
-    changeset = Rule.changeset(rule, attrs)
+    changeset = Rule.changeset(rule, canonicalize_group(attrs))
 
     changeset
     |> Repo.update()
@@ -182,6 +249,176 @@ defmodule HllConditionalActions.Rules do
   end
 
   @doc """
+  Pauses a rule until a moment in the future.
+
+  The rule stays enabled; the engine skips it until `until` has passed and
+  then picks it up again by itself. Recorded in the change history as
+  `:paused`.
+  """
+  @spec pause_rule(Rule.t(), DateTime.t(), keyword()) ::
+          {:ok, Rule.t()} | {:error, Ecto.Changeset.t() | :in_the_past}
+  def pause_rule(%Rule{} = rule, %DateTime{} = until, opts \\ []) do
+    if DateTime.compare(until, DateTime.utc_now()) == :gt do
+      changeset = Rule.pause_changeset(rule, until, Keyword.get(opts, :reason))
+
+      changeset
+      |> Repo.update()
+      |> audit(:paused, Keyword.get(opts, :actor), changeset)
+      |> broadcast()
+    else
+      {:error, :in_the_past}
+    end
+  end
+
+  @doc """
+  Ends a pause right away.
+  """
+  @spec resume_rule(Rule.t(), keyword()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
+  def resume_rule(%Rule{} = rule, opts \\ []) do
+    changeset = Rule.pause_changeset(rule, nil, nil)
+
+    changeset
+    |> Repo.update()
+    |> audit(:resumed, Keyword.get(opts, :actor), changeset)
+    |> broadcast()
+  end
+
+  # ── Drafts ─────────────────────────────────────────────────────────────────
+
+  @doc """
+  Whether edits to this rule should go to a draft rather than straight to the
+  engine: only a live (enabled) rule has anything to protect.
+  """
+  @spec draft_required?(Rule.t()) :: boolean()
+  def draft_required?(%Rule{id: id, enabled: enabled}), do: not is_nil(id) and enabled == true
+
+  @doc """
+  Saves `attrs` as the rule's pending draft without touching what the engine
+  runs. The attributes are validated exactly as a save would validate them,
+  so a draft can always be published unless the world changed under it.
+  """
+  @spec save_draft(Rule.t(), map(), keyword()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
+  def save_draft(%Rule{} = rule, attrs, opts \\ []) do
+    changeset = Rule.changeset(rule, canonicalize_group(attrs))
+
+    if changeset.valid? do
+      snapshot = changeset |> Ecto.Changeset.apply_changes() |> Snapshot.take()
+      actor = Keyword.get(opts, :actor)
+
+      rule
+      |> Ecto.Changeset.change(
+        draft: snapshot,
+        draft_user_name: actor && (Map.get(actor, :name) || Map.get(actor, :username)),
+        draft_updated_at: DateTime.utc_now(:second)
+      )
+      |> Repo.update()
+      |> broadcast()
+    else
+      {:error, Map.put(changeset, :action, :update)}
+    end
+  end
+
+  @doc """
+  Throws away a rule's draft.
+  """
+  @spec discard_draft(Rule.t()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
+  def discard_draft(%Rule{} = rule) do
+    rule
+    |> Ecto.Changeset.change(draft: nil, draft_user_name: nil, draft_updated_at: nil)
+    |> Repo.update()
+    |> broadcast()
+  end
+
+  @doc """
+  Applies `attrs` to the rule the engine runs, clears any draft and records
+  the change as published.
+  """
+  @spec publish(Rule.t(), map(), keyword()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
+  def publish(%Rule{} = rule, attrs, opts \\ []) do
+    changeset =
+      rule
+      |> Rule.changeset(canonicalize_group(attrs))
+      |> Ecto.Changeset.change(draft: nil, draft_user_name: nil, draft_updated_at: nil)
+
+    changeset
+    |> Repo.update()
+    |> audit(:published, Keyword.get(opts, :actor), changeset)
+    |> broadcast()
+  end
+
+  @doc """
+  Publishes the rule's pending draft.
+  """
+  @spec publish_draft(Rule.t(), keyword()) ::
+          {:ok, Rule.t()} | {:error, Ecto.Changeset.t() | :no_draft}
+  def publish_draft(rule, opts \\ [])
+  def publish_draft(%Rule{draft: nil}, _opts), do: {:error, :no_draft}
+  def publish_draft(%Rule{draft: draft} = rule, opts), do: publish(rule, draft, opts)
+
+  @doc """
+  Loads a version's snapshot as the rule's draft, to be reviewed and
+  published. Versions recorded before snapshots existed cannot be restored.
+  """
+  @spec restore_version(Rule.t(), term(), keyword()) ::
+          {:ok, Rule.t()} | {:error, Ecto.Changeset.t() | :not_restorable}
+  def restore_version(%Rule{} = rule, version_id, opts \\ []) do
+    case Audit.get_version(rule.id, version_id) do
+      %{snapshot: snapshot} when is_map(snapshot) -> save_draft(rule, snapshot, opts)
+      _other -> {:error, :not_restorable}
+    end
+  end
+
+  @doc """
+  Activity per rule for the rules list, as `%{rule_id => stats}`, in one
+  grouped query: when it last fired, how many times in the last 24 hours and
+  how many of those failed.
+  """
+  @spec activity_for_rules([term()]) :: %{
+          term() => %{
+            last_executed_at: DateTime.t() | nil,
+            last_24h: non_neg_integer(),
+            failed_24h: non_neg_integer()
+          }
+        }
+  def activity_for_rules([]), do: %{}
+
+  def activity_for_rules(rule_ids) do
+    since = DateTime.add(DateTime.utc_now(), -24 * 60 * 60, :second)
+
+    from(e in Execution,
+      where: e.rule_id in ^rule_ids,
+      group_by: e.rule_id,
+      select: {
+        e.rule_id,
+        %{
+          last_executed_at: max(e.executed_at),
+          last_24h: filter(count(e.id), e.executed_at >= ^since),
+          failed_24h: filter(count(e.id), e.executed_at >= ^since and e.status == ^:failed)
+        }
+      }
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Resolves a typed group name against the groups already in use: trims and
+  collapses whitespace, and reuses an existing group that differs only in
+  case, so "seeding" joins "Seeding" instead of starting a new folder.
+  """
+  @spec canonical_group(term(), [String.t()]) :: String.t() | nil
+  def canonical_group(group, existing) do
+    case Rule.normalize_group(group) do
+      nil ->
+        nil
+
+      name ->
+        down = String.downcase(name)
+        Enum.find(existing, name, &(String.downcase(&1) == down))
+    end
+  end
+
+  @doc """
   Builds a changeset for a rule form.
   """
   @spec change_rule(Rule.t(), map()) :: Ecto.Changeset.t()
@@ -189,6 +426,11 @@ defmodule HllConditionalActions.Rules do
 
   @doc """
   Duplicates a rule, appending a suffix to its name.
+
+  With `server_id:` the copy is pinned to that server instead, for taking a
+  rule that works on one server to another. Such a copy arrives disabled: it
+  has never run there, and switching it on is a decision for the admin of
+  that server, not a side effect of copying.
   """
   @spec duplicate_rule(Rule.t(), String.t()) :: {:ok, Rule.t()} | {:error, Ecto.Changeset.t()}
   def duplicate_rule(%Rule{} = rule, suffix, opts \\ []) do
@@ -207,10 +449,24 @@ defmodule HllConditionalActions.Rules do
       :escalation_window_seconds,
       :group
     ])
-    |> Map.put(:name, "#{rule.name} #{suffix}")
+    |> Map.put(:name, String.trim("#{rule.name} #{suffix}"))
     |> Map.put(:conditions, Enum.map(rule.conditions, &Map.from_struct/1))
     |> Map.put(:actions, Enum.map(rule.actions, &Map.from_struct/1))
-    |> create_rule(Keyword.merge(opts, action: :duplicated))
+    |> Map.put(:exemptions, rule.exemptions && Map.from_struct(rule.exemptions))
+    |> retarget(opts[:server_id])
+    |> create_rule(opts |> Keyword.delete(:server_id) |> Keyword.merge(action: :duplicated))
+  end
+
+  defp retarget(attrs, nil), do: attrs
+  defp retarget(attrs, server_id), do: %{attrs | server_id: server_id, enabled: false}
+
+  @doc """
+  The servers a rule can be copied to: those of the same game the user may
+  manage, other than the one it is already on.
+  """
+  @spec copy_targets(Rule.t(), [Server.t()]) :: [Server.t()]
+  def copy_targets(%Rule{} = rule, servers) do
+    Enum.filter(servers, &(&1.game == rule.game and &1.id != rule.server_id))
   end
 
   # ── Import and export ──────────────────────────────────────────────────────
@@ -357,6 +613,16 @@ defmodule HllConditionalActions.Rules do
   @spec list_executions(keyword()) :: [Execution.t()]
   def list_executions(opts \\ []), do: list_executions_for(nil, opts)
 
+  @doc """
+  Every execution the user may see, as a query to build reports on.
+  """
+  @spec scoped_executions(map() | nil) :: Ecto.Query.t()
+  def scoped_executions(user) do
+    Execution
+    |> from()
+    |> scope_executions_to_user(user)
+  end
+
   # The filtered, permission-scoped set, before ordering and paging. `nil`
   # means "no user", which the scope helper treats as unrestricted - the
   # engine and the tests both call in without one.
@@ -391,6 +657,22 @@ defmodule HllConditionalActions.Rules do
       from e in Execution,
         where: e.rule_id == ^rule_id and e.player_id == ^player_id and e.executed_at >= ^since,
         select: count(e.id)
+    )
+  end
+
+  @doc """
+  The executions of a rule for a player inside `[from, to)`, oldest first.
+
+  Used to replay the limits as they stood when a past event arrived.
+  """
+  @spec executions_between(term(), String.t(), DateTime.t(), DateTime.t()) :: [Execution.t()]
+  def executions_between(rule_id, player_id, from, to) do
+    Repo.all(
+      from e in Execution,
+        where:
+          e.rule_id == ^rule_id and e.player_id == ^player_id and e.executed_at >= ^from and
+            e.executed_at < ^to,
+        order_by: [asc: e.executed_at]
     )
   end
 
@@ -521,6 +803,47 @@ defmodule HllConditionalActions.Rules do
     end)
   end
 
+  @doc """
+  Applies one change to many rules, for the list's bulk actions.
+
+  Each rule goes through the same function a single change would, so every
+  one is validated, audited and broadcast on its own; the history then says
+  who disabled which rule, not that "something bulk happened". Returns how
+  many rules actually changed.
+
+  Operations:
+
+    * `{:enabled, boolean}` - switches rules on or off, skipping those
+      already in that state
+    * `{:group, name}` - moves rules into a group (`""` or `nil` takes them
+      out of any group)
+    * `:delete` - removes the rules and their history
+  """
+  @spec bulk_update(
+          [Rule.t()],
+          {:enabled, boolean()} | {:group, String.t() | nil} | :delete,
+          keyword()
+        ) :: non_neg_integer()
+  def bulk_update(rules, operation, opts \\ [])
+
+  def bulk_update(rules, {:enabled, enabled?}, opts) when is_boolean(enabled?) do
+    rules
+    |> Enum.reject(&(&1.enabled == enabled?))
+    |> Enum.count(&match?({:ok, _rule}, toggle_rule(&1, opts)))
+  end
+
+  def bulk_update(rules, {:group, group}, opts) do
+    group = canonical_group(group, list_groups()) || ""
+
+    rules
+    |> Enum.reject(&((&1.group || "") == group))
+    |> Enum.count(&match?({:ok, _rule}, update_rule(&1, %{group: group}, opts)))
+  end
+
+  def bulk_update(rules, :delete, opts) do
+    Enum.count(rules, &match?({:ok, _rule}, delete_rule(&1, opts)))
+  end
+
   # A user restricted to certain servers only sees rules that reach them.
   defp scope_to_user(query, nil), do: query
 
@@ -614,13 +937,33 @@ defmodule HllConditionalActions.Rules do
 
   defp filter_rules(query, opts) do
     Enum.reduce(opts, query, fn
-      {:game, game}, acc when not is_nil(game) -> where(acc, [r], r.game == ^game)
-      {:server_id, id}, acc when not is_nil(id) -> where(acc, [r], r.server_id == ^id)
-      {:enabled, value}, acc when is_boolean(value) -> where(acc, [r], r.enabled == ^value)
-      {:trigger_event, t}, acc when not is_nil(t) -> where(acc, [r], r.trigger_event == ^t)
-      {:group, g}, acc when is_binary(g) and g != "" -> where(acc, [r], r.group == ^g)
-      {:search, term}, acc when is_binary(term) and term != "" -> search_rules(acc, term)
-      _other, acc -> acc
+      {:game, game}, acc when not is_nil(game) ->
+        where(acc, [r], r.game == ^game)
+
+      {:server_id, id}, acc when not is_nil(id) ->
+        where(acc, [r], r.server_id == ^id)
+
+      # What runs on a server: its own rules and the fleet wide ones of its game.
+      {:applies_to, %Server{id: id, game: game}}, acc ->
+        where(acc, [r], r.server_id == ^id or (is_nil(r.server_id) and r.game == ^game))
+
+      {:enabled, value}, acc when is_boolean(value) ->
+        where(acc, [r], r.enabled == ^value)
+
+      {:trigger_event, t}, acc when not is_nil(t) ->
+        where(acc, [r], r.trigger_event == ^t)
+
+      {:group, g}, acc when is_binary(g) and g != "" ->
+        where(acc, [r], r.group == ^g)
+
+      {:ids, ids}, acc when is_list(ids) ->
+        where(acc, [r], r.id in ^ids)
+
+      {:search, term}, acc when is_binary(term) and term != "" ->
+        search_rules(acc, term)
+
+      _other, acc ->
+        acc
     end)
   end
 
@@ -637,13 +980,26 @@ defmodule HllConditionalActions.Rules do
       {:server_id, id}, acc when not is_nil(id) -> where(acc, [e], e.server_id == ^id)
       {:rule_id, id}, acc when not is_nil(id) -> where(acc, [e], e.rule_id == ^id)
       {:player_id, id}, acc when not is_nil(id) -> where(acc, [e], e.player_id == ^id)
+      {:player, term}, acc when is_binary(term) and term != "" -> search_player(acc, term)
       {:status, status}, acc when not is_nil(status) -> where(acc, [e], e.status == ^status)
+      {:from, %DateTime{} = from}, acc -> where(acc, [e], e.executed_at >= ^from)
+      {:until, %DateTime{} = until}, acc -> where(acc, [e], e.executed_at <= ^until)
       _other, acc -> acc
     end)
   end
 
+  # A player filter matches the exact ID or part of the recorded name, so an
+  # admin can paste either. LIKE wildcards are stripped, as in the search.
+  defp search_player(query, term) do
+    trimmed = String.trim(term)
+    pattern = "%" <> String.replace(trimmed, ~r/[%_]/, "") <> "%"
+
+    where(query, [e], e.player_id == ^trimmed or ilike(e.player_name, ^pattern))
+  end
+
   defp broadcast({:ok, rule} = result) do
     Phoenix.PubSub.broadcast(PubSub, @topic, {:rules_changed, rule})
+    HllConditionalActions.Attention.notify_changed()
     result
   end
 
