@@ -41,6 +41,25 @@ defmodule HllConditionalActions.EngineTest do
       assert detail == "Nice, Chris!"
     end
 
+    test "skips a private message the game server refuses", %{server: server} do
+      Req.Test.stub(HllConditionalActions.Crcon, fn conn ->
+        Plug.Conn.send_resp(conn, 500, "boom")
+      end)
+
+      rule =
+        rule_fixture(%{
+          conditions: [%{field: :kills, operator: :greater_than, value: "5"}],
+          actions: [%{type: :message_player, parameters: %{"message" => "Welcome"}}]
+        })
+
+      assert {:ok, execution} = Engine.run_rule(rule, context(server))
+
+      assert [%{"type" => "message_player", "status" => "skipped", "detail" => detail}] =
+               execution.results
+
+      assert detail =~ "not reachable"
+    end
+
     test "records what each condition read, for the history", %{server: server} do
       rule =
         rule_fixture(%{conditions: [%{field: :kills, operator: :greater_than, value: "5"}]})
