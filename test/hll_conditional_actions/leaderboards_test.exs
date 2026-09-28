@@ -114,7 +114,7 @@ defmodule HllConditionalActions.LeaderboardsTest do
       context = Context.build(@server, :chat_command, player: roster["ana"], roster: roster)
 
       assert Template.render("Kills: {top_kills} | Armor: {top_armor_squads}", context) ==
-               "Kills: bo (25), ana (10) | Armor: -"
+               "Kills: \n1. bo (25)\n2. ana (10) | Armor: -"
     end
   end
 

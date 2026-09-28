@@ -250,36 +250,49 @@ defmodule HllConditionalActions.Leaderboards do
 
   # ── Text for messages ──────────────────────────────────────────────────────
 
-  @doc """
-  A category as one line for an in-game message: `"Ana (30), Bo (12)"`.
-  Language free on purpose - the admin writes the headings in the rule's own
-  message, so the line reads right in whatever language the server speaks.
+  @doc ~S"""
+  A category for an in-game message: one numbered line per player.
 
-      iex> roster = %{"a" => %{"player_id" => "a", "name" => "Ana", "kills" => 30}}
+  The list starts on a new line, so a message written as `Kills: {top_kills}`
+  reads as the heading with the ranking below it - the game's message box is
+  narrow, and names run into each other on a single line. Language free on
+  purpose: the admin writes the headings in the rule's own message.
+
+      iex> roster = %{
+      ...>   "a" => %{"player_id" => "a", "name" => "Ana", "kills" => 30},
+      ...>   "b" => %{"player_id" => "b", "name" => "Bo", "kills" => 12}
+      ...> }
       iex> HllConditionalActions.Leaderboards.line(roster, :kills, 3)
-      "Ana (30)"
+      "\n1. Ana (30)\n2. Bo (12)"
+      iex> HllConditionalActions.Leaderboards.line(%{}, :kills, 3)
+      "-"
   """
   @spec line(map() | [map()], atom(), pos_integer()) :: String.t()
   def line(roster, category, count) do
     roster
     |> top_players(category, count)
-    |> Enum.map_join(", ", &"#{&1.name} (#{format(&1.value)})")
-    |> blank_to_dash()
+    |> Enum.map(&"#{&1.name} (#{format(&1.value)})")
+    |> numbered()
   end
 
-  @doc """
-  The top squads of a type as one line: `"Able (4210), Baker (3900)"`.
+  @doc ~S"""
+  The top squads of a type, one numbered line each: `"\n1. Able (4210)"`.
   """
   @spec squad_line(map() | [map()], atom(), pos_integer()) :: String.t()
   def squad_line(roster, type, count) do
     roster
     |> top_squads(type, count)
-    |> Enum.map_join(", ", &"#{String.capitalize(&1.name)} (#{&1.score})")
-    |> blank_to_dash()
+    |> Enum.map(&"#{String.capitalize(&1.name)} (#{&1.score})")
+    |> numbered()
   end
 
-  defp blank_to_dash(""), do: "-"
-  defp blank_to_dash(text), do: text
+  defp numbered([]), do: "-"
+
+  defp numbered(entries) do
+    entries
+    |> Enum.with_index(1)
+    |> Enum.map_join(fn {entry, rank} -> "\n#{rank}. #{entry}" end)
+  end
 
   defp format(value) when is_float(value), do: :erlang.float_to_binary(value, decimals: 2)
   defp format(value), do: to_string(value)
