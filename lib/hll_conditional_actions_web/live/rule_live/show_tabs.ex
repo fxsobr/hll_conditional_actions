@@ -284,7 +284,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
               class="flex h-8 items-center gap-1.5 rounded-[0.625rem] bg-secondary px-3"
             >
               <span class="font-mono text-xs text-muted">{index}</span>
-              {action_text(action)}
+              {short_action_text(action)}
             </span>
             <span :if={protections(@shown) != ""} class="text-[0.8125rem] text-muted">
               · {protections(@shown)}
@@ -335,7 +335,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
             <.icon name="hero-arrow-down-tray" class="size-4" />
           </a>
         </div>
-        <pre class="max-h-[42rem] overflow-auto bg-base-200/60 px-5 py-3.5 font-mono text-xs leading-[1.1875rem] text-subtle"><span
+        <pre class="max-h-[42rem] overflow-auto whitespace-pre-wrap bg-base-200/60 px-5 py-3.5 font-mono text-xs leading-[1.1875rem] text-subtle [overflow-wrap:anywhere]"><span
             :for={{class, text} <- json_tokens(@export)}
             class={json_class(class)}
           >{text}</span></pre>
@@ -643,10 +643,23 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
     ]
   end
 
+  @export_order ~w(
+    name description group game trigger_event trigger_interval_seconds
+    logical_operator conditions actions escalation_window_seconds
+    cooldown_seconds max_executions_per_player exemptions priority
+    simulation enabled
+  )
+
   @doc "The published rule as the JSON an export carries."
   @spec export_json(map()) :: String.t()
   def export_json(rule) do
-    rule |> HllConditionalActions.Rules.Transfer.dump_rule() |> Jason.encode!(pretty: true)
+    dumped = HllConditionalActions.Rules.Transfer.dump_rule(rule)
+
+    # Read top to bottom like the rule: who it is, when, if, then, limits.
+    ordered = for key <- @export_order, Map.has_key?(dumped, key), do: {key, dumped[key]}
+    others = dumped |> Map.drop(@export_order) |> Enum.sort()
+
+    Jason.encode!(Jason.OrderedObject.new(ordered ++ others), pretty: true)
   end
 
   # Pretty JSON as `{class, text}` pieces for highlighting.
@@ -718,7 +731,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
     <div id="rule-versions" class="grid items-start gap-5 lg:grid-cols-[22.5rem_minmax(0,1fr)]">
       <section
         aria-label={gettext("Version history")}
-        class="flex flex-col gap-1.5 rounded-[1.75rem] bg-base-100 px-4 py-5"
+        class="flex flex-col gap-1.5 rounded-[1.75rem] bg-base-100 px-4 py-5 lg:self-stretch"
       >
         <div class="flex items-baseline gap-2 px-2 pb-2">
           <h2 class="flex-1 font-display text-xl font-semibold">
@@ -801,7 +814,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
           </span>
         </button>
 
-        <p class="px-2 pt-3 text-xs leading-normal text-muted">
+        <p class="mt-auto px-2 pt-3 text-xs leading-normal text-muted">
           {gettext(
             "Click two versions to compare them. Restoring loads the chosen one as a draft to publish; nothing is deleted."
           )}
@@ -886,7 +899,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
             {gettext("Compare with the current one")}
           </button>
           <button
-            :if={(@older && is_map(@older.version.snapshot)) and @can_edit}
+            :if={@older != nil and is_map(@older.version.snapshot) and @can_edit}
             id={"version-restore-#{@older.version.id}"}
             type="button"
             phx-click="restore_version"
@@ -975,22 +988,40 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
       assign(assigns, :parts, sentence_parts(assigns.rule)) |> assign(:other_chips, other_chips)
 
     ~H"""
+    <%!-- No whitespace between the pieces: the sentence carries its own. --%>
     <p class="rounded-2xl bg-secondary px-4 py-3.5 text-[0.9375rem] leading-[1.75] text-subtle [text-wrap:pretty]">
-      <%= for {kind, text} <- @parts do %>
-        <%= cond do %>
-          <% kind == :chip and not MapSet.member?(@other_chips, text) and @side == :before -> %>
-            <del class="rounded-md bg-error/14 px-1.5 py-0.5 text-error decoration-error/60">{text}</del>
-          <% kind == :chip and not MapSet.member?(@other_chips, text) -> %>
-            <ins class="rounded-md bg-primary/14 px-1.5 py-0.5 text-primary no-underline">{text}</ins>
-          <% kind == :chip -> %>
-            <span class="text-base-content">{text}</span>
-          <% true -> %>
-            {text}
-        <% end %>
-      <% end %>
+      <.sentence_bit
+        :for={{kind, text} <- @parts}
+        kind={kind}
+        text={text}
+        mark={
+          cond do
+            kind != :chip -> nil
+            MapSet.member?(@other_chips, text) -> :same
+            true -> @side
+          end
+        }
+      />
     </p>
     """
   end
+
+  attr :kind, :atom, required: true
+  attr :text, :string, required: true
+  attr :mark, :atom, default: nil
+
+  defp sentence_bit(%{mark: :before} = assigns),
+    do:
+      ~H'<del class="rounded-md bg-error/14 px-1.5 py-0.5 text-error decoration-error/60">{@text}</del>'
+
+  defp sentence_bit(%{mark: :after} = assigns),
+    do:
+      ~H'<ins class="rounded-md bg-primary/14 px-1.5 py-0.5 text-primary no-underline">{@text}</ins>'
+
+  defp sentence_bit(%{mark: :same} = assigns),
+    do: ~H'<span class="text-base-content">{@text}</span>'
+
+  defp sentence_bit(assigns), do: ~H"{@text}"
 
   attr :line, :any, required: true
   attr :changed, :boolean, required: true

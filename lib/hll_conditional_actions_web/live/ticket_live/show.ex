@@ -93,7 +93,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Show do
 
       <TicketComponents.frame
         id="ticket-grid"
-        class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 min-[85rem]:grid-cols-[minmax(0,1fr)_20rem]"
+        class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 xl:mt-0 min-[85rem]:grid-cols-[minmax(0,1fr)_20rem]"
       >
         <TicketComponents.conversation
           ticket={@ticket}

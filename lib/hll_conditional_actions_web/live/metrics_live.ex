@@ -722,7 +722,9 @@ defmodule HllConditionalActionsWeb.MetricsLive do
         >
           <div class="mb-3 flex flex-wrap items-center gap-3">
             <div class="flex min-w-fit flex-1 flex-col gap-0.5">
-              <h2 class="font-display text-xl font-semibold">{gettext("CRCON calls")}</h2>
+              <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+                {gettext("CRCON calls")}
+              </h2>
               <span class="text-xs text-muted">
                 {gettext("by endpoint · last hour · %{count} calls", count: int(@call_total))}
               </span>
@@ -780,7 +782,7 @@ defmodule HllConditionalActionsWeb.MetricsLive do
               :for={row <- @calls}
               id={"metrics-call-#{row.endpoint}"}
               class={[
-                "metrics-calls-grid border-b border-line-soft px-2.5 py-2.5 text-[0.8125rem] last:border-0",
+                "metrics-calls-grid border-b border-line-soft px-2.5 py-2.5 text-[0.8125rem] leading-[1.25] last:border-0",
                 row.errors > 0 && "bg-error/5"
               ]}
             >
@@ -851,14 +853,14 @@ defmodule HllConditionalActionsWeb.MetricsLive do
           </div>
         </section>
 
-        <div class="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:flex xl:flex-col xl:gap-5">
+        <div class="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:flex xl:flex-col xl:items-stretch xl:gap-5">
           <section
             id="metrics-skipped"
             aria-label={gettext("Why rules were skipped")}
             class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5"
           >
             <div class="flex items-baseline gap-2">
-              <h2 class="flex-1 font-display text-xl font-semibold">
+              <h2 class="flex-1 font-display text-[1.25rem] font-semibold leading-[1.2]">
                 {gettext("Why they were skipped")}
               </h2>
               <span class="text-xs text-muted">
@@ -899,7 +901,9 @@ defmodule HllConditionalActionsWeb.MetricsLive do
             class="flex flex-1 flex-col gap-3.5 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5"
           >
             <div class="flex items-baseline gap-2">
-              <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Log streaming")}</h2>
+              <h2 class="flex-1 font-display text-[1.25rem] font-semibold leading-[1.2]">
+                {gettext("Log streaming")}
+              </h2>
               <span class="text-xs text-muted">{gettext("reconnects · last hour")}</span>
             </div>
 

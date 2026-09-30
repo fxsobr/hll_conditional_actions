@@ -91,6 +91,10 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
     test "starting one with its own length and number of winners", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/seasons/new")
 
+      # The start reads as the board writes it, over the native picker.
+      view |> form("#season-form", season: %{starts_at: "2026-10-17T00:00"}) |> render_change()
+      assert has_element?(view, "#season-starts-at-text", "17 oct, 00:00")
+
       # The stat picker only shows for a sum or an average.
       view |> form("#season-form", season: %{scoring: "sum"}) |> render_change()
 

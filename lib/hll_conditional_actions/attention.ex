@@ -43,8 +43,9 @@ defmodule HllConditionalActions.Attention do
   @review_actions ~w(add_to_watchlist add_player_flag)
   @review_window_days 7
   @failure_window_hours 24
+  # A simulating rule is ready to act by the rule page's own measure: three
+  # days simulating, some runs and no failure (`RuleLive.Show`).
   @simulation_days 3
-  @simulation_runs 10
 
   @severity_order %{error: 0, warning: 1, info: 2}
 
@@ -256,11 +257,11 @@ defmodule HllConditionalActions.Attention do
         rule.enabled and rule.simulation and DateTime.compare(rule.inserted_at, cutoff) == :lt
       end)
 
-    counts = simulated_counts(user, Enum.map(candidates, & &1.id))
+    counts = simulated_counts(user, Enum.map(candidates, & &1.id), cutoff)
 
     for rule <- candidates,
-        {runs, last} = Map.get(counts, rule.id, {0, nil}),
-        runs >= @simulation_runs do
+        {runs, failures, last} = Map.get(counts, rule.id, {0, 0, nil}),
+        runs > 0 and failures == 0 do
       %{
         key: "go_live:#{rule.id}",
         kind: :ready_to_go_live,
@@ -272,14 +273,19 @@ defmodule HllConditionalActions.Attention do
     end
   end
 
-  defp simulated_counts(_user, []), do: %{}
+  defp simulated_counts(_user, [], _cutoff), do: %{}
 
-  defp simulated_counts(user, rule_ids) do
+  defp simulated_counts(user, rule_ids, cutoff) do
     user
     |> Rules.scoped_executions()
-    |> where([e], e.rule_id in ^rule_ids and e.status == :simulated)
+    |> where([e], e.rule_id in ^rule_ids)
     |> group_by([e], e.rule_id)
-    |> select([e], {e.rule_id, {count(e.id), max(e.executed_at)}})
+    |> select([e], {
+      e.rule_id,
+      {filter(count(e.id), e.status == :simulated),
+       filter(count(e.id), e.status in [:failed, :partial] and e.executed_at >= ^cutoff),
+       filter(max(e.executed_at), e.status == :simulated)}
+    })
     |> Repo.all()
     |> Map.new()
   end

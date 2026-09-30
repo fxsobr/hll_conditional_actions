@@ -124,6 +124,43 @@ defmodule HllConditionalActionsWeb.TicketUxTest do
       assert settings.blocked_flags == ["sem_ticket"]
     end
 
+    test "on a server's page the server is picked and the wizard opens on the commands", %{
+      conn: conn,
+      server: server
+    } do
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/setup")
+
+      assert has_element?(view, "#wizard-steps button[phx-value-step=servers]:not([disabled])")
+      assert has_element?(view, "#wizard-steps", "EU #1")
+      assert has_element?(view, "#wizard-back")
+
+      view |> element("#wizard-back") |> render_click()
+      assert has_element?(view, "#wizard-title", "Which servers take tickets")
+    end
+
+    test "the preview shows the chat just before the newest call", %{
+      conn: conn,
+      server: server
+    } do
+      ticket = open_ticket(server)
+
+      ticket
+      |> Ecto.Changeset.change(
+        context: [
+          %{"kind" => "chat", "text" => "Lima [team]: support on B?"},
+          %{"kind" => "chat", "text" => "Santos [unit]: on my way"},
+          %{"kind" => "chat", "text" => "Sarge [team]: my own line"}
+        ]
+      )
+      |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/setup")
+
+      assert has_element?(view, "#wizard-preview", "support on B?")
+      assert has_element?(view, "#wizard-preview", "[Squad] Santos")
+      refute has_element?(view, "#wizard-preview", "my own line")
+    end
+
     test "a step with an error does not move on", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/setup")
 

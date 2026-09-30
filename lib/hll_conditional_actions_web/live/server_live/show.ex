@@ -494,6 +494,7 @@ defmodule HllConditionalActionsWeb.ServerLive.Show do
       current_path={@current_path}
       nav={assigns[:nav]}
       page_title={gettext("Live")}
+      phone_scope
     >
       <:actions>
         <button
@@ -695,7 +696,7 @@ defmodule HllConditionalActionsWeb.ServerLive.Show do
         phx-update="stream"
         role="log"
         aria-label={gettext("Live feed")}
-        class="live-feed live-feed-short flex flex-col md:max-h-[36rem] md:overflow-y-auto xl:max-h-[32.5rem]"
+        class="live-feed live-feed-short flex flex-col md:max-h-[27.5rem] md:overflow-y-auto xl:max-h-[32.5rem]"
       >
         <p id="cockpit-feed-empty" class="hidden py-10 text-center text-sm text-muted only:block">
           <%= cond do %>

@@ -24,10 +24,10 @@ msgid "must be accepted"
 msgstr "debe ser aceptado"
 
 msgid "has invalid format"
-msgstr "tiene un formato inválido"
+msgstr "tiene un formato no válido"
 
 msgid "has an invalid entry"
-msgstr "tiene una entrada inválida"
+msgstr "tiene una entrada no válida"
 
 msgid "is reserved"
 msgstr "está reservado"
@@ -124,7 +124,7 @@ msgstr "%{param} debe ser al menos %{min}"
 #: lib/hll_conditional_actions_web/error_messages.ex:43
 #, elixir-autogen, elixir-format
 msgid "can only be counted over a career"
-msgstr "solo se puede contar sobre toda la carrera"
+msgstr "solo se puede contar en toda la carrera"
 
 #: lib/hll_conditional_actions_web/error_messages.ex:42
 #, elixir-autogen, elixir-format

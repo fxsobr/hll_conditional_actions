@@ -9,11 +9,11 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 ![CRCON Discord](https://img.shields.io/discord/685692524442026020?color=%237289da&label=CRCON%20discord)
 ![Last commit](https://img.shields.io/github/last-commit/fxsobr/hll_conditional_actions)
 
-![Overview](docs/screenshots/overview.png)
+![Briefing](docs/screenshots/briefing.png)
 
 *When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Welcome new players, warn team killers, escalate on repeat offenders, reward the people who seed, or post to Discord when something needs a human. Next to the rules: player support tickets from the in-game chat, achievements and seasons, leaderboards and match history.
 
-No scripting. A rule is built from dropdowns, reads back as a sentence, and can be tried against a player who is connected right now — or left in simulation, where it records everything it *would* have done without touching the game.
+No scripting. A rule is built from dropdowns and reads back as a sentence. The builder is a test bench: it overlays the last real runs on your edit and replays the draft over the last week of events before you publish — and a new rule starts in simulation, recording everything it *would* have done without touching the game, until it has run clean for three days.
 
 > [!IMPORTANT]
 > **This app does not talk to Hell Let Loose. It talks to CRCON.**
@@ -21,7 +21,7 @@ No scripting. A rule is built from dropdowns, reads back as a sentence, and can 
 
 ## Features
 
-Everything beyond the core is a **module** each server installs from its marketplace. A new server starts with none; turn on only what your community uses.
+Everything beyond the core is a **module** each server installs from its **Modules** page. A new server starts with none; turn on only what your community uses.
 
 | Module | What it adds |
 | --- | --- |
@@ -29,11 +29,12 @@ Everything beyond the core is a **module** each server installs from its marketp
 | **Tickets** | Players call an admin from the in-game chat; admins answer, assign and close tickets from the browser. |
 | **Achievements and seasons** | Goals players unlock by playing, and ranked seasons that reward the best with VIP. |
 | **Leaderboard and matches** | The live top players and squads, and the scoreboard of every past match. |
-| **Live feed** | Kills, chat and connections as they happen. |
+| **Live feed** | Kills, chat and connections as they happen, each line with the rules it fired. |
+| **VIP shop** | A public storefront where players buy VIP, paid with Stripe, Dodo Payments or Mercado Pago, delivered to every server of the package. |
 
-Always there: the servers and their overview, the Attention inbox, Discord webhooks, metrics, users, roles and two factor.
+Always there: the Briefing, each server's live cockpit, one Inbox for attention items and tickets, the players directory, Ctrl K search, notifications, Discord webhooks, engine metrics, users, roles and two factor — on desktop, tablet and phone, in a dark or light theme.
 
-![The marketplace](docs/screenshots/marketplace.png)
+![Modules](docs/screenshots/marketplace.png)
 
 ## Documentation
 
@@ -107,29 +108,37 @@ Full walkthrough: [Installation](https://github.com/fxsobr/hll_conditional_actio
 
 ## Screenshots
 
-**A server's tickets** — players who called an admin from the game, by state.
+**The Briefing** — what needs you, the rule ready to leave simulation, and every server right now.
 
-![Tickets](docs/screenshots/tickets.png)
+![Briefing](docs/screenshots/briefing.png)
 
-**Achievements** — the gallery, who unlocked what, and what is still in simulation.
+**Live** — the match over the map, and the feed with the rules each line fired.
 
-![Achievements](docs/screenshots/achievements.png)
+![The cockpit](docs/screenshots/cockpit.png)
 
-**A match** — the result and the best players of every category.
-
-![A match](docs/screenshots/match.png)
-
-**Attention** — everything that needs a human, from every server, in one inbox.
-
-![Attention](docs/screenshots/attention.png)
-
-**The rule builder** — setup, trigger, conditions, actions and limits as steps, with the rule reading back in plain words beside them.
+**The rule builder** — the rule as a sentence, conditions in groups, the last runs overlaid and a 7-day replay of the draft.
 
 ![The rule builder](docs/screenshots/rule-builder.png)
 
-**A rule's own page** — how often it fired, how many players it reached, what failed, and every change ever made to it.
+**A rule's own page** — ready to act for real or not, the escalation ladder with its counts, runs, and every version.
 
 ![A rule](docs/screenshots/rule.png)
+
+**The Inbox** — attention items and player tickets in one list, with the conversation and the reported player.
+
+![Tickets](docs/screenshots/tickets.png)
+
+**A player** — the last matches, the rules that hit them, their tickets, and what you can do about them.
+
+![A player](docs/screenshots/player.png)
+
+**A season** — the podium, the standings and who moved this week.
+
+![Seasons](docs/screenshots/seasons.png)
+
+**A match** — the result, the MVP and the best players of every category.
+
+![A match](docs/screenshots/match.png)
 
 ## Thanks to CRCON
 

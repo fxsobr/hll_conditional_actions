@@ -109,7 +109,7 @@ msgstr "Nivel muy bajo, se unió hace poco"
 #: lib/hll_conditional_actions_web/recipe_text.ex:77
 #, elixir-autogen, elixir-format
 msgid "Watch your fire, {player_name}. That was a team mate."
-msgstr "Cuidado con el fuego, {player_name}. Era un compañero."
+msgstr "Cuidado con tus disparos, {player_name}. Era un compañero de equipo."
 
 #: lib/hll_conditional_actions_web/recipe_text.ex:78
 #, elixir-autogen, elixir-format

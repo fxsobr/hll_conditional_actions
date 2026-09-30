@@ -7,7 +7,7 @@ A rule is one sentence: **when** something happens, **if** it matches, **then** 
 
 | Page | |
 | --- | --- |
-| **[Overview](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Overview)** | Priority, groups, scope, limits, escalation, simulation. |
+| **[Overview](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Overview)** | The sentence, condition groups, folders, scope, limits, escalation, simulation. |
 | **[When — triggers](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Triggers)** | All eleven triggers, and which fields each one offers. |
 | **[If — conditions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions)** | Every field you can test, grouped by what it describes. |
 | **[Operators](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators)** | is, contains, is one of — each with worked examples. |

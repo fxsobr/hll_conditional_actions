@@ -53,6 +53,12 @@ defmodule HllConditionalActionsWeb.Layouts do
       `:actions` slot, last.
     * `tab_bar={false}` hides the phone/tablet tab bar, for a page with its
       own bottom action bar.
+    * `inline_tabs`: on a tablet the tabs stay beside the title, the bell
+      goes and the scope says "Servidores" (TabletInbox board) - for a page
+      whose header has the room.
+    * `phone_scope`: on a phone the header is the logo, the server scope and
+      the bell, without the title, the search or the page's buttons (the
+      cockpit, Mobile board).
 
   ## Examples
 
@@ -96,6 +102,21 @@ defmodule HllConditionalActionsWeb.Layouts do
   attr :global_search, :boolean, default: true, doc: "the global search field in the header"
   attr :scope, :boolean, default: true, doc: "the server scope pill in the header"
   attr :bell, :boolean, default: true, doc: "the notifications bell in the header"
+
+  attr :scope_tag, :string, default: nil, doc: "a word after the scoped server's name"
+
+  attr :scope_nav, :map,
+    default: nil,
+    doc: "what the scope pill shows, when the page is about another server than `nav`'s"
+
+  attr :inline_tabs, :boolean,
+    default: false,
+    doc: "tablets: the tabs beside the title instead of a row under the header"
+
+  attr :phone_scope, :boolean,
+    default: false,
+    doc: "phones: the server scope in place of the title, search and buttons"
+
   attr :tab_bar, :boolean, default: true, doc: "the phone and tablet tab bar"
 
   attr :header, :boolean,
@@ -110,11 +131,16 @@ defmodule HllConditionalActionsWeb.Layouts do
     areas = areas(assigns.current_user, assigns.nav)
     active = area_key(assigns.current_path)
 
+    header_tabs = tabs_for(assigns, areas, active)
+
     assigns =
       assigns
       |> assign(:areas, areas)
       |> assign(:active_area, active)
-      |> assign(:header_tabs, tabs_for(assigns, areas, active))
+      |> assign(:header_tabs, header_tabs)
+      # A page whose header has the room keeps its tabs beside the title on
+      # a tablet too (TabletInbox board); the others get a row of their own.
+      |> assign(:inline_tabs?, assigns.inline_tabs and header_tabs != [])
 
     ~H"""
     <div class="min-h-screen bg-base-200">
@@ -123,16 +149,17 @@ defmodule HllConditionalActionsWeb.Layouts do
 
       <div class="xl:pl-[6.5rem]">
         <header :if={@header} id="app-header" class="shell-header">
-          <div class="flex min-h-[4.25rem] items-center gap-2.5 px-4 pt-4 md:min-h-[5.75rem] md:gap-3 md:px-6 md:pt-0 xl:pl-2 xl:pr-7">
+          <div class="flex min-h-[4.25rem] items-center gap-2.5 px-4 pt-4 md:min-h-[5.5rem] md:gap-2.5 md:px-6 md:pt-6 xl:min-h-[5.75rem] xl:gap-3 xl:pl-2 xl:pr-7 xl:pt-0">
             <.link
               navigate={~p"/"}
               aria-label={gettext("Conditional Actions")}
               class={[
                 "logo-tile shrink-0 xl:hidden",
-                if(@greeting,
-                  do: "flex size-11 rounded-[0.875rem] md:size-12 md:rounded-[0.9375rem]",
+                if(@greeting || @phone_scope,
+                  do: "flex size-12 rounded-[0.9375rem]",
                   else: "hidden size-12 rounded-[0.9375rem] md:flex"
-                )
+                ),
+                @greeting && "max-md:size-11 max-md:rounded-[0.875rem]"
               ]}
             >
               <.logo_chevrons class="size-6" />
@@ -167,9 +194,20 @@ defmodule HllConditionalActionsWeb.Layouts do
               </h1>
             </div>
 
+            <.scope_switcher
+              :if={@phone_scope && @nav && @nav.servers != []}
+              id="header-scope-phone"
+              class="relative min-w-0 flex-1 md:hidden"
+              wide
+              nav={@nav}
+              current_user={@current_user}
+              current_path={@current_path}
+            />
+
             <div class={[
               "min-w-0 flex-1 md:max-w-[45%] md:flex-none",
-              @greeting && "hidden xl:block"
+              @greeting && "hidden xl:block",
+              @phone_scope && "max-md:hidden"
             ]}>
               <p :if={@crumb || @eyebrow} class="truncate text-[0.8125rem] text-muted">
                 {@crumb || @eyebrow}
@@ -203,16 +241,19 @@ defmodule HllConditionalActionsWeb.Layouts do
               id="section-tabs"
               tabs={@header_tabs}
               label={@page_title}
-              class="ml-1 hidden xl:flex"
+              class={["ml-1 hidden xl:flex", @inline_tabs? && "md:flex"]}
             />
 
-            <div class="hidden flex-1 md:block"></div>
+            <%!-- Beside a greeting the greeting takes the room (TabletBriefing). --%>
+            <div class={["hidden flex-1", if(@greeting, do: "xl:block", else: "md:block")]}></div>
 
             <div class="flex shrink-0 items-center gap-2 md:gap-3">
               <.scope_switcher
                 :if={@scope && @nav && @nav.servers != [] && scoped_area?(@current_path)}
                 id="header-scope"
-                nav={@nav}
+                short={@inline_tabs?}
+                tag={@scope_tag}
+                nav={@scope_nav || @nav}
                 current_user={@current_user}
                 current_path={@current_path}
               />
@@ -227,7 +268,7 @@ defmodule HllConditionalActionsWeb.Layouts do
                         the bell out on a wide screen (Ctrl K still opens it). --%>
                   <.search_trigger
                     :if={@current_user && @global_search}
-                    class={@header_tabs != [] && "xl:hidden"}
+                    class={[@header_tabs != [] && "xl:hidden", @phone_scope && "max-md:hidden"]}
                   />
                 <% end %>
               </div>
@@ -241,11 +282,13 @@ defmodule HllConditionalActionsWeb.Layouts do
                 id="notifications"
                 current_user={@current_user}
                 nav={@nav}
-                compact={@actions != [] and is_nil(@greeting)}
-                class={@header_tabs != [] && "xl:hidden"}
+                compact={@actions != [] and is_nil(@greeting) and not @phone_scope}
+                class={@header_tabs != [] && if(@inline_tabs?, do: "md:hidden", else: "xl:hidden")}
               />
 
-              {render_slot(@actions)}
+              <div :if={@actions != []} class={["contents", @phone_scope && "max-md:hidden"]}>
+                {render_slot(@actions)}
+              </div>
             </div>
           </div>
 
@@ -254,14 +297,14 @@ defmodule HllConditionalActionsWeb.Layouts do
             id="section-tabs-mobile"
             tabs={@header_tabs}
             label={@page_title}
-            class="mx-4 mt-3 flex overflow-x-auto md:mx-6 xl:hidden"
+            class={["mx-4 mt-3 flex overflow-x-auto md:mx-6 xl:hidden", @inline_tabs? && "md:hidden"]}
           />
         </header>
 
         <%!-- Clipped sideways: a page that overflows a phone's width must
               not widen the layout, or the fixed tab bar leaves the screen. --%>
         <main class={[
-          "relative overflow-x-clip px-4 pt-3 md:px-6 xl:pb-7 xl:pl-2 xl:pr-7 xl:pt-5",
+          "relative overflow-x-clip px-4 pt-3 md:px-6 md:pt-4 xl:pb-7 xl:pl-2 xl:pr-7 xl:pt-5",
           !@header && "md:pt-5",
           if(@tab_bar, do: "pb-32 md:pb-36", else: "pb-8")
         ]}>
@@ -617,17 +660,21 @@ defmodule HllConditionalActionsWeb.Layouts do
   attr :nav, :map, required: true
   attr :current_user, :map, default: nil
   attr :current_path, :string, required: true
+  attr :class, :any, default: "relative hidden md:block"
+  attr :wide, :boolean, default: false, doc: "the pill fills its row (phones)"
+  attr :tag, :string, default: nil, doc: ~s(a word after the server's name, "novo")
+  attr :short, :boolean, default: false, doc: "below xl, \"Servers\" for all of them"
 
   # The server the page is about - or all of them - as a pill in the header.
   # Switching keeps the page: from one server's leaderboard to the other's.
   @doc false
   def scope_switcher(assigns) do
     ~H"""
-    <div class="relative hidden md:block" x-data="{ open: false }" id={@id}>
+    <div class={@class} x-data="{ open: false }" id={@id}>
       <button
         type="button"
         id={"#{@id}-button"}
-        class="scope-pill"
+        class={["scope-pill", @wide && "w-full max-w-none text-left"]}
         x-on:click="open = !open"
         x-bind:aria-expanded="open"
         aria-haspopup="menu"
@@ -635,14 +682,25 @@ defmodule HllConditionalActionsWeb.Layouts do
       >
         <%= if @nav.server do %>
           <img src={server_art(@nav.server)} alt="" class="size-9 shrink-0 rounded-full object-cover" />
-          <span class="max-w-44 truncate">{@nav.server.name}</span>
+          <span class={["truncate", if(@wide, do: "min-w-0 flex-1", else: "max-w-44")]}>
+            {@nav.server.name}
+          </span>
+          <%!-- The other game is worth a word (Vietnam board). --%>
+          <span :if={@tag} class="scope-tag">{@tag}</span>
+          <span
+            :if={!@tag && @nav.server.game in [:hllv, "hllv"]}
+            class="scope-tag scope-tag--vietnam max-md:hidden"
+          >
+            {gettext("HLL Vietnam")}
+          </span>
           <span
             class={["size-2 shrink-0 rounded-full", stream_dot(@nav.status)]}
             title={Labels.stream_status(@nav.status)}
           ></span>
         <% else %>
           <span class="scope-count">{length(@nav.servers)}</span>
-          <span class="truncate">{gettext("All servers")}</span>
+          <span :if={@short} class="truncate xl:hidden">{gettext("Servers")}</span>
+          <span class={["truncate", @short && "max-xl:hidden"]}>{gettext("All servers")}</span>
         <% end %>
         <.icon name="hero-chevron-down" class="size-4 shrink-0 text-muted" />
       </button>
@@ -1255,7 +1313,9 @@ defmodule HllConditionalActionsWeb.Layouts do
   defp allowed?(user, permission), do: Accounts.can?(user, permission)
 
   @doc false
-  def role_name(%{role: %{name: name}}), do: name
+  def role_name(%{role: %{} = role}),
+    do: HllConditionalActionsWeb.SettingsComponents.role_label(role)
+
   def role_name(_user), do: nil
 
   @doc """

@@ -778,15 +778,48 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
             Enum.map(assigns.cited, &ticket_entry(&1, :cited)),
         else: []
       ),
-      if(filter == "all", do: Enum.map(assigns.achievements, &achievement_entry/1), else: []),
+      if(filter == "all", do: achievement_entries(assigns), else: []),
       if(filter == "all", do: Enum.map(assigns.orders, &order_entry/1), else: []),
       if(filter == "all", do: first_entry(assigns), else: [])
     ]
     |> List.flatten()
     |> Enum.reject(&is_nil(&1.at))
     |> Enum.sort_by(& &1.at, {:desc, DateTime})
+    |> group_runs()
     |> Enum.take(@timeline_size)
   end
+
+  # A rule that fires every few minutes would bury everything else, so the
+  # runs of one rule (same outcome, same step) that follow each other with
+  # nothing else in between - and less than `@run_gap` apart - read as one
+  # line with a count. The line keeps the newest run; the "rules" tab still
+  # lists every run.
+  @run_gap 3 * 3600
+
+  defp group_runs(entries) do
+    {groups, order, _open} = Enum.reduce(entries, {%{}, [], %{}}, &take_entry/2)
+    order |> Enum.reverse() |> Enum.map(&Map.fetch!(groups, &1))
+  end
+
+  defp take_entry(%{kind: :execution} = entry, {groups, order, open}) do
+    key = run_key(entry)
+    id = Map.get(open, key)
+
+    if id && DateTime.diff(groups[id].since, entry.at) <= @run_gap,
+      do: {Map.update!(groups, id, &add_run(&1, entry)), order, open},
+      else: open_run(entry, key, groups, order, open)
+  end
+
+  defp take_entry(entry, {groups, order, _open}),
+    do: {Map.put(groups, entry.id, entry), [entry.id | order], %{}}
+
+  defp open_run(entry, key, groups, order, open),
+    do: {Map.put(groups, entry.id, entry), [entry.id | order], Map.put(open, key, entry.id)}
+
+  defp run_key(%{execution: execution, step: step}),
+    do: {execution.rule_id, execution.status, step, execution.server_id}
+
+  defp add_run(group, entry), do: %{group | runs: group.runs + 1, since: entry.at}
 
   defp execution_entry(execution) do
     step = get_in(execution.trace || %{}, ["step"])
@@ -796,12 +829,12 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
       kind: :execution,
       execution: execution,
       at: execution.executed_at,
+      since: execution.executed_at,
+      runs: 1,
       icon: "hero-bolt",
       tone: status_tone(execution.status),
-      detail:
-        [trigger_label(execution.trigger_event), execution.server && execution.server.name]
-        |> Enum.reject(&(&1 in [nil, ""]))
-        |> Enum.join(" · "),
+      detail: trigger_label(execution.trigger_event),
+      server: execution.server && execution.server.name,
       step: step,
       action: first_action(execution)
     }
@@ -850,6 +883,18 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
 
   defp first_message(_ticket), do: nil
 
+  # The same achievement can be unlocked on each server; the server's name
+  # tells those lines apart when the player has unlocks on more than one.
+  defp achievement_entries(%{achievements: unlocks, servers: servers}) do
+    names = Map.new(servers, &{&1.id, &1.name})
+    several? = unlocks |> Enum.map(& &1.server_id) |> Enum.uniq() |> length() > 1
+
+    Enum.map(unlocks, fn unlock ->
+      server = if several?, do: Map.get(names, unlock.server_id)
+      unlock |> achievement_entry() |> Map.put(:server, server)
+    end)
+  end
+
   defp achievement_entry(unlock) do
     %{
       id: "unlock-#{unlock.id}",
@@ -893,36 +938,41 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
     }
   end
 
-  defp first_entry(%{first_match: %{} = first}) do
-    [
-      %{
-        id: "first-session",
-        kind: :first,
-        at: first.started_at || first.ended_at,
-        icon: "hero-arrow-right-end-on-rectangle",
-        tone: "neutral",
-        detail:
-          [first.map, first.server && first.server.name]
-          |> Enum.reject(&is_nil/1)
-          |> Enum.join(" · ")
-      }
-    ]
+  # The first session: the first match read with the player in it, unless
+  # CRCON saw them earlier than that (its history goes further back).
+  defp first_entry(assigns) do
+    [first_match_entry(assigns.first_match), first_seen_entry(assigns.profile)]
+    |> Enum.reject(&(is_nil(&1) or is_nil(&1.at)))
+    |> Enum.min_by(& &1.at, DateTime, fn -> nil end)
+    |> List.wrap()
   end
 
-  defp first_entry(%{profile: %{first_seen_at: %DateTime{} = at}}) do
-    [
-      %{
-        id: "first-session",
-        kind: :first,
-        at: at,
-        icon: "hero-arrow-right-end-on-rectangle",
-        tone: "neutral",
-        detail: nil
-      }
-    ]
+  defp first_match_entry(%{} = first) do
+    %{
+      id: "first-session",
+      kind: :first,
+      at: first.started_at || first.ended_at,
+      icon: "hero-arrow-right-end-on-rectangle",
+      tone: "neutral",
+      detail: first.map,
+      server: first.server && first.server.name
+    }
   end
 
-  defp first_entry(_assigns), do: []
+  defp first_match_entry(_first), do: nil
+
+  defp first_seen_entry(%{first_seen_at: %DateTime{} = at}) do
+    %{
+      id: "first-session",
+      kind: :first,
+      at: at,
+      icon: "hero-arrow-right-end-on-rectangle",
+      tone: "neutral",
+      detail: nil
+    }
+  end
+
+  defp first_seen_entry(_profile), do: nil
 
   defp trigger_label(nil), do: nil
 
@@ -1347,7 +1397,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
             class="player-card flex flex-col px-4 py-1.5 md:px-[1.625rem] md:py-[1.375rem]"
           >
             <div class="mb-2.5 hidden flex-wrap items-center gap-3 md:flex">
-              <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Timeline")}</h2>
+              <h2 class="flex-1 font-display text-[1.25rem] font-semibold">{gettext("Timeline")}</h2>
               <div class="flex flex-wrap gap-1.5" role="group" aria-label={gettext("Show")}>
                 <button
                   :for={{filter, label} <- timeline_filters(@tickets?)}
@@ -1384,7 +1434,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
               class="player-card flex flex-col gap-3 px-[1.375rem] py-5"
             >
               <div class="flex items-baseline gap-2">
-                <h2 class="flex-1 font-display text-xl font-semibold">
+                <h2 class="flex-1 font-display text-[1.25rem] font-semibold">
                   {gettext("Last 10 matches")}
                 </h2>
                 <span class="text-xs text-muted">
@@ -1429,7 +1479,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
               aria-label={gettext("Rules that hit them most")}
               class="player-card flex flex-1 flex-col gap-2.5 px-[1.375rem] py-5"
             >
-              <h2 class="mb-1 font-display text-xl font-semibold">
+              <h2 class="mb-1 font-display text-[1.25rem] font-semibold">
                 {gettext("Rules that hit them most")}
               </h2>
               <p :if={@rules == []} class="py-2 text-sm text-muted">
@@ -1438,9 +1488,9 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
               <.link
                 :for={row <- @rules}
                 navigate={~p"/rules/#{row.rule_id}"}
-                class="flex items-center gap-2.5 rounded-[0.875rem] bg-secondary px-3 py-2.5 transition-colors hover:bg-base-300/60"
+                class="flex items-center gap-2.5 rounded-[0.875rem] bg-secondary px-3 py-2.5 leading-[1.125rem] transition-colors hover:bg-base-300/60"
               >
-                <span class="min-w-0 flex-1 truncate text-sm">{row.rule_name}</span>
+                <span class="min-w-0 flex-1 truncate text-sm leading-[1.125rem]">{row.rule_name}</span>
                 <span class="player-rule-bar">
                   <span
                     class={["rounded-[3px]", if(row.punitive?, do: "bg-accent", else: "bg-primary")]}
@@ -1711,14 +1761,14 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
   defp player_kpi(assigns) do
     ~H"""
     <div class="player-card flex min-w-0 flex-col gap-1.5 rounded-[1.375rem] px-5 py-[1.125rem]">
-      <span class="text-[0.8125rem] text-subtle">{@label}</span>
+      <span class="text-[0.8125rem] leading-[1.2] text-subtle">{@label}</span>
       <strong class={[
-        "font-display text-[2rem] font-semibold leading-tight tabular-nums",
+        "font-display text-[2rem] font-semibold leading-[1.2] tabular-nums",
         @tone == "axis" && "text-axis"
       ]}>
         {@value}
       </strong>
-      <span :if={@hint} class="truncate text-xs text-muted">{@hint}</span>
+      <span :if={@hint} class="truncate text-xs leading-[1.25] text-muted">{@hint}</span>
     </div>
     """
   end
@@ -1730,7 +1780,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
   defp phone_number(assigns) do
     ~H"""
     <div class="flex flex-col items-center gap-0.5 border-l border-line-soft first:border-l-0">
-      <strong class={["font-display text-xl font-semibold", @class]}>{@value}</strong>
+      <strong class={["font-display text-[1.25rem] font-semibold", @class]}>{@value}</strong>
       <span class="text-[0.6875rem] text-muted">{@label}</span>
     </div>
     """
@@ -2130,7 +2180,16 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
             at={@entry.at}
             variant="short"
             class="player-timeline-phone-when font-mono text-[0.6875rem]"
-          /><span :if={@entry.detail} class="player-timeline-phone-when"> · </span>{@entry.detail}
+          /><span
+            :if={@entry.detail || @entry[:server]}
+            class="player-timeline-phone-when"
+          > · </span>{@entry.detail}<span :if={@entry.detail && @entry[:server]}> · </span><span
+            :if={@entry[:server]}
+            class="max-md:hidden"
+          >{@entry.server}</span><span
+            :if={@entry[:server]}
+            class="md:hidden"
+          >{Players.short_name(@entry.server)}</span>
         </span>
         <ul
           :if={@entry.kind == :execution and @selected}
@@ -2167,6 +2226,16 @@ defmodule HllConditionalActionsWeb.PlayerLive.Show do
       <span class={verb_class(@entry.execution.status)}>{verb(@entry.execution.status)}</span>
       <span :if={@entry.step}>{gettext("step %{step}", step: @entry.step)}</span>
       <span :if={@entry.action}>· {@entry.action}</span>
+      <span
+        :if={@entry.runs > 1}
+        id={"#{@entry.id}-runs"}
+        class="player-timeline-runs"
+        title={
+          ngettext("%{count} run in a row", "%{count} runs in a row", @entry.runs, count: @entry.runs)
+        }
+      >
+        ×{@entry.runs}
+      </span>
     </button>
     """
   end

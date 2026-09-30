@@ -106,7 +106,7 @@
   display: inline-flex;
   height: 2.375rem;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   padding: 0 1rem;
   border-radius: 9999px;
   border: 1px solid var(--color-base-300);
@@ -572,8 +572,20 @@
   border-bottom: 1px solid var(--color-line-soft);
 }
 
-.player-timeline-row:last-child {
+/* Each row sits in its own <li>: the last item draws no line. */
+li:last-child > .player-timeline-row {
   border-bottom: 0;
+}
+
+/* How many runs of the same rule one line stands for. */
+.player-timeline-runs {
+  margin-left: 0.25rem;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 9999px;
+  background: var(--color-secondary);
+  color: var(--color-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
 }
 
 .player-timeline-when {

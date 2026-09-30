@@ -30,6 +30,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
   alias HllConditionalActions.Repo
   alias HllConditionalActions.Servers
   alias HllConditionalActions.Tickets
+  alias HllConditionalActions.Tickets.Context
   alias HllConditionalActions.Tickets.Settings
   alias HllConditionalActions.Tickets.Ticket
   alias HllConditionalActionsWeb.TicketComponents
@@ -63,13 +64,15 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
 
     with {:ok, server} <- Servers.fetch_server(server_id),
          true <- Accounts.can_access_server?(user, server) do
+      # The server is already picked, so the wizard opens on the commands;
+      # the servers step stays behind it to add more of them.
       {:ok,
        socket
        |> base_assigns()
        |> assign(:server, server)
-       |> assign(:servers, [server])
+       |> assign(:servers, Servers.list_servers_for(user))
        |> assign(:selected, [server.id])
-       |> assign(:steps, @form_steps ++ [:review])
+       |> assign(:steps, [:servers | @form_steps] ++ [:review])
        |> assign(:step, :commands)
        |> load_base(server.id)}
     else
@@ -118,8 +121,15 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
 
     rows = TicketSettingsForm.rows(settings)
 
+    # Settings saved while tickets are still off are a draft of this wizard.
+    draft_at =
+      if settings.id && not settings.enabled,
+        do: settings.updated_at,
+        else: socket.assigns.draft_saved_at
+
     socket
     |> assign(:settings, settings)
+    |> assign(:draft_saved_at, draft_at)
     |> assign(:params, %{})
     |> assign(:rows, rows)
     |> assign(:commands, settings.commands || [])
@@ -128,9 +138,10 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
     |> build()
   end
 
-  # The newest real call on the server, to show the preview with; the
-  # admin's own name when there is none yet.
-  defp sample_call(nil, user), do: %{player: user.name || user.username, text: nil, id: nil}
+  # The newest real call on the server, to show the preview with, and the
+  # chat lines just before it; the admin's own name when there is none yet.
+  defp sample_call(nil, user),
+    do: %{player: user.name || user.username, text: nil, id: nil, chat: []}
 
   defp sample_call(server_id, user) do
     ticket =
@@ -152,10 +163,27 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
         %{
           player: ticket.player_name || ticket.player_id,
           text: first && first.body,
-          id: ticket.id
+          id: ticket.id,
+          chat: chat_before(ticket)
         }
     end
   end
+
+  # The last two lines other players wrote before the call, as the game's
+  # chat shows them.
+  defp chat_before(ticket) do
+    (ticket.context || [])
+    |> Enum.map(&Context.normalize/1)
+    |> Enum.filter(
+      &(&1["kind"] == "chat" and is_binary(&1["actor"]) and is_binary(&1["message"]))
+    )
+    |> Enum.reject(&(&1["actor_id"] == ticket.player_id or &1["actor"] == ticket.player_name))
+    |> Enum.take(-2)
+    |> Enum.map(&%{scope: chat_scope(&1["scope"]), actor: &1["actor"], message: &1["message"]})
+  end
+
+  defp chat_scope("unit"), do: gettext("Squad")
+  defp chat_scope(_team), do: gettext("Team")
 
   # The wizard is there to switch tickets on, so its values are checked as
   # if they were (a command is required); saving says what `enabled` is.
@@ -557,6 +585,13 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
     Tickets.render_notice(template || "", ticket, settings, server)
   end
 
+  defp ask_reason_hint,
+    do:
+      String.split(
+        gettext("when only %{command} comes, without text", command: <<0>>),
+        <<0>>
+      )
+
   defp ask_reason_preview,
     do: gettext("Tell us what happened: type it here in the chat and it joins your ticket.")
 
@@ -607,7 +642,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
       <form id="server-picker" phx-change="select_servers" class="hidden"></form>
       <form id="flag-add" phx-submit="add_flag" phx-change="validate" class="hidden"></form>
 
-      <div class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 lg:grid-cols-[16.875rem_minmax(0,1fr)] min-[80rem]:min-h-[calc(100dvh-8.75rem)] min-[85rem]:grid-cols-[16.875rem_minmax(0,1fr)_26.875rem]">
+      <div class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 xl:mt-0 lg:grid-cols-[16.875rem_minmax(0,1fr)] min-[80rem]:min-h-[calc(100dvh-8.75rem)] min-[85rem]:grid-cols-[16.875rem_minmax(0,1fr)_26.875rem]">
         <section
           aria-label={gettext("Steps")}
           class="inbox-panel flex flex-col gap-1.5 rounded-[1.75rem] bg-base-100 px-[1.125rem] py-[1.375rem]"
@@ -831,7 +866,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
               phx-click="back"
               class="flex h-12 cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-secondary pl-4 pr-5 text-sm transition-colors hover:border-base-content/30"
             >
-              <.icon name="hero-arrow-left" class="size-4" /> {gettext("Back")}
+              <.icon name="hero-chevron-left" class="size-4" /> {gettext("Back")}
             </button>
             <span class="flex-1 text-center text-[0.8125rem] text-muted">
               <span :if={@step != :review}>
@@ -866,7 +901,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
           class="inbox-panel flex flex-col gap-3.5 rounded-[1.75rem] bg-base-100 p-[1.375rem] lg:col-span-2 min-[85rem]:col-span-1"
         >
           <div class="flex items-baseline">
-            <h2 class="flex-1 font-display text-[1.25rem] font-semibold">
+            <h2 class="flex-1 font-display text-[1.25rem] font-semibold leading-[1.2]">
               {gettext("How the player sees it")}
             </h2>
             <span class="flex items-center gap-1.5 text-xs text-primary">
@@ -926,6 +961,9 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
               </span>
             </div>
             <div class="absolute inset-x-4 bottom-3.5 flex flex-col gap-[0.3125rem] font-mono text-xs leading-[1.45]">
+              <span :for={line <- @sample.chat} class="text-gray-400">
+                [{line.scope}] <span class="text-[#8CC4FF]">{line.actor}</span>: {line.message}
+              </span>
               <span class="text-gray-50">
                 [{gettext("Team")}] <span class="text-[#8CC4FF]">{@sample.player}</span>:
                 <span class="text-primary-300">{List.first(@commands, "!admin")}</span>
@@ -999,7 +1037,9 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
   defp step_heading(assigns) do
     ~H"""
     <div class="flex min-w-0 flex-col gap-1.5">
-      <h2 id="wizard-title" class="font-display text-[1.375rem] font-semibold">{@title}</h2>
+      <h2 id="wizard-title" class="font-display text-[1.375rem] font-semibold leading-[1.2]">
+        {@title}
+      </h2>
       <span class="text-sm leading-normal text-subtle">{@text}</span>
     </div>
     """
@@ -1077,9 +1117,10 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
           <span class="flex flex-1 flex-col gap-0.5">
             <span class="text-sm">{gettext("Ask for the reason")}</span>
             <span class="text-xs text-muted">
-              {gettext("when only %{command} comes, without text",
-                command: List.first(@commands, "!admin")
-              )}
+              <%!-- The command in its own face, wherever the sentence puts it. --%>
+              <%= for {part, index} <- Enum.with_index(ask_reason_hint()) do %>
+                <span :if={index > 0} class="font-mono">{List.first(@commands, "!admin")}</span>{part}
+              <% end %>
             </span>
           </span>
           <TicketSettingsForm.switch
@@ -1141,7 +1182,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Setup do
           />
           <span class="text-[0.8125rem] text-muted">{gettext("seconds")}</span>
         </label>
-        <span class="text-[0.8125rem] text-muted">
+        <span class="min-w-40 flex-1 text-[0.8125rem] text-muted">
           {gettext("between one call and the next from the same player")}
         </span>
       </div>

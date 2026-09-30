@@ -156,6 +156,19 @@ defmodule HllConditionalActionsWeb.InboxLiveTest do
     refute has_element?(view, "#inbox-ticket-#{ticket.id}")
   end
 
+  test "the first render already lists the owner tab of the address", %{
+    conn: conn,
+    server: server
+  } do
+    ticket = open_ticket(server)
+
+    html = conn |> get(~p"/inbox?#{[owner: "mine"]}") |> html_response(200)
+    refute html =~ ~s(id="inbox-ticket-#{ticket.id}")
+
+    html = conn |> get(~p"/inbox?#{[owner: "unowned"]}") |> html_response(200)
+    assert html =~ ~s(id="inbox-ticket-#{ticket.id}")
+  end
+
   test "an internal note from the inbox stays with the admins", %{conn: conn, server: server} do
     ticket = open_ticket(server)
     {:ok, view, _html} = live(conn, ~p"/inbox?#{[ticket: ticket.id]}")

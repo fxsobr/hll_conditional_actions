@@ -166,6 +166,9 @@ defmodule HllConditionalActionsWeb.MatchLiveTest do
 
     assert has_element?(view, "#match-mvp", "Medic")
     assert has_element?(view, "#match-hero", "Carentan")
+    # 3 to 2 in warfare: the clock ran out before anybody took every sector.
+    assert has_element?(view, "#match-hero", "Allies won on time")
+    assert has_element?(view, "#match-mvp", "squad Baker")
     assert has_element?(view, "#match-board-kills", "Sharpshooter")
     assert has_element?(view, "#match-squads", "Baker")
     assert has_element?(view, "#match-rules", "Welcome")

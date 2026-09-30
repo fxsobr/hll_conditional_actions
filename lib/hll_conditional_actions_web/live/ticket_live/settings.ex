@@ -555,7 +555,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Settings do
         id="ticket-settings-form"
         phx-change="validate"
         phx-submit="save"
-        class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 min-[80rem]:min-h-[calc(100dvh-8.75rem)] lg:grid-cols-2 min-[85rem]:grid-cols-[25rem_minmax(0,1fr)_25.625rem]"
+        class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 xl:mt-0 min-[80rem]:min-h-[calc(100dvh-8.75rem)] lg:grid-cols-2 min-[85rem]:grid-cols-[25rem_minmax(0,1fr)_25.625rem]"
       >
         <div class="flex min-w-0 flex-col gap-5">
           <TicketComponents.panel id="settings-categories" class="gap-2 p-[1.375rem]">

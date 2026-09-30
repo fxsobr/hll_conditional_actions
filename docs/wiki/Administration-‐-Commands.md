@@ -63,7 +63,7 @@ every upgrade.
 
 ```bash
 git fetch --tags
-git checkout v0.2.0          # the version you are moving to
+git checkout v0.3.0          # the version you are moving to
 docker compose pull
 docker compose up -d
 ```

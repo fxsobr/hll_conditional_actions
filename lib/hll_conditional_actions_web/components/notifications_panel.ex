@@ -15,6 +15,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
 
   alias HllConditionalActions.Accounts
   alias HllConditionalActions.Attention
+  alias HllConditionalActions.Briefing
   alias HllConditionalActions.Crcon.LogStream
   alias HllConditionalActions.Notifications
   alias HllConditionalActions.Servers
@@ -22,7 +23,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
-    {:ok, assign(socket, open: false, items: [], filter: "all")}
+    {:ok, assign(socket, open: false, items: [], filter: "all", last_events: %{})}
   end
 
   @impl Phoenix.LiveComponent
@@ -92,6 +93,27 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
     end
   end
 
+  # Grants a paid VIP that failed again, like "Tentar de novo" on the
+  # purchases page: the fulfilment job runs once more for that order.
+  def handle_event("retry_vip", %{"order" => id}, socket) do
+    user = socket.assigns.current_user
+
+    with true <- Accounts.can?(user, :manage_integrations),
+         {order_id, ""} <- Integer.parse(id),
+         true <- Enum.any?(socket.assigns.items, &vip_order?(&1, order_id)) do
+      %{order_id: order_id}
+      |> HllConditionalActions.Workers.FulfillVipOrder.new()
+      |> Oban.insert()
+
+      {:noreply, put_flash(socket, :info, gettext("Granting the VIP again."))}
+    else
+      _no -> {:noreply, socket}
+    end
+  end
+
+  defp vip_order?(%{kind: :vip_failed, subject: %{order: %{id: id}}}, id), do: true
+  defp vip_order?(_item, _id), do: false
+
   defp load(socket) do
     user = socket.assigns.current_user
     servers = Servers.list_servers_for(user)
@@ -104,7 +126,12 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
         []
       end
 
-    assign(socket, :items, Notifications.list(user, servers, attention))
+    items = Notifications.list(user, servers, attention)
+
+    # "Nenhum evento desde 21:43": when each fallen stream last delivered.
+    down = for %{kind: :stream_down, subject: %{server: server}} <- items, do: server.id
+
+    assign(socket, items: items, last_events: Briefing.last_events(down))
   end
 
   @impl Phoenix.LiveComponent
@@ -211,10 +238,24 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
 
         <div class="notif-list">
           <p :if={@fresh != []} class="notif-heading">{gettext("Now")}</p>
-          <.item :for={item <- @fresh} item={item} now={@now} myself={@myself} user={@current_user} />
+          <.item
+            :for={item <- @fresh}
+            item={item}
+            now={@now}
+            myself={@myself}
+            user={@current_user}
+            last_events={@last_events}
+          />
 
           <p :if={@seen != []} class="notif-heading pt-2.5">{gettext("Earlier")}</p>
-          <.item :for={item <- @seen} item={item} now={@now} myself={@myself} user={@current_user} />
+          <.item
+            :for={item <- @seen}
+            item={item}
+            now={@now}
+            myself={@myself}
+            user={@current_user}
+            last_events={@last_events}
+          />
 
           <div
             :if={@fresh == [] and @seen == []}
@@ -252,13 +293,14 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
   attr :now, :any, required: true
   attr :myself, :any, required: true
   attr :user, :map, required: true
+  attr :last_events, :map, default: %{}
 
   defp item(assigns) do
     assigns =
       assign(assigns,
         tone: tone(assigns.item),
         title: title(assigns.item),
-        body: body(assigns.item)
+        body: body(assigns.item, assigns.last_events)
       )
 
     ~H"""
@@ -267,7 +309,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
       class={[
         "notif-item",
         @item.unread? && "is-unread",
-        @item.unread? && @item.severity == :error && "is-error"
+        @item.unread? && @tone == "error" && "is-error"
       ]}
     >
       <button
@@ -297,7 +339,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
             :if={@item.at}
             class={[
               "whitespace-nowrap font-mono text-[0.6875rem]",
-              if(@item.unread? and @item.severity == :error, do: "text-error", else: "text-muted")
+              if(@item.unread? and @tone == "error", do: "text-error", else: "text-muted")
             ]}
           >
             {RelativeTime.short(@item.at, @now)}
@@ -342,7 +384,18 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
           :if={@item.unread? && @item.kind == :vip_failed}
           class="relative z-10 mt-1.5 flex gap-1.5"
         >
+          <button
+            :if={Accounts.can?(@user, :manage_integrations)}
+            type="button"
+            class="h-[1.875rem] cursor-pointer rounded-full border border-line-raised bg-secondary px-3 text-xs"
+            phx-click="retry_vip"
+            phx-value-order={@item.subject.order.id}
+            phx-target={@myself}
+          >
+            {gettext("Try again")}
+          </button>
           <.link
+            :if={!Accounts.can?(@user, :manage_integrations)}
             navigate={~p"/vip-shop/purchases"}
             class="flex h-[1.875rem] items-center rounded-full border border-line-raised bg-secondary px-3 text-xs"
           >
@@ -371,12 +424,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
     assigns = assign(assigns, :parts, parts)
 
     ~H"""
-    <%= for part <- @parts do %>
-      <span :if={String.starts_with?(part, "@")} class="text-accent">{part}</span>
-      <%= if !String.starts_with?(part, "@") do %>
-        {part}
-      <% end %>
-    <% end %>
+    <span :for={part <- @parts} class={String.starts_with?(part, "@") && "text-accent"}>{part}</span>
     """
   end
 
@@ -435,6 +483,29 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
     do: gettext("“%{rule}” is ready to act", rule: rule.name)
 
   defp title(_item), do: gettext("Notification")
+
+  defp body(%{kind: :stream_down, subject: %{server: server}} = item, last_events)
+       when is_map_key(last_events, server.id) do
+    at = Map.fetch!(last_events, server.id)
+
+    if at == nil,
+      do: body(item),
+      else:
+        gettext("No event since %{time}. This server's rules are blind.",
+          time: clock(at, server)
+        )
+  end
+
+  defp body(item, _last_events), do: body(item)
+
+  defp clock(at, server) do
+    at = if is_struct(at, NaiveDateTime), do: DateTime.from_naive!(at, "Etc/UTC"), else: at
+
+    case DateTime.shift_zone(at, server.timezone || "Etc/UTC") do
+      {:ok, local} -> Calendar.strftime(local, "%H:%M")
+      _error -> Calendar.strftime(at, "%H:%M")
+    end
+  end
 
   defp body(%{kind: :stream_down, subject: %{reason: :stopped}}),
     do: gettext("The engine for this server stopped. This server's rules are blind.")

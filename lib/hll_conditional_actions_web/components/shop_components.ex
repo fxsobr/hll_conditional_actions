@@ -54,7 +54,7 @@ defmodule HllConditionalActionsWeb.ShopComponents do
   @dev_preview Application.compile_env(:hll_conditional_actions, :dev_routes, false)
 
   @doc """
-  In development only: `?theme=<name>` shows the shop in another theme and
+  In development only: `?theme=<name>` shows the shop in another theme (with its own accent) and
   `?sections=all` turns every section on, without saving anything - to
   compare the storefront with the design boards. Elsewhere the settings are
   returned as they are.
@@ -65,7 +65,7 @@ defmodule HllConditionalActionsWeb.ShopComponents do
 
     design =
       if params["theme"] in Design.themes(),
-        do: Map.put(design, "theme", params["theme"]),
+        do: design |> Map.put("theme", params["theme"]) |> Map.put("accent", nil),
         else: design
 
     design =
@@ -534,7 +534,7 @@ defmodule HllConditionalActionsWeb.ShopComponents do
       ]}>
         <img src={@picture.src} alt="" class="shop-art-img" />
         <div
-          class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sh-img-bg)_60%,transparent)_0%,color-mix(in_oklab,var(--sh-img-bg)_15%,transparent)_30%,color-mix(in_oklab,var(--sh-img-bg)_82%,transparent)_62%,color-mix(in_oklab,var(--sh-img-bg)_95%,transparent)_100%)]"
+          class="absolute inset-0 z-[-1] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sh-img-bg)_60%,transparent)_0%,color-mix(in_oklab,var(--sh-img-bg)_15%,transparent)_30%,color-mix(in_oklab,var(--sh-img-bg)_82%,transparent)_62%,color-mix(in_oklab,var(--sh-img-bg)_95%,transparent)_100%)]"
           aria-hidden="true"
         >
         </div>
@@ -827,7 +827,7 @@ defmodule HllConditionalActionsWeb.ShopComponents do
       <img src={@art.src} alt={@art.alt} class="shop-art-img" />
       <div class="shop-art-scrim hidden sm:block"></div>
       <div
-        class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sh-ground)_35%,transparent)_0%,color-mix(in_oklab,var(--sh-ground)_55%,transparent)_30%,color-mix(in_oklab,var(--sh-ground)_95%,transparent)_72%)] sm:hidden"
+        class="absolute inset-0 z-[-1] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sh-ground)_35%,transparent)_0%,color-mix(in_oklab,var(--sh-ground)_55%,transparent)_30%,color-mix(in_oklab,var(--sh-ground)_95%,transparent)_72%)] sm:hidden"
         aria-hidden="true"
       >
       </div>
@@ -1539,7 +1539,7 @@ defmodule HllConditionalActionsWeb.ShopComponents do
       class="shop-art mx-4 mt-10 rounded-[1.75rem] [.shop-theme-desert_&]:rounded-[1.25rem]"
     >
       <img src={@art} alt="" class="shop-art-img" />
-      <div class="absolute inset-0 -z-10 bg-[color-mix(in_oklab,var(--sh-img-bg)_86%,transparent)] sm:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--sh-img-bg)_94%,transparent)_0%,color-mix(in_oklab,var(--sh-img-bg)_80%,transparent)_55%,color-mix(in_oklab,var(--sh-img-bg)_45%,transparent)_100%)]">
+      <div class="absolute inset-0 z-[-1] bg-[color-mix(in_oklab,var(--sh-img-bg)_86%,transparent)] sm:bg-[linear-gradient(90deg,color-mix(in_oklab,var(--sh-img-bg)_94%,transparent)_0%,color-mix(in_oklab,var(--sh-img-bg)_80%,transparent)_55%,color-mix(in_oklab,var(--sh-img-bg)_45%,transparent)_100%)]">
       </div>
       <div class="relative flex flex-col gap-5 px-6 py-7 sm:min-h-[8.125rem] sm:flex-row sm:items-center sm:gap-6 sm:px-12 sm:py-0">
         <div class="flex grow flex-col gap-1.5">

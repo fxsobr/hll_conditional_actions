@@ -1785,6 +1785,28 @@ optgroup {
     font-weight: 700;
   }
 
+  /* A word after the server's name: "novo" (Onboarding), the other game
+     (Vietnam, in the jungle teal of the boards). */
+  .scope-tag {
+    flex-shrink: 0;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--color-secondary);
+    color: var(--color-subtle);
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  .scope-tag--vietnam {
+    --scope-teal: #0f7a68;
+    background: color-mix(in oklab, var(--scope-teal) 14%, transparent);
+    color: var(--scope-teal);
+  }
+
+  .dark .scope-tag--vietnam {
+    --scope-teal: #7fd6c2;
+  }
+
   .scope-menu {
     position: absolute;
     right: 0;
@@ -2130,6 +2152,7 @@ optgroup {
     border: 1px solid transparent;
     color: var(--color-base-content);
     font-size: 0.875rem;
+    line-height: 1.25;
   }
 
   .palette-option[aria-selected="true"] {
@@ -2174,6 +2197,21 @@ optgroup {
     flex: 1;
     flex-direction: column;
     gap: 1px;
+    line-height: 1.25;
+  }
+
+  .palette-online {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    height: 1.5rem;
+    padding: 0 0.5625rem;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+    font-size: 0.6875rem;
+    font-weight: 600;
   }
 
   .palette-title {

@@ -23,15 +23,14 @@
 ```bash
 cd ~/hll_conditional_actions
 git fetch --tags
-git checkout v0.2.0
+git checkout v0.3.1
 docker compose pull
 docker compose up -d
 ```
 
-Replace `v0.2.0` with the version you are moving to. The
+Replace `v0.3.1` with the version you are moving to. The
 [releases page](https://github.com/fxsobr/hll_conditional_actions/releases)
-lists them, and the **About** dialog in the app tells you when there is a
-newer one.
+lists them, and **About** in the app tells you when there is a newer one.
 
 > [!NOTE]
 > **Coming from v0.1.2 or older**, the commands used to carry
@@ -43,8 +42,29 @@ newer one.
 > [!NOTE]
 > **Coming from v0.1.x to v0.2.0**, every server you already have gets every
 > module installed by the upgrade, so nothing disappears. Servers you add
-> afterwards start empty: open the server's **Marketplace** and install what
+> afterwards start empty: open the server's **Modules** page and install what
 > it needs. See [Features](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features).
+
+> [!NOTE]
+> **Coming from v0.2.x to v0.3.0**, the whole interface is new — see
+> [The interface](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-The-interface).
+> Take a backup first: this release adds several migrations. Also worth knowing:
+>
+> - **Acting on players has its own permission**, *Act on players*
+>   (`manage_players`). The upgrade grants it to every role that can manage
+>   tickets, so nobody loses access; review it on **Settings → Roles**.
+> - **The built-in roles are read-only.** Duplicate one to customise it.
+> - **Changing a password asks for the current one** and needs at least 12
+>   characters with letters and numbers. Every signed-in browser is now a
+>   session you can end from **My account**.
+> - **A simulating rule is "ready to act" after three clean days**, and the
+>   rule's page offers **Go live for real**.
+> - **Events kept for replays and diagnosis** now cover 7 days, up to 2,000
+>   per trigger and server (it was the latest 50).
+> - **A player can have more than one ticket open**; the limit is a ticket
+>   setting (one by default).
+> - **Admins can reset a forgotten password by e-mail**, through the VIP
+>   shop's mail settings.
 
 Nothing is compiled on your machine. The images are built when a release is
 published and downloaded ready to run, so an upgrade takes about as long as
@@ -58,7 +78,7 @@ though no code is being compiled.
 The compose file names the image with the version **it** was released as:
 
 ```yaml
-image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.2.0}
+image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.3.1}
 ```
 
 So checking out the tag is what selects the image. `pull` then fetches exactly
@@ -80,7 +100,7 @@ BUILD_VERSION=$(git describe --tags --always) \
 ```
 
 The `build:` section is still in the compose file for exactly this. The
-`BUILD_VERSION` part stamps the commit into the image so the About dialog
+`BUILD_VERSION` part stamps the commit into the image so About
 reports it; leave it out and everything still works, you just lose the ability
 to tell two builds apart.
 
@@ -112,8 +132,9 @@ password and your CRCON settings survive the switch.
 
 ## Checking it worked
 
-Open the **About** dialog — the version line at the bottom of the sidebar,
-above your account — and compare it with what the server says:
+Open **About** — in the avatar menu at the bottom of the icon rail, or on
+**Settings** — and compare the version with what the server says (on a phone
+the version is at the bottom of the **More** sheet):
 
 ```bash
 git describe --tags --always
@@ -124,11 +145,12 @@ If the two disagree, the old image is still running — usually because
 the `pull` says why; a `denied` or `not found` almost always means the
 [package is still private](#if-the-pull-is-denied).
 
-One thing to know: the dialog does not check GitHub on demand. It checks
-thirty seconds after the app starts and every six hours after that, because
-GitHub allows sixty unauthenticated requests an hour and spending them on page
-views would exhaust them. Since an upgrade restarts the app anyway, the dialog
-is accurate again within a minute of the upgrade finishing.
+One thing to know: opening About does not ask GitHub. The app checks thirty
+seconds after it starts and every six hours after that, because GitHub allows
+sixty unauthenticated requests an hour and spending them on page views would
+exhaust them. **Check now** on **Settings → About** asks right away. Since an
+upgrade restarts the app anyway, About is accurate again within a minute of
+the upgrade finishing.
 
 ## If it will not start
 
@@ -187,7 +209,7 @@ backup and no choice.
 
 ## Following a tag, or following main
 
-`git checkout v0.2.0` leaves you in what git calls a detached HEAD. That is
+`git checkout v0.3.1` leaves you in what git calls a detached HEAD. That is
 the right state for a server: it pins you to exactly that commit, and nothing
 moves under you.
 

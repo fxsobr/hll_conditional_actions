@@ -66,16 +66,15 @@ it is a test token. Older accounts show `TEST-…`; both work.
 
 ## 4. Fill in the app
 
-**VIP shop → Settings → Payments → Mercado Pago → Configure**:
+**VIP shop → Payments → Mercado Pago → Configure**:
 
 | Field | Value |
 | --- | --- |
-| Offer this payment method | On |
-| Mode | *Test (sandbox)* — the customer is sent to the sandbox checkout |
+| Mode | *In test* — the customer is sent to the sandbox checkout |
 | Access token | The token from step 2 |
 | Webhook signing secret | The *Assinatura secreta* from step 3. Optional — without it the app still confirms every payment with the API — but set it, so forged notifications are refused before that |
 
-**Save**. The Mercado Pago card now shows **Test mode**.
+**Test connection**, then **Save**. The Mercado Pago card now shows **In test**; if it still says *Off*, click **Off · turn on**.
 
 ## 5. Check the webhook
 
@@ -115,7 +114,7 @@ de pagamento"*.
 2. **Webhooks → Configurar notificações → Modo de produção**: paste the same
    URL, tick **Pagamentos**, save, and copy that mode's **Assinatura
    secreta**.
-3. In the app, paste both, set **Mode** to *Live* and save. The customer is
+3. In the app, paste both, set **Mode** to *Production* and save. The customer is
    now sent to the real checkout.
 
 ## Troubleshooting
@@ -131,4 +130,4 @@ More in [When a payment does not arrive](https://github.com/fxsobr/hll_condition
 
 ***
 
-**←** [Dodo Payments](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments-%E2%80%90-Dodo-Payments) · [VIP shop payments](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments) **↑**
+**←** [Dodo Payments](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments-%E2%80%90-Dodo-Payments) · **↑** [VIP shop payments](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments) · [Inbox and history](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history) **→**

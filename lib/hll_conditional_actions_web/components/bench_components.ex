@@ -243,7 +243,8 @@ defmodule HllConditionalActionsWeb.BenchComponents do
         {Labels.recipe_name(recipe.id)}
       </.link>
       <.link
-        navigate={~p"/rules"}
+        id="bench-recipes-all"
+        navigate={~p"/rules?#{[recipes: 1]}"}
         class="flex h-9 shrink-0 items-center px-3.5 text-[0.8125rem] font-medium text-primary hover:underline"
       >
         {ngettext("See the recipe", "See all %{count}", @total)}
@@ -1683,7 +1684,9 @@ defmodule HllConditionalActionsWeb.BenchComponents do
           "font-mono text-xs",
           if(@delivery.status == "delivered", do: "text-primary", else: "text-error")
         ]}>
-          {@delivery.status}
+          {if @delivery.status == "delivered",
+            do: gettext("Delivered"),
+            else: gettext("Not delivered")}
         </span>
         <span :if={@delivery.at}>
           · <.local_time id="bench-last-delivery" at={@delivery.at} format="datetime" />

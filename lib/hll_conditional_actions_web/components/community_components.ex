@@ -429,12 +429,7 @@ defmodule HllConditionalActionsWeb.CommunityComponents do
     |> String.replace(".", elem(separators(), 1))
   end
 
-  defp separators do
-    case Gettext.get_locale(HllConditionalActionsWeb.Gettext) do
-      "pt" <> _rest -> {".", ","}
-      _english -> {",", "."}
-    end
-  end
+  defp separators, do: HllConditionalActionsWeb.NumberFormat.separators()
 
   @doc ~s(A length of time: "48 min", "1h32".)
   @spec duration(integer() | nil) :: String.t()

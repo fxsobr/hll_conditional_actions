@@ -14,8 +14,8 @@
 
 ***
 
-The VIP shop takes money through **Stripe**, **Dodo Payments** and
-**Mercado Pago**. Switch on one, two or all three: the customer picks among the
+The [VIP shop](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop)
+takes money through **Stripe**, **Dodo Payments** and **Mercado Pago**. Switch on one, two or all three: the customer picks among the
 ones that are on when paying.
 
 Step by step for each provider:
@@ -59,15 +59,22 @@ order either — the customer can try again on the same checkout.
 
 ## Where to configure it
 
-**VIP shop → Settings → Payments** (`/vip-shop/settings/payments`). Each
-provider has a card; **Configure** opens its form:
+**Community → VIP shop → Payments** (`/vip-shop/settings/payments`). Each
+provider has a card with its state — *Off*, *In test* or *Production* — the
+health of its key, and the webhooks received in the last 24 hours (*signature
+ok* or *refused*). **Configure** opens *Set up (provider)*, four steps saved
+after the connection test:
 
-| Field | Notes |
+| Step | Notes |
 | --- | --- |
-| Offer this payment method | Shows it to customers. It cannot be switched on until the required keys are filled |
-| Mode | *Test (sandbox)* or *Live* |
+| Mode | *In test* or *Production* |
 | Keys | Depend on the provider. **Stored encrypted and never shown again** — leave a field blank when editing to keep what is stored |
-| Webhook URL to register with the provider | The exact address to paste on the provider's side |
+| Test connection | Checks the key with the provider before anything is saved |
+| Register the webhook | The exact address to paste on the provider's side, with **Copy URL** |
+
+**Make a test purchase** on the card charges 1.00 in the shop's currency on
+the provider's test mode, **grants no VIP**, sends no e-mail and is left out
+of the revenue — a safe way to check the whole round trip.
 
 The webhook URL is built from the app's public address (`PHX_HOST`). If it
 shows `localhost`, the provider cannot reach it — see
@@ -75,14 +82,15 @@ shows `localhost`, the provider cannot reach it — see
 
 ## Test first, then live
 
-1. Configure the provider in **test mode**, with test keys.
-2. Make a test purchase with the provider's test card (each guide lists it).
+1. Configure the provider **in test**, with test keys.
+2. Use **Make a test purchase**, or buy a package on `/shop` with the
+   provider's test card (each guide lists it).
 3. Check **VIP shop → Purchases**: the order must show as paid.
 4. Only then create the **live** keys and webhook on the provider's side,
-   paste them, and set the mode to *Live*.
+   paste them, and set the mode to *Production*.
 
 > [!WARNING]
-> A test purchase of a real package grants a real VIP on the package's
+> Buying a real package on `/shop` in test mode grants a real VIP on the package's
 > servers, even though no money moves. Use a test player, or remove the VIP
 > afterwards.
 
@@ -119,7 +127,7 @@ The server log says why each webhook was refused, as
 
 | Reason | What to do |
 | --- | --- |
-| `provider disabled` | *Offer this payment method* is off for that provider |
+| `provider disabled` | The provider's card is *Off* |
 | `bad signature` | The webhook signing secret in the app is not the one of **this** endpoint. Copy it again from the provider |
 | `missing signature or webhook secret` | The secret is not filled in, or the request did not come from the provider |
 | `too old` | The server clock is off by more than 5 minutes. Fix the time sync |
@@ -127,8 +135,10 @@ The server log says why each webhook was refused, as
 
 The provider's dashboard also lists every delivery attempt and lets you
 resend one. When the webhook worked but the VIP did not, the order shows the
-failing server in **VIP shop → Purchases**, with **Retry**.
+failing server in **VIP shop → Purchases**, with **Try again**, and the
+[Inbox](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history)
+shows it as *Paid VIP not granted*.
 
 ***
 
-**↑** [Features](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features) · [Stripe](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments-%E2%80%90-Stripe) **→**
+**←** [VIP shop](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop) · **↑** [Features](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features) · [Stripe](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments-%E2%80%90-Stripe) **→**

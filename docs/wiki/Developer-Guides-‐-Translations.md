@@ -13,7 +13,9 @@ Then fill in the new entries in `priv/gettext/pt_BR/LC_MESSAGES/default.po` and
 `priv/gettext/es/LC_MESSAGES/default.po`. Recipe texts live in their own
 `recipes` domain, next to `default` and `errors`.
 
-Visitors pick their language from **My account**; without a choice the app
+Visitors pick their language from the avatar menu or **Settings →
+Preferences** (the public VIP shop has its own PT / EN / ES switch); without a
+choice the app
 follows the browser's `Accept-Language` header and falls back to
 `DEFAULT_LOCALE`.
 

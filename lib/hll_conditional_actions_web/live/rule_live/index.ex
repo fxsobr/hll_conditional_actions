@@ -830,6 +830,16 @@ defmodule HllConditionalActionsWeb.RuleLive.Index do
         </form>
       </:search>
       <:actions>
+        <%!-- Phone: the search hides behind a round button (MobileRules). --%>
+        <button
+          id="rule-search-toggle"
+          type="button"
+          phx-click={JS.toggle(to: "#rule-search-m") |> JS.focus(to: "#rule-search-m input")}
+          aria-label={gettext("Search rules")}
+          class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-base-300 bg-base-100 md:hidden"
+        >
+          <.icon name="hero-magnifying-glass" class="size-[1.125rem]" />
+        </button>
         <.header_button
           :if={@can_manage? and @servers != []}
           type="button"
@@ -861,6 +871,26 @@ defmodule HllConditionalActionsWeb.RuleLive.Index do
           {gettext("New rule")}
         </.header_button>
       </:actions>
+
+      <form
+        id="rule-search-m"
+        phx-change="search"
+        phx-submit="search"
+        class={["md:hidden", @search == "" && "hidden"]}
+      >
+        <label class="flex h-11 items-center gap-2.5 rounded-full border border-base-300 bg-base-100 px-4 text-muted">
+          <.icon name="hero-magnifying-glass" class="size-4 shrink-0" />
+          <span class="sr-only">{gettext("Search rules")}</span>
+          <input
+            type="search"
+            name="search"
+            value={@search}
+            phx-debounce="300"
+            placeholder={gettext("Search by name or action")}
+            class="w-full border-0 bg-transparent p-0 text-sm text-base-content placeholder:text-muted focus:ring-0"
+          />
+        </label>
+      </form>
 
       <%!-- The state tabs and the sort are one form, so the list always
             agrees with what the tabs say. The tabs are radios. --%>
@@ -1761,6 +1791,10 @@ defmodule HllConditionalActionsWeb.RuleLive.Index do
   defp category_name(:commands), do: gettext("Chat commands")
   defp category_name(:discord), do: gettext("Discord")
 
+  # Recipe icons are named in lib/hll_conditional_actions/rules/recipes.ex,
+  # outside Tailwind's sources; the ones used nowhere else in the web layer
+  # are listed here so their classes get generated: hero-calendar-days
+  # hero-scissors
   defp category_tone(:guide, _recipe), do: "bg-primary/12 text-primary"
   defp category_tone(:protect, _recipe), do: "bg-axis/14 text-axis"
   defp category_tone(:reward, %{id: :seeding_reward}), do: "bg-accent/13 text-accent"

@@ -1339,7 +1339,7 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
       </section>
 
       <div :if={@server} class="flex min-w-0 flex-col gap-4 md:gap-5">
-        <.events_card server={@server} events={@events} live={@live} />
+        <.events_card server={@server} events={@events} live={@live} rules={@rules} />
         <.server_facts server={@server} steps={@steps} rules={@rules} />
         <.team_card :if={@team != []} server={@server} team={@team} />
       </div>
@@ -1398,7 +1398,7 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
       class="briefing-step grid grid-cols-[2.125rem_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl px-2 py-2 md:px-3.5"
     >
       <.step_marker step={@step} index={@index} />
-      <span class="flex min-w-0 flex-col gap-px">
+      <span class="flex min-w-0 flex-col gap-px leading-[1.25]">
         <span class={[
           "text-[0.9375rem]",
           if(@step.state == :done, do: "font-semibold", else: "font-medium")
@@ -1868,6 +1868,7 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
   attr :server, :map, required: true
   attr :events, :map, required: true
   attr :live, :any, default: nil
+  attr :rules, :list, default: []
 
   defp events_card(assigns) do
     ~H"""
@@ -1911,8 +1912,13 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
         </p>
       </div>
 
-      <span :if={@live && @live[:map]} class="text-xs leading-[1.45] text-muted">
-        {ngettext("%{map} · 1 player.", "%{map} · %{count} players.", @live.players, map: @live.map)}
+      <span :if={(@live && @live[:map]) || @rules == []} class="text-xs leading-[1.45] text-muted">
+        <%= if @live && @live[:map] do %>
+          {ngettext("%{map} · 1 player.", "%{map} · %{count} players.", @live.players, map: @live.map)}
+        <% end %>
+        <%= if @rules == [] do %>
+          {gettext("As soon as there is a rule, you see here what it would do with each event.")}
+        <% end %>
       </span>
     </section>
     """
@@ -1934,12 +1940,15 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
 
   defp event_line(%{event: %{type: type}} = assigns)
        when type in [:player_kill, :player_team_kill] do
+    {actor, target} = kill_teams(assigns.event)
+    assigns = assign(assigns, actor: actor, target: target)
+
     ~H"""
-    <strong class="font-semibold">{@event.player_name}</strong>
+    <strong class={["font-semibold", team_text(@actor)]}>{@event.player_name}</strong>
     {if @event.type == :player_team_kill,
       do: gettext("killed a teammate,"),
       else: gettext("killed")}
-    <strong class="font-semibold">{@event.target_player_name}</strong>
+    <strong class={["font-semibold", team_text(@target)]}>{@event.target_player_name}</strong>
     """
   end
 
@@ -1957,6 +1966,18 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
     <span class="text-subtle">{@event.action}</span>
     <strong :if={@event.player_name} class="font-semibold">{@event.player_name}</strong>
     """
+  end
+
+  # CRCON writes both teams into a kill line:
+  # "Chris(Allies/7656…) -> Muctar(Axis/7656…) with M1 GARAND".
+  defp kill_teams(event) do
+    text = Enum.find([event.message, get_in(event.raw || %{}, ["raw"])], &is_binary/1) || ""
+
+    case Regex.scan(~r/\((Allies|Axis)\//i, text, capture: :all_but_first) do
+      [[actor], [target] | _rest] -> {String.downcase(actor), String.downcase(target)}
+      [[actor]] -> {String.downcase(actor), nil}
+      _none -> {nil, nil}
+    end
   end
 
   attr :server, :map, required: true

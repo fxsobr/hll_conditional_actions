@@ -5,12 +5,12 @@
 
 ## Menu
 
-- [The four steps](#the-four-steps)
-- [Setup](#setup)
+- [The sentence](#the-sentence)
+- [Details](#details)
 - [Priority — which rule runs first](#priority)
-- [Group — switching a set together](#group)
+- [Group — folders on the Rules page](#group)
 - [Game and Applies to](#game-and-applies-to)
-- [Enabled and Simulation only](#enabled-and-simulation-only)
+- [Off, simulating, live](#off-simulating-live)
 - [How conditions combine](#how-conditions-combine)
 - [Limits](#limits)
 - [Escalation](#escalation)
@@ -22,26 +22,34 @@ A rule is one sentence: **when** something happens, **if** it matches, **then**
 do this. Everything else on the page exists to say *how often*, *where*, and
 *how hard*.
 
-## The four steps
+## The sentence
 
-| Step | What it answers | Reference |
+The builder writes a rule as a sentence, one row per part:
+
+| Row | What it answers | Reference |
 | --- | --- | --- |
-| **Setup** | What is this rule, where does it run | this page |
-| **When** | What wakes the rule up | [Triggers](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Triggers) |
+| **When** | What wakes the rule up, and on which servers | [Triggers](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Triggers) · [Applies to](#game-and-applies-to) |
 | **If** | What has to be true | [Conditions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Conditions) · [Operators](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Operators) |
 | **Then** | What the app does about it | [Actions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Actions) |
+| **Protections** | How often, and who is never touched | [Limits](#limits) · [Escalation](#escalation) · [Exemptions](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules#exemptions) |
+| **Details** | What the rule is called and where it is filed | [below](#details) |
 
-A rule with **no conditions** fires every time its trigger does. That is a
-legitimate rule — a welcome message is exactly that — not an unfinished one.
+While you type, the builder tests the rule against real events — see
+[Testing rules](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules).
 
-## Setup
+A rule with **no conditions** fires every time its trigger does (*always, no
+conditions*). That is a legitimate rule — a welcome message is exactly that —
+not an unfinished one.
+
+## Details
 
 | Field | What it is for |
 | --- | --- |
 | **Name** | Required. It appears in the history, in the metrics and in Discord messages, so name it after what it *does*: "Warn team killers", not "Rule 3" |
+| **Group** | The folder the rule is filed in on the Rules page. See below |
+| **Game** | See [Game and Applies to](#game-and-applies-to) |
 | **Priority** | Order among rules that answer the same event. See below |
 | **Description** | Free text for the next admin. Nothing reads it but a person |
-| **Group** | A label that lets rules be filtered and switched together. See below |
 
 ## Priority
 
@@ -110,7 +118,7 @@ Most of the time the order does not matter and `0` everywhere is right.
 
 ## Group
 
-**What it does:** puts a label on a rule so a set of related rules can be
+**What it does:** files the rule in a folder, so a set of related rules can be
 found, and switched, together. It changes nothing about how or when a rule
 runs.
 
@@ -119,24 +127,29 @@ not end up with both `Seeding` and `seeding`. Leaving it empty is fine.
 
 ### What you get on the Rules page
 
-**A filter.** The group dropdown appears as soon as any rule has one, and
-narrows the list to that set.
+![Rules](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/rules.png)
 
-**One switch for the whole set.** Pick a group in the filter and a bar
-appears:
+**Folders.** The list is grouped by folder, in name order, with *Without a
+folder* last. Each folder says how many of its rules are live, and each rule
+shows its state (*Live*, *Simulating*, *Paused*, *Draft*), where it applies,
+how many times it ran in the last 7 days and when it last ran. With more than
+ten rules, the calm folders start closed.
 
-> Acting on the whole group **Seeding**.  **[Enable all]** **[Disable all]**
-
-That is the point of groups. A community that runs different rules while the
+**One switch for the whole set.** The folder's menu has **Turn on every rule**
+and **Turn off every rule**. A community that runs different rules while the
 server is filling up can switch six seeding rules off with one click when it
-is full, instead of finding each one.
+is full, instead of finding each one. Selecting rows gives the same for any
+set, plus **Move to folder**, **Export** and **Remove**.
 
 Each rule is still toggled individually underneath, and each one is written to
 the audit trail — so *"who turned the whole seeding group off"* has an answer
-on the rule's **Changes** tab.
+on the rule's **Versions** tab.
 
-**A label on the row**, so the list reads as a handful of policies rather than
-twenty loose rules.
+The list also filters by state (**Live**, **Simulating**, **Draft**,
+**Paused**, **Failing** — a failure in the last 24 hours), searches by name or
+action, sorts by runs in 7 days, priority, name, last run or failures, and
+keeps a **Needs attention** card: failures, rules *ready to act*, drafts
+waiting.
 
 ### Groups that tend to appear
 
@@ -152,51 +165,73 @@ twenty loose rules.
 
 **Game** is `Hell Let Loose` or `Hell Let Loose: Vietnam`. It is not cosmetic:
 the two games have different roles, teams, maps and modes, so the dropdowns in
-the **If** step change with it. Changing the game on a rule that already has
+the **If** row change with it. Changing the game on a rule that already has
 conditions can leave a condition pointing at a role that does not exist in the
 other game.
 
-**Applies to** is either one server or **every server running this game**. A
-fleet-wide rule runs on every enabled server of that game — including servers
-you add later, which is what makes one rule cover a whole community.
+**Applies to** (*When … on*) is either one server or **every server running
+this game**. A fleet-wide rule runs on every enabled server of that game —
+including servers you add later, which is what makes one rule cover a whole
+community.
 
-## Enabled and Simulation only
+## Off, simulating, live
 
-Two switches that are easy to confuse:
+The builder's state switch has three positions:
 
-| Switch | Off | On |
-| --- | --- | --- |
-| **Enabled** | The engine ignores the rule entirely. Nothing is evaluated, nothing is recorded | The rule is live |
-| **Simulation only** | Actions really run against the game | Everything is evaluated and recorded in the history, with the messages it *would* have sent, but **nothing reaches the game** |
+| State | What the engine does |
+| --- | --- |
+| **Switched off** | Ignores the rule entirely. Nothing is evaluated, nothing is recorded |
+| **Simulating** | Evaluates and records everything in the history, with the messages it *would* have sent, but **nothing reaches the game** |
+| **Live** | Runs the actions against the game |
 
-Simulation is the safe way to try a rule on real traffic. Read a day of
-history, then turn it off.
+Simulation is the safe way to try a rule on real traffic. A new rule is
+published **in simulation**, and every rule created from a **recipe** starts
+there on purpose. After three clean days the rule's page offers **Go live for
+real** — see
+[Going live](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules#going-live).
 
-Every rule created from a **recipe** starts in simulation on purpose.
+A rule can also be **paused** for a while without switching it off — see
+[Pausing a rule](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules#pausing-a-rule).
 
 ## How conditions combine
 
-The **If** step has one combinator for the whole list:
+Conditions sit in **groups**. Each group decides how **its** conditions
+combine, and the rule decides how **the groups** combine:
 
 | Setting | Fires when |
 | --- | --- |
-| **All conditions must hold** (`and`) | Every condition is true |
-| **Any condition may hold** (`or`) | At least one is true |
-| **Not all conditions hold** (`nand`) | At least one is false |
-| **No condition holds** (`nor`) | Every one is false |
+| **all** (`and`) | Every one is true |
+| **any** (`or`) | At least one is true |
+| **not all** (`nand`) | At least one is false |
+| **none** (`nor`) | Every one is false |
+
+With one group, its setting is the whole story — the old *All conditions must
+hold / Any condition may hold* list. Add a second group with **+ Group** and
+the top line, *[all of / any of / not all of / none of] these groups hold*,
+joins them:
+
+```
+any of these groups hold
+  ├─ all of these hold:  Is VIP is yes · Level ≥ 50
+  └─ all of these hold:  Clan tag is 7DV
+```
+
+fires for a VIP over level 50, **or** for anybody in 7DV.
 
 `nand` and `nor` exist for the rules that are easier to write inside out —
-"fire unless they are VIP *and* over level 50". Most rules use `and`.
+"fire unless they are VIP *and* over level 50". Most rules use `all`.
+**see as an expression** shows the same logic as text, and the rule's
+**Definition** tab can edit it that way.
 
 ## Limits
 
-Three fields under **Limits**, all optional, all `0` meaning *no limit*.
+Under **Protections**, all optional, all `0` meaning *no limit*.
 
 | Field | What it stops |
 | --- | --- |
-| **Cooldown per player (seconds)** | The same rule firing again for the *same player* until the cooldown has passed. A welcome message with a 3600 s cooldown greets a reconnecting player once an hour, not on every reconnect |
-| **Maximum times per player per day** | The rule firing more than N times for one player in a rolling **24 hours** |
-| **Escalate repeat offenders (seconds)** | See below. This one changes *what* runs, not *whether* it runs |
+| **Wait between firings** (cooldown per player) | The same rule firing again for the *same player* until the cooldown has passed. A welcome message with a 3600 s cooldown greets a reconnecting player once an hour, not on every reconnect |
+| **Daily cap** (times per player per day) | The rule firing more than N times for one player in a rolling **24 hours** |
+| **Forget an offence after** (the escalation window) | See below. This one changes *what* runs, not *whether* it runs |
 
 Both limits are counted per **player**, from the recorded history — so a
 restart or a redeploy does not hand anybody a clean slate. A rule that fires
@@ -209,12 +244,12 @@ without a player (a match-wide broadcast) is not limited by either.
 
 ## Escalation
 
-Leave **Escalate repeat offenders** at `0` and every action in the **Then**
-list runs, every time.
+By default every action in the **Then** row runs, every time.
 
-Set a window and the list becomes a **ladder** instead: the engine counts how
-many times this rule already fired for that player inside the window and runs
-**only the matching step**.
+Click **turn into a ladder** and the list becomes a **ladder** instead, with
+**Forget an offence after…** as its window: the engine counts how many times
+this rule already fired for that player inside the window and runs **only the
+matching step**. **run every action instead** turns it back.
 
 ```
 actions: [warn, warn again, punish, kick]
@@ -230,7 +265,8 @@ keep kicking" the ending rather than a special case. Stop offending for longer
 than the window and the ladder resets on its own.
 
 The count comes from the same history the limits read, so it survives a
-restart.
+restart. The rule's page draws the ladder with how many times each step ran
+(or would have, in simulation).
 
 ## Where to go next
 

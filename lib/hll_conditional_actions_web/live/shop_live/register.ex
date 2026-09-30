@@ -83,7 +83,8 @@ defmodule HllConditionalActionsWeb.ShopLive.Register do
             do:
               gettext(
                 "The quickest way is with Discord: no new password, and the VIP tag reaches your profile."
-              )
+              ),
+            else: gettext("Your e-mail and a password are enough. You pick your player right after.")
         }
       />
 

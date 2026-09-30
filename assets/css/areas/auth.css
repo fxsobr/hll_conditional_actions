@@ -105,7 +105,6 @@
   font-weight: 700;
   line-height: 0.98;
   letter-spacing: -0.035em;
-  text-wrap: balance;
 }
 
 .auth-lede {
@@ -279,7 +278,6 @@
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    margin-top: 1rem;
     font-size: 0.75rem;
     color: var(--color-muted);
   }

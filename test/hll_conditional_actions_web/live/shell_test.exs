@@ -156,7 +156,7 @@ defmodule HllConditionalActionsWeb.ShellTest do
     end
 
     test "the global search opens the palette", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/seasons")
 
       assert has_element?(view, "#global-search[data-open-palette]")
       assert has_element?(view, "#command-palette-dialog[phx-hook=CommandPalette]")
@@ -255,6 +255,49 @@ defmodule HllConditionalActionsWeb.ShellTest do
              )
     end
 
+    test "a player playing now reads online, in their team's colour", %{
+      conn: conn,
+      server: server
+    } do
+      hit(rule_fixture(%{name: "Tanque solo", server_id: server.id}), server)
+
+      Req.Test.stub(HllConditionalActions.Crcon, fn conn ->
+        result =
+          case conn.request_path do
+            "/api/get_detailed_players" ->
+              %{
+                "players" => %{
+                  @rudi => %{
+                    "name" => "Rudi_88",
+                    "team" => "axis",
+                    "team_kills" => 3,
+                    "kills" => 5
+                  }
+                }
+              }
+
+            "/api/get_vip_ids" ->
+              [%{"player_id" => @rudi, "name" => "Rudi_88", "vip_expiration" => nil}]
+
+            _other ->
+              %{"maps" => [], "players" => [], "total" => 0}
+          end
+
+        Req.Test.json(conn, %{"result" => result, "failed" => false, "error" => nil})
+      end)
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      view |> element("#command-palette-form") |> render_change(%{"q" => "rudi"})
+      render_async(view)
+
+      player = ~s{#command-palette-results a[href="/players/#{@rudi}"]}
+      assert has_element?(view, player <> " .palette-online")
+      assert has_element?(view, player <> " .text-axis", "Axis")
+      assert has_element?(view, player <> " .palette-sub", "VIP")
+      # The part of the name that matched, in one piece.
+      assert has_element?(view, player <> " .palette-title .text-primary", "Rudi")
+    end
+
     test "a query nothing matches says so", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
@@ -331,6 +374,63 @@ defmodule HllConditionalActionsWeb.ShellTest do
       assert doc |> LazyHTML.query("#page-greeting p") |> LazyHTML.text() =~ "Terça"
       assert doc |> LazyHTML.query("#page-title") |> LazyHTML.text() =~ "Primeiros passos"
       assert LazyHTML.text(doc) =~ "Briefing de um servidor novo"
+    end
+  end
+
+  describe "phone scope and tags" do
+    import Phoenix.Component, only: [sigil_H: 2]
+
+    test "on a phone the cockpit's header is the logo, the server and the bell", %{
+      server: server
+    } do
+      nav = %{
+        servers: [server],
+        server: %{server | game: :hllv},
+        status: :connected,
+        unread: 0
+      }
+
+      assigns = %{nav: nav}
+
+      html =
+        rendered_to_string(~H"""
+        <HllConditionalActionsWeb.Layouts.app
+          flash={%{}}
+          page_title="Ao vivo"
+          current_path="/servers/1"
+          nav={@nav}
+          phone_scope
+        >
+          <:actions><button id="page-action">x</button></:actions>
+          body
+        </HllConditionalActionsWeb.Layouts.app>
+        """)
+
+      doc = LazyHTML.from_fragment(html)
+
+      phone_scope = LazyHTML.query(doc, ~s{#header-scope-phone[class*="md:hidden"]})
+      assert Enum.count(phone_scope) == 1
+      assert LazyHTML.text(LazyHTML.query(doc, "#header-scope-phone")) =~ server.name
+      # The page's buttons wait for a wider screen.
+      assert Enum.count(LazyHTML.query(doc, ~s{[class*="max-md:hidden"] > #page-action})) == 1
+      # The other game is named beside the server.
+      assert LazyHTML.text(LazyHTML.query(doc, "#header-scope .scope-tag--vietnam")) =~
+               "HLL Vietnam"
+    end
+
+    test "the empty states draw the board's pictures" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <HllConditionalActionsWeb.Ui.empty_state id="e1" icon="hero-inbox" title="Nada" />
+        <HllConditionalActionsWeb.Ui.empty_state id="e2" icon="hero-server-stack" title="Nada" />
+        """)
+
+      doc = LazyHTML.from_fragment(html)
+
+      assert doc |> LazyHTML.query("#e1 svg circle.fill-primary") |> Enum.count() == 1
+      assert doc |> LazyHTML.query("#e2 svg circle") |> Enum.count() == 0
     end
   end
 

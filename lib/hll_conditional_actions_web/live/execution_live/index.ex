@@ -277,7 +277,7 @@ defmodule HllConditionalActionsWeb.ExecutionLive.Index do
   defp success_text(nil), do: "–"
 
   defp success_text(rate) do
-    rate |> :erlang.float_to_binary(decimals: 1) |> String.replace(".", ",") |> Kernel.<>("%")
+    HllConditionalActionsWeb.NumberFormat.decimal(rate, 1) <> "%"
   end
 
   @outcomes [:executed, :simulated, :partial, :failed]

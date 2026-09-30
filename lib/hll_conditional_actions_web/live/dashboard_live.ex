@@ -438,6 +438,9 @@ defmodule HllConditionalActionsWeb.DashboardLive do
       current_user={@current_user}
       current_path={@current_path}
       nav={assigns[:nav]}
+      scope_nav={onboarding_nav(assigns[:nav], @onboarding_server)}
+      scope_tag={if @new_server?, do: gettext("new")}
+      global_search={false}
       page_title={gettext("First steps")}
       eyebrow={
         if @new_server?,
@@ -502,11 +505,20 @@ defmodule HllConditionalActionsWeb.DashboardLive do
           size="sm"
           color="primary"
           icon="hero-plus"
-          class="max-md:hidden"
-          aria-label={gettext("New rule")}
+          class="max-xl:hidden"
         >
-          <span class="hidden xl:inline">{gettext("New rule")}</span>
+          {gettext("New rule")}
         </.button>
+        <%!-- A tablet has room for a round button only (TabletBriefing board). --%>
+        <.link
+          :if={Accounts.can?(@current_user, :manage_rules) and @servers != []}
+          id="briefing-new-rule"
+          navigate={~p"/rules/new"}
+          aria-label={gettext("New rule")}
+          class="icon-round hidden size-12 border-line-strong bg-secondary text-primary md:flex xl:hidden"
+        >
+          <.icon name="hero-plus" class="size-5" />
+        </.link>
       </:actions>
 
       <%!-- "No servers yet" would be a lie to somebody whose role simply does
@@ -980,6 +992,14 @@ defmodule HllConditionalActionsWeb.DashboardLive do
   defp stream_problem?({:error, _reason}), do: true
   defp stream_problem?(:disconnected), do: Runtime.enabled?()
   defp stream_problem?(_status), do: false
+
+  # The first steps are about one server: the header's scope shows it
+  # (Onboarding board), whatever the scope of the rest of the app.
+  defp onboarding_nav(nil, _server), do: nil
+  defp onboarding_nav(nav, nil), do: nav
+
+  defp onboarding_nav(nav, server),
+    do: Map.merge(nav, %{server: server, status: LogStream.status(server.id)})
 
   defp live_of(_live, nil), do: nil
 

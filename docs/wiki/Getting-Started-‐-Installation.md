@@ -166,17 +166,20 @@ admin
 admin
 ```
 
-You are asked to choose a new password immediately, and the hint disappears
-from the login page the moment you do.
+You are asked to choose a new password immediately — at least 12 characters,
+mixing letters and numbers — and the hint disappears from the login page the
+moment you do.
 
 > [!TIP]
-> Create a second administrator account now, from **Users**. It is the way
+> Create a second administrator account now, from **Settings → People →
+> Users**. It is the way
 > back in if you lock yourself out of the first one — especially once two
 > factor is on.
 
 ## 7. Connect your CRCON
 
-**Servers → Add server.**
+**Settings → Servers → Manage servers → Add server** — or follow the Briefing,
+which shows the first steps on a fresh install.
 
 | Field | What to put |
 | --- | --- |
@@ -205,12 +208,13 @@ accepts the connection and then sends nothing.
 
 ## 8. Write your first rule
 
-**Rules → Recipes** and pick *Welcome message*. It opens in the builder already
-filled in and **in simulation**, so it records what it would have sent without
-touching the game.
+**Rules → Ready-made recipes** and pick *Welcome message*. Answer its two or
+three questions, pick the server, and create it **in simulation**, so it
+records what it would have sent without touching the game.
 
-Save it, let a few players connect, then open the rule and read its **History**.
-When you are happy, edit it and turn **Simulation only** off.
+Let a few players connect, then open the rule and read its **Executions**.
+After three clean days its page says **Ready to act for real**: **Go live for
+real** takes it out of simulation.
 
 From there: [Writing rules](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules).
 

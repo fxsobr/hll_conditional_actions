@@ -6,6 +6,7 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
   import Req.Test, only: [set_req_test_to_shared: 1]
 
   alias HllConditionalActions.Crcon.Events.Event
+  alias HllConditionalActions.Repo
   alias HllConditionalActions.Tickets
 
   doctest HllConditionalActionsWeb.TicketLive.Settings
@@ -464,6 +465,40 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
 
       assert has_element?(view, "#metrics-total", "1")
       assert has_element?(view, "#metrics-top-players", "Sarge")
+    end
+
+    test "metrics tell a change over a handful of tickets in tickets", %{
+      conn: conn,
+      server: server
+    } do
+      settings = enable(server)
+
+      [old | _now] =
+        for player <- ~w(76561198000000011 76561198000000012 76561198000000013) do
+          event = %Event{
+            type: :player_chat,
+            action: "CHAT[Allies]",
+            occurred_at: DateTime.utc_now(),
+            player_id: player,
+            player_name: "Player #{player}",
+            chat_message: "!admin help"
+          }
+
+          {:opened, ticket} = Tickets.handle_chat(server, settings, event)
+          ticket
+        end
+
+      # One of them from the month before.
+      before = DateTime.utc_now() |> DateTime.add(-40, :day) |> DateTime.truncate(:second)
+
+      old
+      |> Ecto.Changeset.change(inserted_at: before, last_activity_at: before)
+      |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/metrics")
+
+      assert has_element?(view, "#metrics-delta", "↑ 1 ")
+      refute has_element?(view, "#metrics-delta", "%")
     end
 
     test "settings save the limit, the alert time and quick replies", %{

@@ -29,16 +29,22 @@ lib/hll_conditional_actions/
 │   ├── simulator.ex        Replays a rule against saved or sample events
 │   ├── diagnosis.ex        "Why did this not fire?"
 │   └── runner.ex           One process per server: events, sweep, progression
-├── features.ex             The marketplace: modules installed per server
+├── features.ex             Modules installed per server (the marketplace)
 ├── runtime.ex              Starts/stops a subtree per enabled server
 ├── servers.ex              CRCON deployments
 ├── rules.ex                Rules, versions, drafts and execution history
-├── attention.ex            The inbox of what needs an admin
+├── rules/bench.ex          The builder's run strip and 7-day replay
+├── attention.ex            The attention items of the Inbox
+├── briefing.ex             The home page's numbers
+├── notifications.ex        The bell, with per-user read marks
+├── search.ex               The Ctrl K command palette
+├── players.ex              The players directory and actions on players
 ├── tickets.ex              In-game support tickets
 ├── progression.ex          Achievements, seasons and ratings
 ├── leaderboards.ex         Rankings from a live roster
 ├── matches.ex              Match history
-├── discord.ex              Registered webhooks and messages
+├── discord.ex              Registered webhooks, messages and the delivery log
+├── vip_shop.ex             Packages, orders, coupons and VIP delivery
 ├── workers/                Oban jobs (webhooks, pruning, seasons, tickets)
 └── accounts.ex             Users, roles, permissions, two factor
 ```
@@ -77,8 +83,9 @@ per server and module. Three places honour it:
 - **The router.** `HllConditionalActionsWeb.FeatureGuard` is mounted for every
   authenticated LiveView and maps each page namespace to its module; a page of
   a missing module redirects to the server's marketplace.
-- **The navigation.** Menu entries carry a `feature:` key and are hidden when
-  the module is not installed.
+- **The navigation.** The icon rail's areas and the header's tabs
+  (`HllConditionalActionsWeb.Layouts.areas/2`) carry a `feature:` key and are
+  hidden when no server of the user has the module.
 
 A new module needs an entry in the catalog, its labels in
 `HllConditionalActionsWeb.Labels`, its pages in `FeatureGuard`, and a check
@@ -124,11 +131,11 @@ Loose server owners.
 
 ## Observability
 
-**Automation → Metrics** is the built-in view, no external tooling required:
-rule firings by outcome and how long their actions take, why rules were
-skipped, game events by kind, log stream connection changes, and CRCON latency
-per endpoint. Counters are cumulative since the node started, and the page is
-the fastest way to answer "is anything reaching this app at all".
+**Settings → Engine metrics** is the built-in view, no external tooling
+required: rule firings and skips and why, the time from event to action, game
+events per minute, log stream reconnects, and CRCON calls per endpoint with
+their errors and p95. It keeps the last hour in memory, and the page is the
+fastest way to answer "is anything reaching this app at all".
 
 `/dev/dashboard` (development) shows the same data through
 `Telemetry.metrics/0`:

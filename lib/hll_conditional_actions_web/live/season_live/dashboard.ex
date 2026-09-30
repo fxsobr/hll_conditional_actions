@@ -228,7 +228,11 @@ defmodule HllConditionalActionsWeb.SeasonLive.Dashboard do
         </span>
         <span class={[
           "font-display font-bold",
-          if(@rank == 1, do: "text-2xl sm:text-3xl", else: "text-xl font-semibold sm:text-[1.625rem]")
+          case @rank do
+            1 -> "text-[1.375rem] sm:text-[1.875rem]"
+            2 -> "text-lg font-semibold sm:text-[1.625rem]"
+            _ -> "text-lg font-semibold sm:text-[1.5rem]"
+          end
         ]}>
           {number(@score.score)}
         </span>
@@ -293,7 +297,7 @@ defmodule HllConditionalActionsWeb.SeasonLive.Dashboard do
       class="flex min-w-0 flex-col rounded-[1.75rem] bg-base-100 px-4 py-5 shadow-[var(--shadow-card)] sm:px-[1.625rem] sm:py-[1.375rem]"
     >
       <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Standings")}</h2>
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold">{gettext("Standings")}</h2>
         <form
           id="standings-search"
           phx-change="search_standings"
@@ -332,7 +336,7 @@ defmodule HllConditionalActionsWeb.SeasonLive.Dashboard do
         <div
           id={"standing-#{score.id}"}
           class={[
-            "season-standings-grid rounded-xl px-2.5 py-[0.6875rem] text-sm",
+            "season-standings-grid rounded-xl px-2.5 py-[0.6875rem] text-sm leading-[1.125rem]",
             @gap_row && @gap_row.id == score.id && !@searching? && "bg-secondary",
             not score.qualified && "text-muted"
           ]}
@@ -443,7 +447,7 @@ defmodule HllConditionalActionsWeb.SeasonLive.Dashboard do
       id="season-formula"
       class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5 shadow-[var(--shadow-card)]"
     >
-      <h2 class="font-display text-xl font-semibold">{gettext("How the score is made")}</h2>
+      <h2 class="font-display text-[1.25rem] font-semibold">{gettext("How the score is made")}</h2>
       <%= if @season.scoring == :elo do %>
         <RatingComponents.rating_summary config={@season.rating} />
       <% else %>
@@ -529,7 +533,7 @@ defmodule HllConditionalActionsWeb.SeasonLive.Dashboard do
       id="season-on-close"
       class="flex flex-col gap-2.5 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5 shadow-[var(--shadow-card)]"
     >
-      <h2 class="mb-1 font-display text-xl font-semibold">
+      <h2 class="mb-1 font-display text-[1.25rem] font-semibold">
         {if @season.status == :active, do: gettext("When it closes"), else: gettext("When it closed")}
       </h2>
       <div class="flex items-center gap-3 rounded-[0.875rem] bg-secondary px-3 py-2.5">

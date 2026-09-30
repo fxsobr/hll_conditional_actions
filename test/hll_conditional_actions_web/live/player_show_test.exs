@@ -190,6 +190,44 @@ defmodule HllConditionalActionsWeb.PlayerShowTest do
       assert has_element?(view, "#timeline-penalty-0")
     end
 
+    test "runs of the same rule in a row read as one timeline line", %{conn: conn} do
+      server = server_fixture()
+      rule = rule_fixture(%{server_id: server.id})
+      other = rule_fixture(%{server_id: server.id})
+      now = DateTime.utc_now()
+
+      record = fn rule, minutes_ago ->
+        {:ok, execution} =
+          Rules.record_execution(%{
+            rule_id: rule.id,
+            server_id: server.id,
+            player_id: @sarge,
+            player_name: "Sarge",
+            trigger_event: "player_connected",
+            status: :executed,
+            executed_at: DateTime.add(now, -minutes_ago * 60, :second)
+          })
+
+        execution
+      end
+
+      newest = record.(rule, 1)
+      middle = record.(rule, 3)
+      oldest = record.(rule, 5)
+      lone = record.(other, 2)
+
+      {:ok, view, _html} = live(conn, ~p"/players/#{@sarge}")
+      render_async(view)
+
+      assert has_element?(view, "#timeline-execution-#{newest.id}")
+      assert has_element?(view, "#execution-#{newest.id}-runs", "×3")
+      refute has_element?(view, "#timeline-execution-#{middle.id}")
+      refute has_element?(view, "#timeline-execution-#{oldest.id}")
+
+      assert has_element?(view, "#timeline-execution-#{lone.id}")
+      refute has_element?(view, "#execution-#{lone.id}-runs")
+    end
+
     test "reads the last matches from CRCON's match history once", %{conn: conn} do
       server = server_fixture()
       total(server, @sarge, "Sarge")

@@ -405,11 +405,13 @@ defmodule HllConditionalActionsWeb.SettingsLive do
             class="flex flex-col gap-4 rounded-panel bg-base-100 p-[1.375rem] lg:col-span-2"
           >
             <div class="flex flex-wrap items-center gap-3.5">
-              <span class="flex size-11 shrink-0 items-center justify-center rounded-[0.875rem] bg-primary/12 text-primary">
+              <span class="flex size-11 shrink-0 items-center justify-center rounded-[0.875rem] settings-lime-tile">
                 <.icon name="hero-server-stack" class="size-5" />
               </span>
               <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-                <h2 class="font-display text-xl font-semibold">{gettext("Servers")}</h2>
+                <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+                  {gettext("Servers")}
+                </h2>
                 <p class="text-[0.8125rem] text-muted">
                   {servers_line(@servers)}
                   <span :if={stream_down(@servers, @stream_status) > 0} class="text-error">
@@ -651,7 +653,7 @@ defmodule HllConditionalActionsWeb.SettingsLive do
               <:lead>
                 <.person_avatar user={@current_user} />
               </:lead>
-              {@current_user.role && @current_user.role.name} · {ngettext(
+              {role_label(@current_user.role)} · {ngettext(
                 "%{count} open session",
                 "%{count} open sessions",
                 @sessions_open,
@@ -698,7 +700,9 @@ defmodule HllConditionalActionsWeb.SettingsLive do
             class="flex flex-col gap-[1.125rem] rounded-panel bg-base-100 p-[1.375rem]"
           >
             <div class="flex flex-col gap-0.5">
-              <h2 class="font-display text-xl font-semibold">{gettext("Preferences")}</h2>
+              <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+                {gettext("Preferences")}
+              </h2>
               <p class="text-[0.8125rem] text-muted">{gettext("Only for you, in this panel")}</p>
             </div>
 
@@ -774,7 +778,7 @@ defmodule HllConditionalActionsWeb.SettingsLive do
               <span class="text-[0.8125rem] font-medium text-subtle">{gettext("Show times in")}</span>
               <div
                 id="settings-timezone"
-                class="flex h-[2.875rem] items-center justify-between gap-3 rounded-[0.875rem] border border-line-raised bg-secondary px-3.5 text-sm"
+                class="flex h-[2.875rem] items-center justify-between gap-3 rounded-[0.875rem] border border-line-raised bg-secondary px-3.5 text-sm settings-paper-field"
               >
                 <span>{gettext("This browser's time zone")}</span>
                 <span
@@ -806,7 +810,9 @@ defmodule HllConditionalActionsWeb.SettingsLive do
                 <Layouts.logo_chevrons class="size-6" />
               </span>
               <div class="flex min-w-0 flex-col">
-                <h2 class="font-display text-xl font-semibold">{gettext("About")}</h2>
+                <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+                  {gettext("About")}
+                </h2>
                 <p class="text-[0.8125rem] text-muted">
                   {gettext("Conditional Actions for Hell Let Loose")}
                 </p>

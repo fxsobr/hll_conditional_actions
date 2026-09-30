@@ -432,7 +432,7 @@ defmodule HllConditionalActionsWeb.ShopLive.Account do
     ]}>
       <div class="shop-art relative h-[6.5rem] shrink-0 !bg-[var(--sh-raised)]">
         <img src={HllConditionalActionsWeb.Ui.server_art(@vip.server)} alt="" class="shop-art-img" />
-        <div class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,transparent_20%,color-mix(in_oklab,var(--sh-raised)_95%,transparent)_100%)]">
+        <div class="absolute inset-0 z-[-1] bg-[linear-gradient(180deg,transparent_20%,color-mix(in_oklab,var(--sh-raised)_95%,transparent)_100%)]">
         </div>
         <strong class="absolute bottom-2.5 left-4 font-display text-[1.0625rem] font-semibold text-[var(--sh-text)]">
           {@vip.server_name}

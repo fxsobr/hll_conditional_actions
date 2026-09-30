@@ -33,8 +33,9 @@ leaving 80 and 443 alone entirely.
 3. **The log stream turned on**, in CRCON under
    *Settings → Others → Log Stream*, with `enabled` set to `true`. It ships
    disabled, and without it CRCON accepts the WebSocket connection and then
-   immediately refuses to send anything — the server shows up as *Error* on the
-   dashboard with that explanation.
+   immediately refuses to send anything — the connection test says the log
+   stream did not answer, and once saved the server shows as *stream down* in
+   its cockpit and in the Inbox.
 
 Creating a dedicated user for this app is recommended: CRCON records the API
 key's owner as the author of every action, so its work shows up clearly in the
