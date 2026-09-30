@@ -1027,7 +1027,7 @@ defmodule HllConditionalActionsWeb.BriefingComponents do
 
   def item_detail(%{kind: kind, subject: %{issue: issue}}, _extra)
       when kind in [:rule_broken, :rule_quiet],
-      do: Labels.health_explanation(issue.id)
+      do: Labels.health_explanation(issue)
 
   def item_detail(%{kind: :vip_failed, subject: %{order: order}}, _extra),
     do:

@@ -10,11 +10,12 @@ defmodule HllConditionalActionsWeb.RuleDiff do
 
   use HllConditionalActionsWeb, :html
 
-  import HllConditionalActionsWeb.RuleBuilder, only: [condition_sentence: 2, exemptions_text: 1]
+  import HllConditionalActionsWeb.RuleBuilder, only: [exemptions_text: 1]
 
   alias HllConditionalActions.Rules.Action
   alias HllConditionalActions.Rules.Condition
   alias HllConditionalActions.Rules.Exemptions
+  alias HllConditionalActionsWeb.ConditionGroupsView
 
   @scalars ~w(
     name description simulation priority group game server_id trigger_event
@@ -47,8 +48,8 @@ defmodule HllConditionalActionsWeb.RuleDiff do
             {"actions", &actions/1},
             {"exemptions", &exemptions/1}
           ],
-          from = render.(before[field]),
-          to = render.(now[field]),
+          from = render.(side(before, field)),
+          to = render.(side(now, field)),
           from != to do
         %{field: field, label: label(field), from: from, to: to}
       end
@@ -110,6 +111,11 @@ defmodule HllConditionalActionsWeb.RuleDiff do
     """
   end
 
+  # Conditions read in their folded form, which needs the operator that
+  # joins them; everything else is the field alone.
+  defp side(snapshot, "conditions"), do: {snapshot["conditions"], snapshot["logical_operator"]}
+  defp side(snapshot, field), do: snapshot[field]
+
   defp label("exemptions"), do: gettext("Doesn't apply to")
   defp label(field), do: Labels.rule_field(field)
 
@@ -127,7 +133,11 @@ defmodule HllConditionalActionsWeb.RuleDiff do
     game = atom(snapshot["game"]) || :hll
 
     conditions =
-      conditions(Enum.reject(list(snapshot["conditions"]), &(&1["field"] == "always_true")), game)
+      snapshot["conditions"]
+      |> list()
+      |> Enum.reject(&(&1["field"] == "always_true"))
+      |> condition_entries(snapshot["logical_operator"], game)
+      |> Enum.map(&condition_line/1)
 
     actions = Enum.map(list(snapshot["actions"]), &action_line/1)
     window = snapshot["escalation_window_seconds"] || 0
@@ -212,13 +222,85 @@ defmodule HllConditionalActionsWeb.RuleDiff do
         b = Map.get(now_map, key)
         left_row = a && {left, elem(a, 0), elem(a, 1)}
         right_row = b && {right, elem(b, 0), elem(b, 1)}
-        changed = (a && elem(a, 1)) != (b && elem(b, 1))
+        changed = comparable(a) != comparable(b)
 
         {{left_row, right_row, changed},
          {if(a, do: left + 1, else: left), if(b, do: right + 1, else: right)}}
       end)
 
     rows
+  end
+
+  # A folded list compares by its values, not by where it sits.
+  defp comparable(nil), do: nil
+  defp comparable({_label, %{signature: signature}}), do: signature
+  defp comparable({_label, value}), do: value
+
+  @doc """
+  A line's value as text: lines of folded conditions carry their entry.
+  """
+  @spec line_text(String.t() | map() | nil) :: String.t() | nil
+  def line_text(%{text: text}), do: text
+  def line_text(value), do: value
+
+  @doc """
+  A condition line's value without its field, for a line already labelled
+  with the field: "is none of 86 weapons".
+  """
+  @spec short_text(String.t() | map() | nil) :: String.t() | nil
+  def short_text(%{short: short}), do: short
+  def short_text(value), do: value
+
+  @doc """
+  The folded entry behind a line, or `nil`.
+  """
+  @spec line_entry(term()) :: map() | nil
+  def line_entry(%{entry: entry}), do: entry
+  def line_entry(_value), do: nil
+
+  @doc """
+  Whether a change is to a folded list of values (on either side), which
+  reads by what it added and removed.
+  """
+  @spec list_change?({String.t(), term(), term()}) :: boolean()
+  def list_change?({_label, before, now}) do
+    entries = Enum.reject([line_entry(before), line_entry(now)], &is_nil/1)
+
+    entries != [] and Enum.any?(entries, & &1.list?) and
+      entries |> Enum.map(&{&1.field, &1.operator}) |> Enum.uniq() |> length() == 1
+  end
+
+  @doc """
+  What a change to a folded list did, "+68 weapons", or `nil`.
+  """
+  @spec change_delta({String.t(), term(), term()}) :: String.t() | nil
+  def change_delta({_label, before, now} = change) do
+    if list_change?(change),
+      do: ConditionGroupsView.delta_text(line_entry(before), line_entry(now))
+  end
+
+  @doc """
+  One side of a change (`:before` or `:after`) as the change card shows it
+  under its label: a folded list without its field ("is none of 86
+  weapons"), anything else as its line reads. `nil` when that side has
+  nothing.
+  """
+  @spec change_text({String.t(), term(), term()}, :before | :after) :: String.t() | nil
+  def change_text({_label, before, now} = change, side) do
+    value = if side == :before, do: before, else: now
+    if list_change?(change), do: short_text(value), else: line_text(value)
+  end
+
+  @doc """
+  A change in a few words, for titles: "Weapon: +68 weapons" for a folded
+  list, the line's label otherwise.
+  """
+  @spec change_title({String.t(), term(), term()}) :: String.t()
+  def change_title({label, _before, _after} = change) do
+    case change_delta(change) do
+      nil -> label
+      delta -> "#{label}: #{delta}"
+    end
   end
 
   @doc """
@@ -278,19 +360,13 @@ defmodule HllConditionalActionsWeb.RuleDiff do
   # history's field names when only something outside them (the
   # description) changed.
   defp rows_labels(now, before) do
-    case changed_lines(before, now) do
-      [] -> now |> then(&rows(before, &1)) |> Enum.map(& &1.label)
-      labels -> Enum.map(labels, &upper_first/1)
-    end
-  end
+    case changes(before, now, []) do
+      [] ->
+        now |> then(&rows(before, &1)) |> Enum.map(& &1.label)
 
-  defp changed_lines(before, now) do
-    before
-    |> field_lines([])
-    |> align(field_lines(now, []))
-    |> Enum.filter(&elem(&1, 2))
-    |> Enum.map(fn {left, right, _changed} -> elem(right || left, 1) end)
-    |> Enum.uniq()
+      changes ->
+        changes |> Enum.map(&(&1 |> change_title() |> upper_first())) |> Enum.uniq()
+    end
   end
 
   @doc """
@@ -304,7 +380,13 @@ defmodule HllConditionalActionsWeb.RuleDiff do
     |> align(field_lines(now, servers))
     |> Enum.filter(&elem(&1, 2))
     |> Enum.map(fn {left, right, _changed} ->
-      {elem(right || left, 1), left && elem(left, 2), right && elem(right, 2)}
+      change = {elem(right || left, 1), left && elem(left, 2), right && elem(right, 2)}
+
+      # A folded list is named by its field: "Weapon", not "condition 2".
+      case {list_change?(change), line_entry(elem(change, 1)) || line_entry(elem(change, 2))} do
+        {true, entry} -> put_elem(change, 0, Labels.field(entry.field))
+        _other -> change
+      end
     end)
   end
 
@@ -321,8 +403,14 @@ defmodule HllConditionalActionsWeb.RuleDiff do
 
     labels =
       Enum.map(rows, fn
-        {label, _before, _after} -> label
-        row -> lower_first(row.label)
+        {label, _before, _after} = change ->
+          case change_delta(change) do
+            nil -> label
+            delta -> "#{lower_first(label)} (#{delta})"
+          end
+
+        row ->
+          lower_first(row.label)
       end)
 
     case labels do
@@ -385,13 +473,35 @@ defmodule HllConditionalActionsWeb.RuleDiff do
 
   defp scalar(_field, value, _servers), do: to_string(value)
 
-  defp conditions(rows, game) do
-    Enum.map(list(rows), fn row ->
-      %Condition{}
-      |> Condition.changeset(row)
-      |> Ecto.Changeset.apply_changes()
-      |> condition_sentence(game)
-    end)
+  defp conditions({rows, logical_operator}, game) do
+    rows
+    |> list()
+    |> condition_entries(logical_operator, game)
+    |> Enum.map(&ConditionGroupsView.full_text/1)
+  end
+
+  defp condition_entries(rows, logical_operator, game) do
+    rows
+    |> Enum.map(&(%Condition{} |> Condition.changeset(&1) |> Ecto.Changeset.apply_changes()))
+    |> ConditionGroupsView.entries(atom(logical_operator) || :and, game)
+  end
+
+  # A condition line of the versions tab: the entry's words, and what it is
+  # compared by across versions.
+  defp condition_line(entry) do
+    %{
+      text: ConditionGroupsView.full_text(entry),
+      short: without_field(entry.text, Labels.field(entry.field)),
+      entry: entry,
+      signature: {entry.field, entry.operator, entry.reading, entry.values, entry.counts}
+    }
+  end
+
+  defp without_field(text, field) do
+    case String.split(text, field <> " ", parts: 2) do
+      ["", rest] -> rest
+      _other -> text
+    end
   end
 
   # An action as one line of the versions tab: what it does, then the text

@@ -7,7 +7,7 @@ defmodule HllConditionalActions.Rules.Health do
   the rules list can show, and they are the difference between trusting the
   tool and hoping.
 
-  Four things go wrong in practice:
+  Five things go wrong in practice:
 
     * **the key cannot do it** — the server's CRCON key lacks the permission
       an action needs, so that action will never land. This is the only check
@@ -16,6 +16,10 @@ defmodule HllConditionalActions.Rules.Health do
     * **it never fired** — enabled for a while, never once matched. Usually a
       condition nobody meant to write.
     * **it went quiet** — it used to fire and has not in a month.
+    * **it contradicts itself** — two `equal` conditions on one field joined
+      by *and* ask for different values ("the message is `a` and the message
+      is `b`"), so no event can ever match. This one is read off the
+      definition, so a switched-off rule is told too, before it is enabled.
 
   Everything is computed from data already held: one grouped query over the
   execution history plus the permission set the connection test stored on the
@@ -26,6 +30,7 @@ defmodule HllConditionalActions.Rules.Health do
 
   alias HllConditionalActions.Crcon.Permissions
   alias HllConditionalActions.Repo
+  alias HllConditionalActions.Rules.ConditionRuns
   alias HllConditionalActions.Rules.Execution
   alias HllConditionalActions.Rules.Rule
   alias HllConditionalActions.Servers.Server
@@ -38,7 +43,7 @@ defmodule HllConditionalActions.Rules.Health do
           id: atom(),
           tone: String.t(),
           summary: String.t(),
-          detail: String.t() | nil
+          detail: String.t() | map() | nil
         }
 
   @doc """
@@ -71,16 +76,35 @@ defmodule HllConditionalActions.Rules.Health do
 
   # ── The checks ─────────────────────────────────────────────────────────────
 
-  defp issues(%Rule{enabled: false}, _stats, _servers), do: []
+  defp issues(%Rule{enabled: false} = rule, _stats, _servers),
+    do: Enum.reject([contradiction_issue(rule)], &is_nil/1)
 
   defp issues(%Rule{} = rule, stats, servers) do
     [
       permission_issue(rule, servers),
       failing_issue(stats),
+      contradiction_issue(rule),
       never_fired_issue(rule, stats),
       quiet_issue(stats)
     ]
     |> Enum.reject(&is_nil/1)
+  end
+
+  # Conditions that can never all hold. The detail names the first such
+  # field and how many conditions ask it, for the explanation.
+  defp contradiction_issue(%Rule{} = rule) do
+    case ConditionRuns.contradictions(rule.conditions, rule.logical_operator) do
+      [] ->
+        nil
+
+      [first | _rest] = all ->
+        %{
+          id: :contradiction,
+          tone: "warning",
+          summary: :contradiction,
+          detail: %{field: first.field, count: first.count, fields: length(all)}
+        }
+    end
   end
 
   # An action whose permission the key does not hold can never succeed. Only

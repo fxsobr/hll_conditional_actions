@@ -568,11 +568,29 @@ defmodule HllConditionalActionsWeb.Labels do
   def health_issue(:always_failing), do: gettext("Every run is failing")
   def health_issue(:never_fired), do: gettext("Never fired")
   def health_issue(:quiet), do: gettext("Quiet for a month")
+  def health_issue(:contradiction), do: gettext("Contradicting conditions")
 
   @doc """
-  Why the issue matters and what to do about it.
+  Why the issue matters and what to do about it. Takes the issue itself when
+  the explanation names what it found, or just its id.
   """
-  @spec health_explanation(atom()) :: String.t()
+  @spec health_explanation(atom() | map()) :: String.t()
+  def health_explanation(%{id: :contradiction, detail: %{field: field, count: count}}) do
+    gettext(
+      "These %{count} conditions on %{field} can never all be true: one value cannot equal every one of them. Use “is one of” or “contains” instead.",
+      count: count,
+      field: field(field)
+    )
+  end
+
+  def health_explanation(%{id: id}), do: health_explanation(id)
+
+  def health_explanation(:contradiction),
+    do:
+      gettext(
+        "Some conditions ask one field for different values at the same time, so this rule can never fire."
+      )
+
   def health_explanation(:missing_permission),
     do:
       gettext(

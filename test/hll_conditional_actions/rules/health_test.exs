@@ -105,6 +105,60 @@ defmodule HllConditionalActions.Rules.HealthTest do
     end
   end
 
+  describe "contradicting conditions" do
+    defp chat_conditions(words) do
+      Enum.map(words, &%{field: :message_content, operator: :equal, value: &1})
+    end
+
+    test "equal rows on one field joined by and can never hold" do
+      rule =
+        rule_fixture(%{
+          trigger_event: :player_chat,
+          conditions: chat_conditions(~w(vtnc desgraçado mono mono))
+        })
+
+      assert [%{id: :contradiction, tone: "warning", detail: detail}] = Health.for_rule(rule, [])
+      assert detail.field == :message_content
+      assert detail.count == 4
+    end
+
+    test "is told for a switched-off rule too, before it is enabled" do
+      rule =
+        rule_fixture(%{
+          enabled: false,
+          trigger_event: :player_chat,
+          conditions: chat_conditions(~w(a b))
+        })
+        |> aged(90)
+
+      assert ids(Health.for_rule(rule, [])) == [:contradiction]
+    end
+
+    test "joined by or it is an ordinary list" do
+      rule =
+        rule_fixture(%{
+          trigger_event: :player_chat,
+          logical_operator: :or,
+          conditions: chat_conditions(~w(a b))
+        })
+
+      assert Health.for_rule(rule, []) == []
+    end
+
+    test "the explanation names the field and the count" do
+      rule =
+        rule_fixture(%{
+          trigger_event: :player_chat,
+          conditions: chat_conditions(~w(a b c))
+        })
+
+      [issue] = Health.for_rule(rule, [])
+
+      assert HllConditionalActionsWeb.Labels.health_explanation(issue) =~
+               "These 3 conditions on Chat message can never all be true"
+    end
+  end
+
   describe "for_rules/2" do
     test "answers for a whole page in one pass" do
       first = rule_fixture() |> aged(30)

@@ -1390,13 +1390,22 @@ defmodule HllConditionalActionsWeb.RuleBuilder do
   def condition_sentence(condition, game), do: plain_condition_sentence(condition, game)
 
   defp plain_condition_sentence(condition, game) do
+    "#{Labels.field(condition.field)} #{Labels.operator(condition.operator)} #{value_text(condition.field, condition.value, game)}"
+  end
+
+  @doc """
+  A condition's value as the summary shows it: the label the picker used
+  when it came from one, "(empty)" when there is none.
+  """
+  @spec value_text(atom(), term(), atom() | nil) :: String.t()
+  def value_text(field, value, game) do
     value =
-      case Labels.value_options(condition.field, game) do
-        nil -> condition.value
-        options -> option_label(options, condition.value)
+      case Labels.value_options(field, game) do
+        nil -> value
+        options -> option_label(options, value)
       end
 
-    "#{Labels.field(condition.field)} #{Labels.operator(condition.operator)} #{present(value)}"
+    to_string(present(value))
   end
 
   defp option_label(options, value) do
