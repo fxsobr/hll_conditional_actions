@@ -36,13 +36,24 @@ defmodule HllConditionalActions.Onboarding do
   @doc """
   The steps for a user, given the servers they see and each one's stream
   status (which only the caller, holding the live subscription, knows).
+
+  With `server: server`, the steps are about that one server - a new server
+  joining an install that already runs others: only its stream, its modules,
+  its own rules and what they simulated count.
   """
-  @spec steps(map(), [map()], %{optional(term()) => term()}) :: [step()]
-  def steps(user, servers, stream_status) do
-    rules = if Accounts.can?(user, :view_rules), do: Rules.list_rules_for(user), else: []
+  @spec steps(map(), [map()], %{optional(term()) => term()}, keyword()) :: [step()]
+  def steps(user, servers, stream_status, opts \\ []) do
+    focus = Keyword.get(opts, :server)
+    servers = if focus, do: [focus], else: servers
+
+    rules =
+      if Accounts.can?(user, :view_rules),
+        do: user |> Rules.list_rules_for() |> only_for(focus),
+        else: []
+
     server = List.first(servers)
     simulating = Enum.find(rules, &(&1.enabled and &1.simulation))
-    simulated? = simulated_anything?(user)
+    simulated? = simulated_anything?(user, focus)
     installed = Features.installed_by_server(Enum.map(servers, & &1.id))
 
     [
@@ -51,7 +62,7 @@ defmodule HllConditionalActions.Onboarding do
         permission: :manage_servers,
         done: servers != [],
         requires: nil,
-        context: %{}
+        context: %{server: server}
       },
       %{
         id: :stream,
@@ -67,7 +78,7 @@ defmodule HllConditionalActions.Onboarding do
         permission: :manage_servers,
         done: Enum.any?(installed, fn {_id, set} -> MapSet.size(set) > 0 end),
         requires: :server,
-        context: %{server: server}
+        context: %{server: server, installed: installed_on(installed, server)}
       },
       %{
         id: :rule,
@@ -172,15 +183,62 @@ defmodule HllConditionalActions.Onboarding do
   @spec focus([step()]) :: step() | nil
   def focus(steps), do: Enum.find(steps, &(&1.state in [:current, :waiting, :blocked]))
 
+  @new_for_days 7
+
+  @doc """
+  The server the first steps should be about, or `nil`: the newest server
+  that has nothing installed yet, or that joined in the last week and has no
+  rule acting on it yet (a live rule of its own, or one for every server).
+  """
+  @spec new_server([map()], %{term() => MapSet.t()}, [map()], DateTime.t()) :: map() | nil
+  def new_server(servers, installed, rules, now \\ DateTime.utc_now()) do
+    cutoff = DateTime.add(now, -@new_for_days, :day)
+
+    servers
+    |> Enum.filter(fn server ->
+      MapSet.size(Map.get(installed, server.id, MapSet.new())) == 0 or
+        (recent?(server, cutoff) and not acting_on?(rules, server))
+    end)
+    |> Enum.max_by(& &1.id, fn -> nil end)
+  end
+
+  @doc """
+  Whether the install has left its first run: a rule acts on the game for
+  real. From then on a stream that drops is an incident for the Briefing,
+  not a step to walk through again.
+  """
+  @spec established?([map()]) :: boolean()
+  def established?(rules), do: Enum.any?(rules, &(&1.enabled and not &1.simulation))
+
+  defp recent?(%{inserted_at: %DateTime{} = at}, cutoff), do: DateTime.after?(at, cutoff)
+
+  defp recent?(%{inserted_at: %NaiveDateTime{} = at}, cutoff),
+    do: NaiveDateTime.after?(at, DateTime.to_naive(cutoff))
+
+  defp recent?(_server, _cutoff), do: false
+
+  defp acting_on?(rules, server) do
+    Enum.any?(rules, &(&1.enabled and not &1.simulation and &1.server_id in [nil, server.id]))
+  end
+
+  defp only_for(rules, nil), do: rules
+  defp only_for(rules, server), do: Enum.filter(rules, &(&1.server_id == server.id))
+
+  defp installed_on(_installed, nil), do: MapSet.new()
+  defp installed_on(installed, server), do: Map.get(installed, server.id, MapSet.new())
+
   defp rules_installed?(_installed, nil), do: false
 
   defp rules_installed?(installed, server),
     do: :rules in Map.get(installed, server.id, MapSet.new())
 
-  defp simulated_anything?(user) do
+  defp simulated_anything?(user, server) do
     user
     |> Rules.scoped_executions()
     |> where([e], e.status == :simulated)
+    |> then(fn query ->
+      if server, do: where(query, [e], e.server_id == ^server.id), else: query
+    end)
     |> Repo.exists?()
   end
 end
