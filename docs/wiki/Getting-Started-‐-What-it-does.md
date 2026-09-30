@@ -20,42 +20,61 @@ Both games are supported and kept separate throughout: **HLL** (WW2) and
 **HLLV** (Hell Let Loose: Vietnam) have different roles, teams, maps and
 game modes, so a rule always declares which game it is written for.
 
-**Overview** — the servers, whether their log streams are live, and what the
-rules have been doing.
+**The Briefing** — what needs you, the rule ready to leave simulation, how
+often the rules fired, and every server's live score and population.
 
-![Overview](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/overview.png)
+![Briefing](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/briefing.png)
 
-**The rule builder** — setup, trigger, conditions, actions and limits as steps,
-with the rule reading back in plain words beside them.
+**Live** — the match over the map, and the feed with the rules each line
+fired.
+
+![The cockpit](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/cockpit.png)
+
+**The rule builder** — the rule as a sentence, conditions in groups, and a
+test bench: the last runs overlaid on your edit, and the draft replayed over
+the last week of real events before you publish it.
 
 ![The rule builder](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/rule-builder.png)
 
-**A rule's own page** — how often it fired, how many players it reached, what
-failed, and every change ever made to it.
+**A rule's own page** — whether it is ready to act for real, the escalation
+ladder with its counts, every run with its trace, why it did not fire for a
+player, and every version.
 
 ![A rule](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/rule.png)
+
+How to find your way around:
+[The interface](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-The-interface).
 
 ## Beyond rules: the modules
 
 Rules are one module among several. Each server installs the ones it wants
-from its **marketplace**; a new server starts with none, and removing a module
-hides its pages and stops its work without deleting its data.
+from its **Modules** page; a new server starts with none, and removing a
+module hides its pages and stops its work without deleting its data.
 
-![The marketplace](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/marketplace.png)
+![Modules](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/marketplace.png)
 
 | Module | |
 | --- | --- |
-| **Conditional rules** | Everything above, plus the simulator and the "why didn't it fire?" diagnosis. |
-| **[Tickets](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Tickets)** | Players type a command in the game chat to call an admin; the conversation continues from the browser. |
-| **[Achievements and seasons](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons)** | Goals unlocked by playing, and seasons that reward the best. |
+| **Conditional rules** | Everything above, plus the history, the simulator and the "why didn't it fire?" diagnosis. |
+| **[Tickets](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Tickets)** | Players type a command in the game chat to call an admin; the conversation continues from the Inbox. |
 | **[Leaderboard and matches](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Leaderboard-and-matches)** | The current match's best players and squads, and every past scoreboard. |
-| **[Live feed](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed)** | The game's events as they happen. |
+| **[Live feed](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed)** | The game's events as they happen, with the rules they fired. |
+| **[Achievements and seasons](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons)** | Goals unlocked by playing, and seasons that reward the best. |
+| **[VIP shop](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop)** | A public storefront where players buy VIP, paid with Stripe, Dodo Payments or Mercado Pago. |
 
-**Tickets** — who is waiting on an admin, and who has one.
+Always there, with no module: the Briefing, the cockpit, the
+[Inbox](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history),
+[Players](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Players),
+[Discord](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Discord)
+and [Settings](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Settings-and-account).
+
+**The Inbox** — attention items and tickets in one list, with the
+conversation, the reported player and what you can do about them.
 
 ![Tickets](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/tickets.png)
 
-**A finished match** — the result and the best players of every category.
+**A finished match** — the result, the MVP and the best players of every
+category.
 
 ![A match](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/match.png)
 
@@ -96,8 +115,9 @@ subscribe to that trigger.
 3. **The log stream turned on**, in CRCON under
    *Settings → Others → Log Stream*, with `enabled` set to `true`. It ships
    disabled, and without it CRCON accepts the WebSocket connection and then
-   immediately refuses to send anything — the server shows up as *Error* on the
-   dashboard with that explanation.
+   immediately refuses to send anything — the connection test says the log
+   stream did not answer, and once saved the server shows as *stream down* in
+   its cockpit and in the Inbox.
 
 Creating a dedicated user for this app is recommended: CRCON records the API
 key's owner as the author of every action, so its work shows up clearly in the

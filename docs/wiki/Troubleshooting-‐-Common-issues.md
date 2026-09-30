@@ -21,22 +21,25 @@ it turns out to be the answer.
 
 The log stream is not reaching the app.
 
-1. **Overview** → does the server card say **Live**? If it says anything else,
-   the WebSocket is not connected.
+1. Open the server's cockpit (**Live**) — under the score, does it say **Log
+   stream connected**? If it says anything else, the WebSocket is not
+   connected. The Inbox lists every server whose stream is down.
 2. In CRCON, *Settings → Others → Log Stream*, check `enabled` is `true`. It
    ships disabled, and without it CRCON accepts the connection and then sends
    nothing.
 3. Check the API key's user holds `can_view_structured_logs`.
 
-**Metrics** shows log stream connects and disconnects. Repeated reconnects mean
+**Settings → Engine metrics** shows log stream reconnects. Repeated reconnects mean
 a server the app cannot hold a stream to — usually a proxy in front of CRCON
 closing idle WebSockets.
 
 ## "This will never work" on a rule
 
 The CRCON key cannot do what the rule asks. The badge names the permission.
-Grant it to that user in CRCON, then **Test the connection** again on the
-server page so the app re-reads what the key can do.
+Grant it to that user in CRCON, then **Test connection** again on the
+server's form (**Settings → Servers**) so the app re-reads what the key can
+do. **Settings → Engine metrics** also names the missing permission when
+CRCON answers *403*.
 
 The app only warns about servers whose key it has actually checked. A key that
 was never tested is *unknown*, not broken, and gets no warning.
@@ -55,18 +58,19 @@ Two refusals are deliberate:
 
 ## A rule fires but nothing reaches the game
 
-Check whether it is in **simulation**. A simulated rule evaluates everything,
+Check whether it is **Simulating**. A simulated rule evaluates everything,
 records everything, and sends nothing — the history shows the messages it
-*would* have sent. The rule's badge says `Simulation` when it is on.
+*would* have sent, and the feed tints its lines lavender. After three clean
+days its page offers **Go live for real**.
 
-If it is not simulated, open the rule's **History**: each run lists what every
-action did and what CRCON answered.
+If it is live, open the rule's **Executions**: each run's trace lists what
+every action did and what CRCON answered.
 
 ## Locked out of an account with two factor
 
 - Sign in with one of the **recovery codes** shown when it was set up.
-- No codes left? Any account that can manage users has **Switch two factor off**
-  in the row menu on **Users**.
+- No codes left? Any account that can manage users opens yours on **Users**
+  and uses **Switch 2FA off**.
 - Nobody left who can? See
   [Users, roles and two factor](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor).
 
@@ -80,7 +84,8 @@ Open an issue with:
 
 - what you expected and what happened instead
 - the rule's **Definition** tab, or its export
-- the relevant lines from **History**, and from `docker compose logs app`
+- the relevant runs from **History** (the trace), and lines from
+  `docker compose logs app`
 - your CRCON version
 
 <https://github.com/fxsobr/hll_conditional_actions/issues>

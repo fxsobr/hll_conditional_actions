@@ -102,8 +102,8 @@ them".
 
 > [!TIP]
 > `Player name` **does not contain** `[CB]` and `Flags` **does not contain**
-> `✅`, combined with **All conditions must hold**, is the standard "applies to
-> everybody except our people" pair.
+> `✅`, in a group set to **all**, is the standard "applies to everybody except
+> our people" pair.
 
 ---
 

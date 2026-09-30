@@ -15,11 +15,11 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 ![License](https://img.shields.io/github/license/fxsobr/hll_conditional_actions)
 ![Last commit](https://img.shields.io/github/last-commit/fxsobr/hll_conditional_actions)
 
-![Overview](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/overview.png)
+![Briefing](https://raw.githubusercontent.com/fxsobr/hll_conditional_actions/main/docs/screenshots/briefing.png)
 
-Rules, player support tickets, achievements and seasons, leaderboards, match history and a live feed — each one a module a server installs from its **marketplace**, so a community only sees what it uses.
+Rules, player support tickets, achievements and seasons, leaderboards, match history, a live feed and a VIP shop — each one a module a server installs from its **Modules** page, so a community only sees what it uses. Around them: a Briefing that answers *what needs me?*, one Inbox for everything that does, and a page for every player your servers have seen.
 
-*When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Rules are built from dropdowns, read back as a sentence, and can be tried against a player who is connected right now — or left in simulation, where everything is recorded and nothing reaches the game.
+*When **TRIGGER** happens, if **CONDITIONS** hold, run **ACTIONS**.* Rules are built from dropdowns, read back as a sentence, and are tested while you write them: replayed over the last week of real events, tried against a player who is connected right now — or left in simulation, where everything is recorded and nothing reaches the game, until they have run clean for three days.
 
 > [!IMPORTANT]
 > **This app does not talk to Hell Let Loose. It talks to CRCON.**
@@ -46,6 +46,7 @@ Rules, player support tickets, achievements and seasons, leaderboards, match his
       </td>
       <td valign="top" nowrap>
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Connecting-a-CRCON-server">Connecting a server</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-The-interface">The interface</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Writing-rules">Writing rules</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules"><strong>Rules</strong></a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Rules-%E2%80%90-Overview">Overview</a><br />
@@ -57,11 +58,14 @@ Rules, player support tickets, achievements and seasons, leaderboards, match his
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Tickets">Tickets</a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons">Achievements and seasons</a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Leaderboard-and-matches">Leaderboard and matches</a><br />
-        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed">Live feed</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Players">Players</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed">Live cockpit and feed</a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Discord">Discord</a><br />
-        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history">Attention and history</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop">VIP shop</a><br />
+        &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Attention-and-history">Inbox and history</a><br />
         &nbsp;&nbsp;&nbsp;○ <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Testing-rules">Testing rules</a><br />
         ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Users-roles-and-two-factor">Users and two factor</a><br />
+        ● <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Settings-and-account">Settings and account</a><br />
         <a href="https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide"><em>All of it →</em></a>
       </td>
       <td valign="top" nowrap>

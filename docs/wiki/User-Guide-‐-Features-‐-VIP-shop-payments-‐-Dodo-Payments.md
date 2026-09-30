@@ -65,16 +65,15 @@ webhooks and products made in one do not exist in the other.
 
 ## 4. Fill in the app
 
-**VIP shop → Settings → Payments → Dodo Payments → Configure**:
+**VIP shop → Payments → Dodo Payments → Configure**:
 
 | Field | Value |
 | --- | --- |
-| Offer this payment method | On |
-| Mode | *Test (sandbox)* — **must match** the dashboard mode the key came from |
+| Mode | *In test* — **must match** the dashboard mode the key came from |
 | API key | The key from step 2 |
 | Webhook signing secret | The `whsec_…` secret from step 3 |
 
-**Save**. The Dodo Payments card now shows **Test mode**.
+**Test connection**, then **Save**. The Dodo Payments card now shows **In test**; if it still says *Off*, click **Off · turn on**.
 
 ## 5. Make a test purchase
 
@@ -98,7 +97,7 @@ Fill in any name and billing address. Then check:
    *Action required*). Live mode stays locked until then.
 2. Switch the dashboard to **Live mode** (*Modo ao vivo*) and repeat steps 2
    and 3. The live key and the live webhook secret are new values.
-3. In the app, paste both, set **Mode** to *Live* and save.
+3. In the app, paste both, set **Mode** to *Production* and save.
 
 ## The VIP product the app creates
 

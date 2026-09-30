@@ -25,7 +25,16 @@ for who can do what once they are in.
 - A key belonging to a CRCON superuser is refused: the connection test asks for
   the permissions it needs and nothing more.
 - The session cookie is `http_only`, `secure` and `same_site=Lax`, and expires
-  after a week.
+  after a week. Each signed-in browser is a **session** its owner can see and
+  end from **My account**; deactivating an account, changing a password or
+  resetting it signs the other sessions out.
+- Passwords people choose need at least 12 characters mixing letters and
+  numbers, cannot be `admin`, `password`, `senha` or the username, and
+  changing one asks for the current one.
+- A forgotten password can be reset by e-mail: the link lasts 30 minutes,
+  works once, and the form never says whether an address has an account. It
+  needs the VIP shop's mail settings; without them an administrator resets
+  it from **Users**.
 - The app sets its own CSP, referrer and permissions policies, so they hold
   even if it is served without Caddy in front.
 
@@ -57,8 +66,9 @@ the app's own limits still apply.
 
 ## Two factor
 
-Optional, per account, set up from **My account**. TOTP only — an
-authenticator app, no email and no SMS, because this app sends neither.
+Optional, per account, set up in three steps from **My account** — scan,
+confirm a code, save the recovery codes. TOTP only — an authenticator app, no
+e-mail and no SMS.
 
 - The secret is encrypted at rest, like a CRCON key, and nothing is stored
   until a code proves the app is reading it. Closing the page halfway changes
@@ -67,8 +77,9 @@ authenticator app, no email and no SMS, because this app sends neither.
 - A code is accepted once. The time step it belongs to is remembered, so one
   read over a shoulder inside its 90 second window is already spent.
 - Ten wrong codes in fifteen minutes and the account stops being answered.
+- **Users** shows who has two factor on, and warns about accounts without it.
 - **The way back in** when the phone and the codes are both gone: anybody who
-  can manage users has *Switch two factor off* in the row menu on **Users**.
+  can manage users opens the account on **Users** and uses **Switch 2FA off**.
   Keep a second administrator account for exactly this.
 
 ***

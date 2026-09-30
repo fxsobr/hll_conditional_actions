@@ -76,16 +76,15 @@ can do nothing else.
 
 ## 4. Fill in the app
 
-**VIP shop → Settings → Payments → Stripe → Configure**:
+**VIP shop → Payments → Stripe → Configure**:
 
 | Field | Value |
 | --- | --- |
-| Offer this payment method | On |
-| Mode | *Test (sandbox)*. With Stripe the key decides the mode; keep this matching it |
+| Mode | *In test*. With Stripe the key decides the mode; keep this matching it |
 | Secret key | The `rk_test_…` key from step 2 |
 | Webhook signing secret | The `whsec_…` secret from step 3 |
 
-**Save**. The Stripe card now shows **Test mode**.
+**Test connection**, then **Save**. The Stripe card now shows **In test**; if it still says *Off*, click **Off · turn on**.
 
 ## 5. Make a test purchase
 
@@ -108,7 +107,7 @@ Then check:
    activating the account first.
 2. Repeat steps 2 and 3 in live mode. The key now starts with `rk_live_` and
    the webhook has **its own** `whsec_…` secret.
-3. In the app, paste both, set **Mode** to *Live* and save.
+3. In the app, paste both, set **Mode** to *Production* and save.
 
 ## Troubleshooting
 
