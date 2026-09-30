@@ -45,6 +45,10 @@ defmodule HllConditionalActions.Leaderboards do
   @recon_roles ~w(spotter sniper)
   @artillery_roles ~w(artilleryobserver operator gunner)
   @commander_roles ~w(armycommander)
+  @leader_roles ~w(officer squadleader tankcommander spotter)
+
+  # How many players a squad of each type takes in the game.
+  @capacity %{infantry: 6, armor: 3, recon: 2, artillery: 6}
 
   @doc "Every player category, in display order."
   @spec categories() :: [atom()]
@@ -53,6 +57,14 @@ defmodule HllConditionalActions.Leaderboards do
   @doc "Every squad type, in display order."
   @spec squad_types() :: [atom()]
   def squad_types, do: @squad_types
+
+  @doc "How many players a squad of a type takes."
+  @spec capacity(atom()) :: pos_integer()
+  def capacity(type), do: Map.fetch!(@capacity, type)
+
+  @doc "The kills a player needs before the K/D ratio ranks them."
+  @spec min_kills_for_ratio() :: pos_integer()
+  def min_kills_for_ratio, do: @min_kills_for_ratio
 
   # ── Players ────────────────────────────────────────────────────────────────
 
@@ -156,7 +168,8 @@ defmodule HllConditionalActions.Leaderboards do
 
   @doc """
   The squads of the server, grouped by type and best first within it, as
-  `%{type => [%{team, name, size, has_leader, score, kills, members}]}`.
+  `%{type => [%{team, name, size, has_leader, leader, score, kills, members}]}`;
+  `leader` is the name of the squad's leader, nil without one.
   """
   @spec squads(map() | [map()]) :: %{atom() => [map()]}
   def squads(roster) do
@@ -170,7 +183,8 @@ defmodule HllConditionalActions.Leaderboards do
         name: unit,
         type: squad_type(members),
         size: length(members),
-        has_leader: Enum.any?(members, &(role(&1) in ~w(officer tankcommander spotter))),
+        has_leader: Enum.any?(members, &(role(&1) in @leader_roles)),
+        leader: members |> Enum.find(&(role(&1) in @leader_roles)) |> then(&(&1 && &1["name"])),
         score: Enum.sum_by(members, &squad_score/1),
         kills: Enum.sum_by(members, &number(&1, "kills")),
         members: Enum.map(members, & &1["name"])
