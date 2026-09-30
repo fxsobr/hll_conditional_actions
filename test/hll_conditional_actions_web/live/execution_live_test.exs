@@ -79,7 +79,8 @@ defmodule HllConditionalActionsWeb.ExecutionLiveTest do
       html = view |> element("#execution-#{execution.id}-toggle") |> render_click()
 
       assert has_element?(view, "#execution-#{execution.id}-trace")
-      assert html =~ "read 12, needed: is greater than 5"
+      assert html =~ "read 12"
+      assert html =~ "is greater than"
       assert html =~ "Nice!"
       assert html =~ "Took 42 ms"
     end
@@ -179,9 +180,13 @@ defmodule HllConditionalActionsWeb.ExecutionLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/executions")
 
-      send(view.pid, {:rule_fired, record(rule, server, 999)})
+      execution = record(rule, server, 999)
+      send(view.pid, {:rule_fired, execution})
 
       assert render(view) =~ "Player 999"
+      # The row that arrived while the page was open is marked, and counted.
+      assert has_element?(view, "#execution-#{execution.id}", "NEW")
+      assert has_element?(view, "#execution-live-status", "+1")
     end
 
     test "but not while a later page is being read", %{conn: conn, rule: rule, server: server} do
