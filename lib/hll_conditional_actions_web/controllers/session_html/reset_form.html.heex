@@ -1,0 +1,39 @@
+<AuthLayout.shell
+  flash={@flash}
+  art={:reset}
+  return_to={~p"/login?#{[reset_token: @token]}"}
+>
+  <:top>
+    <AuthLayout.top_pill href={~p"/login"} id="reset-back">
+      {gettext("Back to sign in")}
+    </AuthLayout.top_pill>
+  </:top>
+
+  <div class="auth-stack auth-stack--tight">
+    <div class="auth-head">
+      <h1 class="auth-title">{gettext("New password")}</h1>
+      <p class="auth-sub">
+        <AuthLayout.around
+          text={
+            gettext("For %{username}. After saving, you sign in with the new one.",
+              username: AuthLayout.hole()
+            )
+          }
+          class="font-mono text-base-content"
+          value={@reset_username}
+        />
+      </p>
+    </div>
+
+    <%!-- A LiveView inside the page, only to tick the checklist off as the
+          password is typed; the form itself posts back to /login. --%>
+    {live_render(@conn, HllConditionalActionsWeb.ResetPasswordLive,
+      id: "reset-password",
+      session: %{
+        "token" => @token,
+        "errors" => @errors,
+        "locale" => Gettext.get_locale(HllConditionalActionsWeb.Gettext)
+      }
+    )}
+  </div>
+</AuthLayout.shell>

@@ -133,7 +133,7 @@ defmodule HllConditionalActionsWeb.AccountTwoFactorTest do
       render_submit(view, "confirm_step_up", %{"code" => next_code(secret)})
 
       assert TwoFactor.enabled?(reload(user))
-      assert render(view) =~ "Two factor"
+      assert has_element?(view, "#account-two-factor")
     end
 
     test "cancelling drops the pending action", %{conn: conn, user: user, secret: secret} do
@@ -146,5 +146,69 @@ defmodule HllConditionalActionsWeb.AccountTwoFactorTest do
 
       assert TwoFactor.enabled?(reload(user))
     end
+  end
+end
+
+defmodule HllConditionalActionsWeb.AccountTwoFactorSetupTest do
+  @moduledoc """
+  Setting the second factor up in three steps: nothing is stored until the
+  recovery codes are saved, and the pending secret survives a reload.
+  """
+
+  use HllConditionalActionsWeb.ConnCase, async: true
+
+  import HllConditionalActions.Fixtures
+  import Phoenix.LiveViewTest
+
+  alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Accounts.Enrolments
+  alias HllConditionalActions.Accounts.Totp
+  alias HllConditionalActions.Accounts.TwoFactor
+
+  setup %{conn: conn} do
+    user = user_fixture()
+    conn = conn |> init_test_session(%{}) |> Plug.Conn.put_session(:user_id, user.id)
+    %{conn: conn, user: user}
+  end
+
+  test "the whole setup, step by step", %{conn: conn, user: user} do
+    {:ok, view, _html} = live(conn, ~p"/account")
+
+    view |> element("#account-start-two-factor") |> render_click()
+    assert has_element?(view, "#account-two-factor-setup")
+
+    %{secret: secret} = Enrolments.pending(user)
+
+    # A wrong code: still nothing stored, no codes shown.
+    render_submit(view, "check_code", %{"code" => "000000"})
+    refute has_element?(view, "#account-setup-codes")
+
+    render_submit(view, "check_code", %{"code" => Totp.code(secret)})
+    assert has_element?(view, "#account-setup-codes li")
+    refute TwoFactor.enabled?(Accounts.get_user!(user.id))
+
+    # Not until the codes are marked as saved.
+    assert has_element?(view, "#account-activate-two-factor[disabled]")
+    render_click(view, "activate_two_factor")
+    refute TwoFactor.enabled?(Accounts.get_user!(user.id))
+
+    view |> form("#codes-saved-form", %{"saved" => "true"}) |> render_change()
+    view |> element("#account-activate-two-factor") |> render_click()
+
+    assert TwoFactor.enabled?(Accounts.get_user!(user.id))
+    assert Enrolments.pending(user) == nil
+  end
+
+  test "a reload shows the same secret, and cancelling forgets it", %{conn: conn, user: user} do
+    {:ok, view, _html} = live(conn, ~p"/account")
+    view |> element("#account-start-two-factor") |> render_click()
+    %{secret: secret} = Enrolments.pending(user)
+
+    {:ok, view, _html} = live(conn, ~p"/account")
+    assert has_element?(view, "#account-two-factor-key", Totp.readable_secret(secret))
+
+    view |> element("#account-cancel-two-factor") |> render_click()
+    assert Enrolments.pending(user) == nil
+    assert has_element?(view, "#account-start-two-factor")
   end
 end

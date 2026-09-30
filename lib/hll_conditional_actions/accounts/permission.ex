@@ -8,6 +8,8 @@ defmodule HllConditionalActions.Accounts.Permission do
 
   They come in view/manage pairs. `manage_*` implies `view_*` through
   `expand/1`, so a role that can manage servers never needs both listed.
+  `manage_players` stands alone: acting on a player through CRCON (message,
+  punish, kick, ban, watchlist, VIP) from the player pages or a ticket.
   """
 
   @permissions [
@@ -22,6 +24,7 @@ defmodule HllConditionalActions.Accounts.Permission do
     manage_progression: :community,
     view_tickets: :support,
     manage_tickets: :support,
+    manage_players: :support,
     manage_integrations: :platform,
     manage_users: :platform,
     manage_roles: :platform

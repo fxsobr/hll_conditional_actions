@@ -22,11 +22,13 @@ defmodule HllConditionalActionsWeb.TwoFactorController do
 
   defp require_pending_user(conn, _opts), do: UserAuth.require_pending_user(conn, [])
 
-  def new(conn, _params) do
-    render_form(conn, nil)
+  # `?recovery=1` swaps the six digit boxes for one field that takes a
+  # recovery code; either kind of code is accepted by either form.
+  def new(conn, params) do
+    render_form(conn, nil, recovery?(params))
   end
 
-  def create(conn, %{"code" => code}) do
+  def create(conn, %{"code" => code} = params) do
     user = conn.assigns.pending_user
 
     case TwoFactor.verify(user, code) do
@@ -55,11 +57,14 @@ defmodule HllConditionalActionsWeb.TwoFactorController do
 
         conn
         |> put_status(:unauthorized)
-        |> render_form(gettext("That code is not right. Check your app and try again."))
+        |> render_form(
+          gettext("That code is not right. Check your app and try again."),
+          recovery?(params)
+        )
     end
   end
 
-  def create(conn, _params), do: render_form(conn, nil)
+  def create(conn, params), do: render_form(conn, nil, recovery?(params))
 
   @doc """
   Abandons a half finished sign in, for somebody who cannot produce a code.
@@ -82,13 +87,16 @@ defmodule HllConditionalActionsWeb.TwoFactorController do
     gettext("Welcome back, %{name}!", name: user.name || user.username)
   end
 
-  defp render_form(conn, error) do
+  defp recovery?(params), do: params["recovery"] == "1" or params["mode"] == "recovery"
+
+  defp render_form(conn, error, recovery?) do
     conn
     # The same reasoning as the password form: a cached copy carries a CSRF
     # token for a session that may be gone.
     |> put_resp_header("cache-control", "no-store")
     |> render(:new,
       error: error,
+      recovery?: recovery?,
       recovery_codes_left: TwoFactor.recovery_codes_left(conn.assigns.pending_user)
     )
   end

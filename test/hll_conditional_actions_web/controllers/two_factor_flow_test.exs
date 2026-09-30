@@ -111,6 +111,59 @@ defmodule HllConditionalActionsWeb.TwoFactorFlowTest do
     end
   end
 
+  describe "the code page" do
+    test "shows six boxes, who is signing in and how long the code lasts", %{conn: conn} do
+      conn = conn |> sign_in_with_password() |> recycle()
+      html = conn |> get(~p"/login/code") |> html_response(200) |> LazyHTML.from_document()
+
+      assert html |> LazyHTML.query("#two-factor-digits input[data-digit]") |> Enum.count() == 6
+      # The boxes fill one hidden field, under the name the controller reads.
+      assert html
+             |> LazyHTML.query("#two-factor-form input[type=hidden][name=code]")
+             |> Enum.count() == 1
+
+      assert html |> LazyHTML.query("#two-factor-timer [data-count]") |> Enum.count() == 1
+      assert LazyHTML.text(html) =~ "sarge"
+      assert html |> LazyHTML.query("#code-steps li") |> Enum.count() == 3
+      assert html |> LazyHTML.query("#two-factor-back[href='/login']") |> Enum.count() == 1
+      assert html |> LazyHTML.query("#use-recovery-code") |> Enum.count() == 1
+    end
+
+    test "can switch to a single recovery code field, which signs in", %{
+      conn: conn,
+      recovery_codes: [code | _rest]
+    } do
+      conn = conn |> sign_in_with_password() |> recycle()
+
+      html =
+        conn |> get(~p"/login/code?recovery=1") |> html_response(200) |> LazyHTML.from_document()
+
+      assert html |> LazyHTML.query("input#two_factor_code[name=code][type=text]") |> Enum.count() ==
+               1
+
+      assert html |> LazyHTML.query("#two-factor-digits") |> Enum.count() == 0
+      assert html |> LazyHTML.query("#use-app-code") |> Enum.count() == 1
+
+      assert conn
+             |> post(~p"/login/code", %{"code" => code, "mode" => "recovery"})
+             |> redirected_to() ==
+               ~p"/"
+    end
+
+    test "a wrong recovery code keeps the recovery field", %{conn: conn} do
+      conn = conn |> sign_in_with_password() |> recycle()
+
+      response =
+        conn
+        |> post(~p"/login/code", %{"code" => "nope-nope", "mode" => "recovery"})
+        |> html_response(401)
+
+      assert response =~ ~s(id="two-factor-error")
+      assert response =~ ~s(name="mode")
+      refute response =~ ~s(id="two-factor-digits")
+    end
+  end
+
   describe "throttling the code step" do
     setup %{user: user} do
       Application.put_env(:hll_conditional_actions, :two_factor_rate_limit,

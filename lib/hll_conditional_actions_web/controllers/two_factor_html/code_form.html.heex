@@ -1,0 +1,111 @@
+<AuthLayout.shell flash={@flash} art={:code} return_to={~p"/login/code"}>
+  <:top>
+    <%!-- Back to the password form; the half finished sign in expires by
+          itself, and giving the password again starts a new one. --%>
+    <AuthLayout.top_pill href={~p"/login"} id="two-factor-back">
+      {gettext("Back")}
+    </AuthLayout.top_pill>
+  </:top>
+
+  <div class="auth-stack">
+    <div class="auth-head">
+      <AuthLayout.stepper
+        id="code-steps"
+        steps={[{gettext("Password"), :done}, {gettext("Code"), :current}]}
+      />
+      <h1 class="auth-title">
+        {if @recovery?, do: gettext("Recovery code"), else: gettext("App code")}
+      </h1>
+      <p class="auth-sub">
+        <AuthLayout.around
+          text={
+            if @recovery?,
+              do:
+                gettext(
+                  "Type one of the recovery codes you saved when you turned on the authenticator. Signing in as %{username}.",
+                  username: AuthLayout.hole()
+                ),
+              else:
+                gettext(
+                  "Open the authenticator app and type the 6 digits of Conditional Actions. Signing in as %{username}.",
+                  username: AuthLayout.hole()
+                )
+          }
+          class="font-mono text-base-content"
+          value={@pending_user.username}
+        />
+      </p>
+    </div>
+
+    <AuthLayout.note :if={@error} id="two-factor-error" tone={:error} icon={:error} role="alert">
+      {@error}
+    </AuthLayout.note>
+
+    <.form for={%{}} action={~p"/login/code"} id="two-factor-form" class="auth-form">
+      <%= if @recovery? do %>
+        <input type="hidden" name="mode" value="recovery" />
+        <div class="auth-group">
+          <label for="two_factor_code" class="auth-label">{gettext("Recovery code")}</label>
+          <span class="auth-field">
+            <input
+              type="text"
+              id="two_factor_code"
+              name="code"
+              class="font-mono tracking-[0.12em]"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              autofocus
+              required
+            />
+          </span>
+        </div>
+        <p class="auth-code-meta">
+          {ngettext(
+            "You have 1 recovery code left. Each one works once.",
+            "You have %{count} recovery codes left. Each one works once.",
+            @recovery_codes_left
+          )}
+        </p>
+      <% else %>
+        <AuthLayout.code_boxes
+          id="two-factor-digits"
+          input_id="two_factor_code"
+          autosubmit
+          invalid={@error != nil}
+        />
+        <div class="auth-code-meta">
+          <AuthLayout.code_timer id="two-factor-timer" seconds={@seconds} />
+          <span>{gettext("Pasting works too")}</span>
+        </div>
+      <% end %>
+
+      <button type="submit" id="two-factor-submit" class="auth-cta">
+        {gettext("Sign in")} <AuthLayout.arrow />
+      </button>
+
+      <.link
+        :if={@recovery?}
+        href={~p"/login/code"}
+        id="use-app-code"
+        class="auth-link auth-link--center"
+      >
+        {gettext("Use the app code")}
+      </.link>
+      <.link
+        :if={!@recovery? and @recovery_codes_left > 0}
+        href={~p"/login/code?recovery=1"}
+        id="use-recovery-code"
+        class="auth-link auth-link--center"
+      >
+        {gettext("Use a recovery code")}
+      </.link>
+    </.form>
+
+    <AuthLayout.note id="lost-phone-note" icon={:phone}>
+      {gettext(
+        "Lost your phone and the recovery codes? An administrator of your community can switch your 2FA off so you can sign in again."
+      )}
+    </AuthLayout.note>
+  </div>
+</AuthLayout.shell>

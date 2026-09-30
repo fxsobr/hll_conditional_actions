@@ -29,10 +29,14 @@ defmodule HllConditionalActionsWeb.UserAuth do
   import Plug.Conn
 
   alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Accounts.Sessions
   alias Phoenix.Component
   alias Phoenix.LiveView
 
   @session_key :user_id
+  # The token of this browser's row in `user_sessions`; see
+  # `HllConditionalActions.Accounts.Sessions`.
+  @token_key :session_token
   @return_to_key :user_return_to
   # Set between the password and the code. Holding the id here rather than in
   # `@session_key` is the whole point: a half signed in visitor must reach
@@ -47,8 +51,35 @@ defmodule HllConditionalActionsWeb.UserAuth do
   Loads the signed in user into `conn.assigns.current_user`.
   """
   def fetch_current_user(conn, _opts) do
-    user = conn |> get_session(@session_key) |> Accounts.get_user()
-    assign(conn, :current_user, active_user(user))
+    user = conn |> get_session(@session_key) |> Accounts.get_user() |> active_user()
+
+    case {user, get_session(conn, @token_key)} do
+      {nil, _token} ->
+        assign(conn, :current_user, nil)
+
+      # Signed in before sessions were tracked: adopt it, so it shows up in
+      # the account's list and can be signed out from there. Without a CSRF
+      # secret to derive its token from, it stays untracked.
+      {user, nil} ->
+        case get_session(conn, "_csrf_token") do
+          seed when is_binary(seed) ->
+            {token, session} = Sessions.adopt(user, session_meta(conn), seed)
+
+            conn
+            |> put_session(@token_key, token)
+            |> put_session(:live_socket_id, Sessions.socket_id(session.id))
+            |> assign(:current_user, user)
+
+          _none ->
+            assign(conn, :current_user, user)
+        end
+
+      {user, token} ->
+        case Sessions.fetch(token) do
+          %{user_id: user_id} when user_id == user.id -> assign(conn, :current_user, user)
+          _signed_out -> conn |> renew_session() |> assign(:current_user, nil)
+        end
+    end
   end
 
   @doc """
@@ -83,10 +114,13 @@ defmodule HllConditionalActionsWeb.UserAuth do
   def log_in_user(conn, user) do
     return_to = get_session(conn, @return_to_key)
 
+    {token, session} = Sessions.create(user, session_meta(conn))
+
     conn
     |> renew_session()
     |> put_session(@session_key, user.id)
-    |> put_session(:live_socket_id, "users_sessions:#{user.id}")
+    |> put_session(@token_key, token)
+    |> put_session(:live_socket_id, Sessions.socket_id(session.id))
     |> redirect(to: return_to || signed_in_path(user))
   end
 
@@ -143,6 +177,8 @@ defmodule HllConditionalActionsWeb.UserAuth do
   Signs the current user out and drops their LiveView connections.
   """
   def log_out_user(conn) do
+    conn |> get_session(@token_key) |> Sessions.delete_token()
+
     if live_socket_id = get_session(conn, :live_socket_id) do
       HllConditionalActionsWeb.Endpoint.broadcast(live_socket_id, "disconnect", %{})
     end
@@ -220,8 +256,26 @@ defmodule HllConditionalActionsWeb.UserAuth do
 
   defp mount_current_user(socket, session) do
     Component.assign_new(socket, :current_user, fn ->
-      session |> Map.get(to_string(@session_key)) |> Accounts.get_user() |> active_user()
+      user = session |> Map.get(to_string(@session_key)) |> Accounts.get_user() |> active_user()
+      session_user(user, Map.get(session, to_string(@token_key)))
     end)
+  end
+
+  defp session_user(nil, _token), do: nil
+  defp session_user(user, nil), do: user
+  defp session_user(user, token), do: if(session_of?(token, user), do: user)
+
+  defp session_of?(token, user) do
+    match?(%{user_id: user_id} when user_id == user.id, Sessions.fetch(token))
+  end
+
+  defp session_meta(conn) do
+    %{
+      user_agent: conn |> get_req_header("user-agent") |> List.first(),
+      ip: conn.remote_ip |> :inet.ntoa() |> to_string()
+    }
+  rescue
+    _error -> %{}
   end
 
   defp redirect_to_login(socket) do

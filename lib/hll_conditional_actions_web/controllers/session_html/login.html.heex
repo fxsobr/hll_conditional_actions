@@ -1,0 +1,79 @@
+<AuthLayout.shell flash={@flash} art={:login} return_to={~p"/login"}>
+  <div class="auth-stack">
+    <div class="auth-head">
+      <AuthLayout.stepper
+        id="login-steps"
+        steps={[{gettext("Password"), :current}, {gettext("Code"), :todo}]}
+      />
+      <h1 class="auth-title">{gettext("Sign in")}</h1>
+      <p class="auth-sub auth-sub--snug">
+        {gettext("Use the account the admin of your community created for you.")}
+      </p>
+    </div>
+
+    <AuthLayout.note :if={@error} id="login-error" tone={:error} icon={:error} role="alert">
+      {@error}
+    </AuthLayout.note>
+
+    <%!-- Only while the bootstrap account still has its default password:
+          a fresh install has no other way in. --%>
+    <AuthLayout.note :if={@first_run?} id="first-run-hint" tone={:warning} icon={:key}>
+      <AuthLayout.around
+        text={
+          gettext(
+            "First run: sign in with %{credentials} and you will be asked to pick a password of your own.",
+            credentials: AuthLayout.hole()
+          )
+        }
+        class="font-mono"
+        value="admin / admin"
+      />
+    </AuthLayout.note>
+
+    <.form for={%{}} as={:user} action={~p"/login"} id="login-form" class="auth-form">
+      <div class="auth-group">
+        <label for="user_username" class="auth-label">{gettext("Username")}</label>
+        <span class="auth-field">
+          <input
+            type="text"
+            id="user_username"
+            name="user[username]"
+            value={@username}
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+            autofocus={@username in [nil, ""]}
+            required
+          />
+        </span>
+      </div>
+
+      <div class="auth-group">
+        <div class="auth-label-row">
+          <label for="user_password" class="auth-label">{gettext("Password")}</label>
+          <.link href={~p"/login?forgot=1"} id="forgot-link" class="auth-link">
+            <span class="auth-wide-only">{gettext("Forgot")}</span>
+            <span class="auth-phone-only">{gettext("Forgot the password")}</span>
+          </.link>
+        </div>
+        <AuthLayout.password_input
+          id="user_password"
+          name="user[password]"
+          autocomplete="current-password"
+          autofocus={@username not in [nil, ""]}
+          required
+        />
+      </div>
+
+      <button type="submit" id="login-submit" class="auth-cta">
+        {gettext("Continue")} <AuthLayout.arrow />
+      </button>
+    </.form>
+
+    <AuthLayout.note id="login-note" icon={:shield}>
+      {gettext(
+        "This tool can kick and ban players. If your account has an authenticator app, we ask for its code after the password."
+      )}
+    </AuthLayout.note>
+  </div>
+</AuthLayout.shell>

@@ -1,0 +1,62 @@
+<AuthLayout.shell flash={@flash} art={:reset} return_to={~p"/login?forgot=1"} width={:wide}>
+  <:top>
+    <AuthLayout.top_pill href={~p"/login"} id="reset-back">
+      {gettext("Back to sign in")}
+    </AuthLayout.top_pill>
+  </:top>
+
+  <article id="reset-request" class="auth-box">
+    <div class="flex flex-col gap-2">
+      <h1 class="auth-title auth-title--card">{gettext("Forgot the password")}</h1>
+      <p class="auth-sub">
+        {gettext("Type the e-mail of your account. We send a link to create a new password.")}
+      </p>
+    </div>
+
+    <AuthLayout.note :if={@error} id="reset-error" tone={:error} icon={:error} role="alert">
+      {@error}
+    </AuthLayout.note>
+
+    <%= if @mail_configured? do %>
+      <.form
+        for={%{}}
+        as={:reset}
+        action={~p"/login"}
+        id="reset-request-form"
+        class="auth-form auth-form--tight"
+      >
+        <div class="auth-group">
+          <label for="reset_email" class="auth-label">{gettext("E-mail")}</label>
+          <span class="auth-field auth-field--on-card">
+            <input
+              type="email"
+              id="reset_email"
+              name="reset[email]"
+              value={@email}
+              autocomplete="email"
+              autocapitalize="none"
+              spellcheck="false"
+              autofocus
+              required
+            />
+          </span>
+        </div>
+        <button type="submit" id="reset-submit" class="auth-cta auth-cta--flush">
+          {gettext("Send link")} <AuthLayout.arrow />
+        </button>
+      </.form>
+
+      <p class="auth-fineprint">
+        {gettext(
+          "No e-mail on the account? An administrator resets your password in Users, and you change it at the first sign in."
+        )}
+      </p>
+    <% else %>
+      <AuthLayout.note id="reset-no-mail" tone={:warning} icon={:mail}>
+        {gettext(
+          "This install has no e-mail server set up, so no link can be sent. Ask an administrator to reset your password in Users: you choose your own at the next sign in."
+        )}
+      </AuthLayout.note>
+    <% end %>
+  </article>
+</AuthLayout.shell>

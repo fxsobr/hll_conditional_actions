@@ -372,7 +372,7 @@ defmodule HllConditionalActions.Accounts do
           "Operator",
           "Runs the servers day to day: rules, seasons, achievements and player tickets. Cannot change server credentials, integrations or access.",
           ~w(view_servers manage_rules view_executions view_live_feed view_stats) ++
-            ~w(manage_progression manage_tickets)
+            ~w(manage_progression manage_tickets manage_players)
         ),
       viewer:
         upsert_system_role!(
