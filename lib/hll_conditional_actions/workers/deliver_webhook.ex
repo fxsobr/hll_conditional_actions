@@ -155,7 +155,7 @@ defmodule HllConditionalActions.Workers.DeliverWebhook do
 
   defp outcome({:ok, %Req.Response{status: status}}, job, webhook) when status in 200..299 do
     if webhook, do: Discord.record_success(webhook.id)
-    finish(job, :delivered, nil)
+    finish(job, :delivered, nil, status)
     :ok
   end
 
@@ -171,7 +171,7 @@ defmodule HllConditionalActions.Workers.DeliverWebhook do
   defp outcome({:ok, %Req.Response{status: status} = response}, job, webhook) do
     reason = "Discord rejected the message with HTTP #{status}#{discord_reason(response)}"
     if webhook, do: Discord.record_failure(webhook.id, reason)
-    finish(job, :failed, reason)
+    finish(job, :failed, reason, status)
     {:cancel, reason}
   end
 
@@ -188,8 +188,14 @@ defmodule HllConditionalActions.Workers.DeliverWebhook do
     {:error, reason}
   end
 
-  defp finish(%Oban.Job{args: args}, status, detail) do
-    Discord.record_delivery(args["execution_id"], args["action_index"], status, detail)
+  defp finish(%Oban.Job{args: args}, status, detail, http_status \\ nil) do
+    Discord.record_delivery(
+      args["execution_id"],
+      args["action_index"],
+      status,
+      detail,
+      http_status
+    )
   end
 
   defp discord_reason(%Req.Response{body: %{"message" => message}}) when is_binary(message),

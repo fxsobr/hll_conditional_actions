@@ -21,6 +21,8 @@ defmodule HllConditionalActions.Metrics do
 
   use GenServer
 
+  alias HllConditionalActions.Metrics.History
+
   @table __MODULE__
   @handler_id "hll-conditional-actions-metrics"
 
@@ -66,6 +68,12 @@ defmodule HllConditionalActions.Metrics do
   @spec reset() :: :ok
   def reset, do: GenServer.call(__MODULE__, :reset)
 
+  @doc false
+  # Sets up `HllConditionalActions.Metrics.History` in this process, which
+  # owns its table. Called by the history itself when it finds it missing.
+  @spec ensure_history() :: :ok
+  def ensure_history, do: GenServer.call(__MODULE__, :ensure_history)
+
   @doc """
   Total number of events recorded, which is what tells the page whether
   anything has happened at all.
@@ -87,6 +95,7 @@ defmodule HllConditionalActions.Metrics do
     :ets.insert(@table, {{:meta, :started_at}, DateTime.utc_now()})
 
     :telemetry.attach_many(@handler_id, @events, &__MODULE__.handle_event/4, nil)
+    :ok = History.setup()
 
     {:ok, %{}}
   end
@@ -96,13 +105,16 @@ defmodule HllConditionalActions.Metrics do
     :ets.match_delete(@table, {{:counter, :_}, :_})
     :ets.match_delete(@table, {{:duration, :_}, :_})
     :ets.insert(@table, {{:meta, :started_at}, DateTime.utc_now()})
+    :ok = History.reset()
     {:reply, :ok, state}
   end
+
+  def handle_call(:ensure_history, _from, state), do: {:reply, History.setup(), state}
 
   @impl GenServer
   def terminate(_reason, _state) do
     :telemetry.detach(@handler_id)
-    :ok
+    History.detach()
   end
 
   # ── Telemetry handler ──────────────────────────────────────────────────────

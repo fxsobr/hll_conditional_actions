@@ -64,6 +64,10 @@ defmodule HllConditionalActions.Crcon.Permissions do
 
   @required ["can_view_structured_logs"]
 
+  # What the VIP shop reads: the current VIP list, to extend a VIP instead of
+  # replacing it, and the player history, for customers to find themselves.
+  @shop ~w(can_view_vip_ids can_view_player_history)
+
   @doc """
   The permission a key cannot work without.
   """
@@ -89,7 +93,28 @@ defmodule HllConditionalActions.Crcon.Permissions do
       false
   """
   @spec allowed() :: [String.t()]
-  def allowed, do: Enum.sort(@reads ++ Map.keys(@actions))
+  def allowed, do: Enum.sort(@reads ++ Map.keys(@actions) ++ @shop)
+
+  @doc """
+  The permissions only the VIP shop uses.
+  """
+  @spec shop() :: [String.t()]
+  def shop, do: @shop
+
+  @doc """
+  What the VIP shop needs from a server's key and the key lacks, from the
+  permissions last seen when the server was saved. Empty when they were never
+  checked, so an unknown key is not reported as broken.
+
+      iex> alias HllConditionalActions.Crcon.Permissions
+      iex> Permissions.missing_for_shop(["can_add_vip", "can_view_vip_ids"])
+      ["can_view_player_history"]
+      iex> Permissions.missing_for_shop([])
+      []
+  """
+  @spec missing_for_shop([String.t()]) :: [String.t()]
+  def missing_for_shop([]), do: []
+  def missing_for_shop(known), do: ["can_add_vip" | @shop] -- known
 
   @doc """
   The rule actions a permission unlocks, for explaining what is missing.

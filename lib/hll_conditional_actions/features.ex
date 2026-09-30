@@ -22,16 +22,16 @@ defmodule HllConditionalActions.Features do
   @topic "features"
 
   # Order is the order of the marketplace.
-  @catalog [:rules, :tickets, :progression, :stats, :live_feed]
+  @catalog [:rules, :tickets, :progression, :stats, :live_feed, :vip_shop]
 
   @typedoc "A module of the marketplace."
-  @type feature :: :rules | :tickets | :progression | :stats | :live_feed
+  @type feature :: :rules | :tickets | :progression | :stats | :live_feed | :vip_shop
 
   @doc """
   Every module the marketplace offers.
 
       iex> HllConditionalActions.Features.catalog()
-      [:rules, :tickets, :progression, :stats, :live_feed]
+      [:rules, :tickets, :progression, :stats, :live_feed, :vip_shop]
   """
   @spec catalog() :: [feature()]
   def catalog, do: @catalog
@@ -126,7 +126,10 @@ defmodule HllConditionalActions.Features do
     broadcast(server_id)
   end
 
-  defp broadcast(server_id) do
+  # Public for `Features.Copy`, which changes several modules at once and
+  # tells the runtime only once.
+  @doc false
+  def broadcast(server_id) do
     Phoenix.PubSub.broadcast(PubSub, @topic, {:features_changed, server_id})
   end
 

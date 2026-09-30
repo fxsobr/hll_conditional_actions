@@ -263,6 +263,34 @@ defmodule HllConditionalActions.Crcon do
   end
 
   @doc """
+  The VIPs of this CRCON instance: `[%{"player_id", "name", "vip_expiration"}]`.
+
+  VIP is per instance, and CRCON replaces the expiry when a VIP is granted
+  again - this is what the shop reads to extend one instead.
+  """
+  @spec get_vip_ids(conn()) :: result()
+  def get_vip_ids(conn), do: Client.request(conn, "get_vip_ids")
+
+  @doc """
+  Searches CRCON's player history by name, most recently seen first.
+
+  Sent as POST: over GET, CRCON hands the numbers to its query as strings.
+  """
+  @spec search_players_history(conn(), String.t(), keyword()) :: result()
+  def search_players_history(conn, name, opts \\ []) do
+    Client.request(
+      conn,
+      "get_players_history",
+      %{
+        player_name: name,
+        page: 1,
+        page_size: Keyword.get(opts, :page_size, 20)
+      },
+      method: :post
+    )
+  end
+
+  @doc """
   Removes VIP.
   """
   @spec remove_vip(conn(), String.t()) :: result()

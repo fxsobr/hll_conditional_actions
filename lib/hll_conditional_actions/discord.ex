@@ -223,19 +223,29 @@ defmodule HllConditionalActions.Discord do
 
   @doc """
   Stores how a queued Discord action ended, under its index in the
-  execution's `deliveries`.
+  execution's `deliveries`, with the HTTP status Discord answered when there
+  was one (`"http"`), for the webhook's delivery log.
   """
-  @spec record_delivery(integer() | nil, integer() | nil, :delivered | :failed, String.t() | nil) ::
-          :ok
-  def record_delivery(nil, _index, _status, _detail), do: :ok
-  def record_delivery(_execution_id, nil, _status, _detail), do: :ok
+  @spec record_delivery(
+          integer() | nil,
+          integer() | nil,
+          :delivered | :failed,
+          String.t() | nil,
+          integer() | nil
+        ) :: :ok
+  def record_delivery(execution_id, index, status, detail, http_status \\ nil)
 
-  def record_delivery(execution_id, index, status, detail) do
-    entry = %{
-      "status" => to_string(status),
-      "detail" => detail,
-      "at" => DateTime.to_iso8601(now())
-    }
+  def record_delivery(nil, _index, _status, _detail, _http_status), do: :ok
+  def record_delivery(_execution_id, nil, _status, _detail, _http_status), do: :ok
+
+  def record_delivery(execution_id, index, status, detail, http_status) do
+    entry =
+      %{
+        "status" => to_string(status),
+        "detail" => detail,
+        "at" => DateTime.to_iso8601(now())
+      }
+      |> then(&if(is_integer(http_status), do: Map.put(&1, "http", http_status), else: &1))
 
     from(e in Execution,
       where: e.id == ^execution_id,
