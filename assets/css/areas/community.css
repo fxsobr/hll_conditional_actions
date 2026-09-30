@@ -333,6 +333,31 @@
     color: var(--color-subtle);
   }
 
+  /* A date field that reads "17 out, 00:00": the native picker lies over it,
+     see-through, and its calendar button fills the field, so a click
+     anywhere opens the picker and typing still works. */
+  .com-date-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .com-date-input::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    cursor: pointer;
+  }
+
+  .com-date:focus-within {
+    border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+  }
+
   /* A filter pill of the lists: a label and a native select in one pill. */
   .com-filter {
     position: relative;

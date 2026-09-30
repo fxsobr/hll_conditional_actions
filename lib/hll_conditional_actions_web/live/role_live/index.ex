@@ -71,7 +71,7 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
     role = socket.assigns.role
 
     attrs = %{
-      "name" => copy_name(role.name, socket.assigns.roles),
+      "name" => copy_name(role_label(role), socket.assigns.roles),
       "description" => role.description,
       "permissions" => Enum.map(role.permissions, &to_string/1)
     }
@@ -185,10 +185,12 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
 
   # Granted only because a "manage" permission implies it: shown on, but not
   # a switch of its own.
+  # A "view" held explicitly next to its "manage" is shown the same way (the
+  # board's "incluído"); a hidden input keeps it in the form, so turning the
+  # manage off leaves the view where it was.
   defp implied?(form, permission) do
-    granted = selected(form)
     permission = to_string(permission)
-    permission not in granted and permission in Permission.expand(granted)
+    permission in Permission.expand(List.delete(selected(form), permission))
   end
 
   defp granted_count(permissions) do
@@ -212,7 +214,11 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
     end
   end
 
-  defp role_look(_custom), do: {"hero-star", "bg-accent/13 text-accent"}
+  defp role_look(role) do
+    if Role.can?(role, :manage_progression),
+      do: {"hero-trophy", "bg-accent/13 text-accent"},
+      else: {"hero-star", "bg-accent/13 text-accent"}
+  end
 
   # Permissions that differ from what is saved, for the "editado" marks.
   defp changed(form, role) do
@@ -262,6 +268,15 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
     Enum.map(known ++ extra, fn {area, title, hint, view, manage} ->
       %{area: area, title: title, hint: hint, view: view, manage: manage}
     end)
+  end
+
+  # The last row of an area: the next row starts a new area, or there is none.
+  # Rows inside an area sit closer together, as on the board.
+  defp group_end?(index) do
+    case Enum.at(sheet(), index + 1) do
+      nil -> true
+      next -> next.area != nil
+    end
   end
 
   defp area_label(:servers), do: gettext("Servers")
@@ -346,7 +361,7 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
                 <.icon name={elem(role_look(role), 0)} class="size-[1.125rem]" />
               </span>
               <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                <strong class="truncate text-sm font-semibold">{role.name}</strong>
+                <strong class="text-sm font-semibold leading-tight">{role_label(role)}</strong>
                 <span class="truncate text-xs text-muted">
                   {if role.system? and view_only?(role),
                     do: gettext("view only"),
@@ -399,7 +414,7 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
           id="role-editor"
           aria-label={
             if @role.id,
-              do: gettext("Permissions of %{name}", name: @role.name),
+              do: gettext("Permissions of %{name}", name: role_label(@role)),
               else: gettext("New role")
           }
           class="flex min-h-0 flex-col overflow-hidden rounded-panel bg-base-100"
@@ -422,11 +437,13 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
                     placeholder={gettext("Role name")}
                     aria-label={gettext("Name")}
                     required
-                    class="min-w-0 max-w-full flex-1 rounded-lg border-0 bg-transparent p-0 font-display text-2xl font-semibold outline-none placeholder:text-muted focus:ring-0 sm:flex-none"
+                    class="min-w-0 max-w-full flex-1 rounded-lg border-0 bg-transparent p-0 font-display text-[1.5rem] font-semibold leading-[1.2] outline-none placeholder:text-muted focus:ring-0 sm:flex-none"
                     size={max(String.length(@form[:name].value || ""), 12)}
                   />
                 <% else %>
-                  <h2 class="font-display text-2xl font-semibold">{@role.name}</h2>
+                  <h2 class="font-display text-[1.5rem] font-semibold leading-[1.2]">
+                    {role_label(@role)}
+                  </h2>
                 <% end %>
                 <span
                   :if={@role.system?}
@@ -528,7 +545,9 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
               <div
                 :for={{row, index} <- Enum.with_index(sheet())}
                 class={[
-                  "roles-editor-row py-3",
+                  "roles-editor-row",
+                  if(row.area, do: "pt-3", else: "pt-1.5"),
+                  if(group_end?(index), do: "pb-3", else: "pb-1.5"),
                   index > 0 && row.area && "border-t border-line-soft"
                 ]}
               >
@@ -582,9 +601,7 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
 
             <div class="flex flex-wrap items-center gap-4 border-t border-line-soft px-5 py-4 text-xs text-muted sm:px-[1.625rem]">
               <span class="flex items-center gap-2">
-                <span class="settings-switch settings-switch--implied scale-75" aria-hidden="true">
-                  <span></span>
-                </span>
+                <span class="settings-implied-chip" aria-hidden="true"></span>
                 {gettext("Manage already includes View")}
               </span>
               <span>— {gettext("does not apply")}</span>
@@ -622,6 +639,12 @@ defmodule HllConditionalActionsWeb.RoleLive.Index do
     ~H"""
     <%= if implied?(@form, @permission) do %>
       <span class="flex flex-col items-center gap-[0.1875rem]">
+        <input
+          :if={checked?(@form, @permission)}
+          type="hidden"
+          name="role[permissions][]"
+          value={@permission}
+        />
         <span
           class="settings-switch settings-switch--implied"
           role="switch"

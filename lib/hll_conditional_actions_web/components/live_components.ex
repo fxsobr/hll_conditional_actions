@@ -229,7 +229,7 @@ defmodule HllConditionalActionsWeb.LiveComponents do
         axis_players: axis_players,
         players: allied_players + axis_players,
         time_left: time_left(gs["raw_time_remaining"]),
-        queue: gs["queue_count"],
+        queue: side_tile(gs["queue_count"], assigns.roster, assigns.server.game),
         vips: vip_count(assigns.roster),
         art: hero_art(gs, assigns.server),
         teams: team_names(assigns.server.game),
@@ -305,8 +305,10 @@ defmodule HllConditionalActionsWeb.LiveComponents do
             </div>
             <div :if={@queue || @vips} class="grid grid-cols-2 gap-2.5">
               <div :if={@queue} class="live-glass rounded-2xl px-4 py-3">
-                <div class="text-xs text-subtle">{gettext("In queue")}</div>
-                <div class="font-display text-[1.375rem] font-semibold tabular-nums">{@queue}</div>
+                <div class="text-xs text-subtle">{elem(@queue, 0)}</div>
+                <div class="font-display text-[1.375rem] font-semibold tabular-nums">
+                  {elem(@queue, 1)}
+                </div>
               </div>
               <div :if={@vips} class="live-glass rounded-2xl px-4 py-3">
                 <div class="text-xs text-subtle">{gettext("VIPs playing")}</div>
@@ -360,8 +362,8 @@ defmodule HllConditionalActionsWeb.LiveComponents do
               :if={@queue}
               class="live-glass flex items-center justify-between rounded-2xl px-3.5 py-2"
             >
-              <span class="text-xs text-subtle">{gettext("In queue")}</span>
-              <span class="font-display text-xl font-semibold tabular-nums">{@queue}</span>
+              <span class="text-xs text-subtle">{elem(@queue, 0)}</span>
+              <span class="font-display text-xl font-semibold tabular-nums">{elem(@queue, 1)}</span>
             </div>
             <div
               :if={@vips}
@@ -1035,14 +1037,14 @@ defmodule HllConditionalActionsWeb.LiveComponents do
         "live-feed-row-acted bg-warning/5"
 
       Enum.all?(statuses, &(&1 == :simulated)) ->
-        "live-feed-row-acted bg-accent/7 dark:bg-accent/5"
+        "live-feed-row-acted bg-secondary-300/16 dark:bg-accent/5"
 
       true ->
-        "live-feed-row-acted bg-primary/8 dark:bg-primary/4"
+        "live-feed-row-acted bg-primary-300/18 dark:bg-primary/4"
     end
   end
 
-  defp tint(%{ticket: %{}}), do: "live-feed-row-acted bg-primary/8 dark:bg-primary/4"
+  defp tint(%{ticket: %{}}), do: "live-feed-row-acted bg-primary-300/18 dark:bg-primary/4"
   defp tint(_row), do: nil
 
   attr :annotation, :map, required: true
@@ -1366,12 +1368,7 @@ defmodule HllConditionalActionsWeb.LiveComponents do
     |> String.reverse()
   end
 
-  defp separators do
-    case Gettext.get_locale(HllConditionalActionsWeb.Gettext) do
-      "pt" <> _rest -> {".", ","}
-      _english -> {",", "."}
-    end
-  end
+  defp separators, do: HllConditionalActionsWeb.NumberFormat.separators()
 
   # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1413,6 +1410,26 @@ defmodule HllConditionalActionsWeb.LiveComponents do
   end
 
   defp vip_count(_roster), do: nil
+
+  @helicopter_roles ~w(helicopterpilot helicopterlogisticsofficer)
+
+  # The tile beside the VIPs: the queue, or on Vietnam the helicopters that
+  # have a crew - squads of helicopter roles with somebody in them - as
+  # {label, value}, or nil when there is nothing to show.
+  defp side_tile(_queue, roster, game)
+       when game in [:hllv, "hllv"] and is_map(roster) and map_size(roster) > 0 do
+    crews =
+      roster
+      |> Map.values()
+      |> Enum.filter(&(&1["role"] in @helicopter_roles))
+      |> Enum.uniq_by(&{&1["team"], &1["unit_name"]})
+      |> length()
+
+    {gettext("Helicopters crewed"), crews}
+  end
+
+  defp side_tile(queue, _roster, _game) when is_integer(queue), do: {gettext("In queue"), queue}
+  defp side_tile(_queue, _roster, _game), do: nil
 
   defp stream_text(:connected), do: "text-primary"
   defp stream_text(:connecting), do: "text-warning"

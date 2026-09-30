@@ -56,7 +56,7 @@ defmodule HllConditionalActionsWeb.InboxLive do
   @owners ~w(all mine unowned)
 
   @impl Phoenix.LiveView
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     user = socket.assigns.current_user
     servers = Servers.list_servers_for(user)
 
@@ -80,7 +80,9 @@ defmodule HllConditionalActionsWeb.InboxLive do
      |> assign_configure_path(user)
      |> assign(:can_resolve?, Accounts.can?(user, :manage_rules))
      |> assign(:chip, nil)
-     |> assign(:owner, "all")
+     # The owner tab from the address already, so the first render lists the
+     # same rows as the connected one.
+     |> assign(:owner, Enum.find(@owners, "all", &(&1 == params["owner"])))
      |> assign(:query, "")
      |> assign(:selected, nil)
      |> assign(:ticket, nil)
@@ -707,6 +709,7 @@ defmodule HllConditionalActionsWeb.InboxLive do
       nav={assigns[:nav]}
       page_title={@page_title}
       tabs={owner_tabs(assigns)}
+      inline_tabs
       bell={false}
     >
       <:search>
@@ -741,7 +744,7 @@ defmodule HllConditionalActionsWeb.InboxLive do
 
       <TicketComponents.frame
         id="inbox-grid"
-        class="grid grid-cols-[minmax(0,1fr)] gap-4 md:mt-4 md:grid-cols-[18.75rem_minmax(0,1fr)] min-[85rem]:grid-cols-[26.25rem_minmax(0,1fr)_20rem] min-[85rem]:gap-5"
+        class="grid grid-cols-[minmax(0,1fr)] gap-4 md:mt-4 xl:mt-0 md:grid-cols-[18.75rem_minmax(0,1fr)] min-[85rem]:grid-cols-[26.25rem_minmax(0,1fr)_20rem] min-[85rem]:gap-5"
       >
         <section
           id="inbox-list-panel"

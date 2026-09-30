@@ -316,7 +316,14 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
         <.link
           id="grant-button"
           patch={~p"/vip-shop/purchases/grant"}
-          class="vip-btn vip-btn-cta hidden md:inline-flex"
+          aria-expanded={to_string(@grant != nil)}
+          class={[
+            "vip-btn hidden md:inline-flex",
+            if(@grant,
+              do: "vip-btn-raised !border-line-strong pl-4 font-semibold",
+              else: "vip-btn-cta"
+            )
+          ]}
         >
           <.icon name="hero-plus" class="size-[1.125rem]" />{gettext("Grant manually")}
         </.link>
@@ -482,7 +489,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
           <span class="text-muted">{gettext("Provider")}</span>
           <select
             name="provider"
-            class="cursor-pointer appearance-none border-0 bg-transparent p-0 pr-4 text-xs focus:ring-0"
+            class="cursor-pointer appearance-none border-0 bg-transparent p-0 pr-4 text-xs [field-sizing:content] focus:ring-0"
           >
             <option value="">{gettext("All providers")}</option>
             <option :for={p <- @providers ++ ["manual"]} value={p} selected={p == @provider}>
@@ -495,7 +502,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
           <span class="text-muted">{gettext("Period")}</span>
           <select
             name="period"
-            class="cursor-pointer appearance-none border-0 bg-transparent p-0 pr-4 text-xs focus:ring-0"
+            class="cursor-pointer appearance-none border-0 bg-transparent p-0 pr-4 text-xs [field-sizing:content] focus:ring-0"
           >
             <option value="7" selected={@period == "7"}>{gettext("7 days")}</option>
             <option value="30" selected={@period == "30"}>{gettext("30 days")}</option>
@@ -636,11 +643,25 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
           if(@open, do: "px-4 pt-4", else: "min-h-[3.75rem] px-4")
         ]}
       >
-        <span class="flex w-full items-center gap-2">
+        <span :if={@open} class="flex w-full items-center gap-2">
+          <strong class="min-w-0 flex-1 truncate font-display text-[1.0625rem] font-semibold">
+            <.title order={@order} />
+          </strong>
+          <.status_chip order={@order} />
+        </span>
+        <span :if={@open} class="truncate text-xs text-muted">
+          <span class="font-mono text-[0.6875rem] text-subtle">V-{@order.id}</span>
+          · {@order.package_name} ·
+          <span class="font-mono text-[0.6875rem] text-subtle">
+            {money(@order.amount_cents, @order.currency)}
+          </span>
+          · {paid_with(@order)} · <.vip_time id={"order-at-o-#{@order.id}"} at={@order.inserted_at} />
+        </span>
+        <span :if={!@open} class="flex w-full items-center gap-2">
           <strong class="min-w-0 flex-1 truncate text-sm font-semibold"><.title order={@order} /></strong>
           <span class="font-mono text-[0.8125rem]">{money(@order.amount_cents, @order.currency)}</span>
         </span>
-        <span class="flex w-full items-center gap-2">
+        <span :if={!@open} class="flex w-full items-center gap-2">
           <span class="min-w-0 flex-1 truncate text-xs text-muted">
             <span class="font-mono text-[0.6875rem]">V-{@order.id}</span>
             · {@order.coupon_code || @order.package_name} ·
@@ -726,7 +747,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
 
   defp order_detail(assigns) do
     ~H"""
-    <div class="grid gap-4 px-4 pb-4 pt-1 md:grid-cols-2">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-4 px-4 pb-4 pt-1 md:grid-cols-2">
       <div class="hidden flex-col rounded-2xl bg-base-100 px-4 py-3.5 md:flex">
         <span class="mb-2 text-xs uppercase tracking-[0.06em] text-muted">{gettext("Timeline")}</span>
         <div
@@ -826,7 +847,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
             type="button"
             phx-click="retry"
             phx-value-id={@order.id}
-            class="vip-btn vip-btn-cta h-11 flex-1 md:hidden"
+            class="vip-btn vip-btn-cta h-11 min-w-0 flex-1 px-3 text-sm md:hidden"
           >
             <.icon name="hero-arrow-path" class="size-4" />{gettext("Try %{server} now",
               server:
@@ -841,7 +862,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.Purchases do
             id={"resend-#{@order.id}"}
             phx-click="resend"
             phx-value-id={@order.id}
-            class="vip-btn vip-btn-ghost h-11 px-4 text-sm md:h-[2.125rem] md:flex-1 md:text-xs"
+            class="vip-btn vip-btn-ghost h-11 shrink-0 px-3.5 text-[0.8125rem] md:h-[2.125rem] md:flex-1 md:shrink md:text-xs"
           >
             {gettext("Resend e-mail")}
           </button>

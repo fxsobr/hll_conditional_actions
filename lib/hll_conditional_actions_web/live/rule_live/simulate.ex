@@ -24,7 +24,6 @@ defmodule HllConditionalActionsWeb.RuleLive.Simulate do
   alias HllConditionalActions.Engine.Simulator
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Rules.Catalog
-  alias HllConditionalActions.Rules.Expression
   alias HllConditionalActions.Rules.SimulatorTests
   alias HllConditionalActions.Servers
   alias HllConditionalActionsWeb.EventEditor
@@ -360,8 +359,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Simulate do
     |> Enum.uniq()
     |> Enum.take(8)
     |> Enum.map(fn field ->
-      name = field |> Expression.field_name() |> String.split(".") |> List.last()
-      "#{name}: #{read_value(Evaluator.field_value(field, context))}"
+      "#{String.downcase(Labels.field(field))}: #{read_value(Evaluator.field_value(field, context))}"
     end)
   end
 
@@ -415,15 +413,37 @@ defmodule HllConditionalActionsWeb.RuleLive.Simulate do
           trigger: String.downcase(Labels.trigger(rule.trigger_event))
         )
 
+      [%{operator: :equal} = condition | _rest] ->
+        gettext("Matched: %{field} %{actual}",
+          field: Labels.field(condition.field),
+          actual: read_value(condition.actual)
+        )
+
       [condition | _rest] ->
         gettext("Matched: %{field} %{actual} %{operator} %{expected}",
           field: Labels.field(condition.field),
           actual: read_value(condition.actual),
-          operator: Labels.operator(condition.operator),
-          expected: format_value(condition.expected)
+          operator: operator_mark(condition.operator),
+          expected: read_value(condition.expected)
         )
     end
   end
+
+  # Comparisons read as symbols in these tight lines ("kills 4 ≥ 3").
+  defp operator_mark(:equal), do: "="
+  defp operator_mark(:not_equal), do: "≠"
+  defp operator_mark(:greater_than), do: ">"
+  defp operator_mark(:greater_than_or_equal), do: "≥"
+  defp operator_mark(:less_than), do: "<"
+  defp operator_mark(:less_than_or_equal), do: "≤"
+  defp operator_mark(operator), do: Labels.operator(operator)
+
+  # Discord text is stored escaped for Discord's markdown ("BR \#1"); the
+  # preview shows it the way Discord renders it.
+  defp shown_detail(:send_discord_webhook, detail),
+    do: String.replace(detail, ~r/\\([\\`*_{}\[\]()#+\-.!|>~<])/, "\\1")
+
+  defp shown_detail(_type, detail), do: detail
 
   defp failed_condition(%{diagnosis: diagnosis}) do
     Enum.find(diagnosis.conditions, &(not &1.result and &1.field != :always_true))
@@ -541,9 +561,11 @@ defmodule HllConditionalActionsWeb.RuleLive.Simulate do
           aria-label={gettext("Build an event")}
           class="flex min-w-0 flex-col gap-3.5 rounded-[1.75rem] bg-base-100 px-6 py-[1.375rem]"
         >
-          <div class="flex items-baseline gap-2">
-            <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Build an event")}</h2>
-            <span class="text-xs text-muted">{gettext("from what the server really saw")}</span>
+          <div class="flex items-baseline gap-3">
+            <h2 class="shrink-0 font-display text-xl font-semibold">{gettext("Build an event")}</h2>
+            <span class="ml-auto min-w-0 truncate text-xs text-muted">
+              {gettext("reads the current CRCON data")}
+            </span>
           </div>
 
           <div
@@ -897,7 +919,10 @@ defmodule HllConditionalActionsWeb.RuleLive.Simulate do
                     class="flex flex-col gap-1 rounded-[0.875rem] bg-base-100 px-3.5 py-2.5"
                   >
                     <span class="text-[0.6875rem] text-muted">{detail_label(action.type)}</span>
-                    <span class="whitespace-pre-line font-mono text-[0.8125rem] leading-normal">{action.detail}</span>
+                    <span class="whitespace-pre-line font-mono text-[0.8125rem] leading-normal">{shown_detail(
+                      action.type,
+                      action.detail
+                    )}</span>
                   </div>
                 </div>
               </div>
@@ -925,7 +950,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Simulate do
                     <span class="text-[0.8125rem] text-subtle">
                       {Labels.field(condition.field)}
                       <span class="text-muted">{gettext("needed")}</span>
-                      <span class="font-mono text-xs">{Labels.operator(condition.operator)} {format_value(
+                      <span class="font-mono text-xs">{operator_mark(condition.operator)} {read_value(
                         condition.expected
                       )}</span>
                     </span>

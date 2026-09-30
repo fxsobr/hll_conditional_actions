@@ -9,6 +9,7 @@ defmodule HllConditionalActions.Workers.DeliverGiftMessage do
   """
 
   use Oban.Worker, queue: :shop, max_attempts: 300, unique: [period: 60, keys: [:order_id]]
+  use Gettext, backend: HllConditionalActionsWeb.Gettext
 
   alias HllConditionalActions.Crcon
   alias HllConditionalActions.Servers
@@ -56,9 +57,7 @@ defmodule HllConditionalActions.Workers.DeliverGiftMessage do
 
   defp sent?(server, order, note) do
     text =
-      Gettext.gettext(HllConditionalActionsWeb.Gettext, "A gift: %{package}.", %{
-        package: order.package_name
-      }) <> " \"" <> note.message <> "\""
+      gettext("A gift: %{package}.", package: order.package_name) <> " \"" <> note.message <> "\""
 
     match?({:ok, _result}, Crcon.message_player(server, order.player_id, text))
   rescue

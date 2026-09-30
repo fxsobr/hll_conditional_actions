@@ -145,7 +145,7 @@ defmodule HllConditionalActionsWeb.ShopLive.Order do
                 alt=""
                 class="shop-art-img"
               />
-              <div class="absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--sh-panel)_95%,transparent)_0%,color-mix(in_oklab,var(--sh-panel)_75%,transparent)_50%,color-mix(in_oklab,var(--sh-panel)_25%,transparent)_100%)]">
+              <div class="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,color-mix(in_oklab,var(--sh-panel)_95%,transparent)_0%,color-mix(in_oklab,var(--sh-panel)_75%,transparent)_50%,color-mix(in_oklab,var(--sh-panel)_25%,transparent)_100%)]">
               </div>
               <div class="relative flex h-full flex-col justify-end gap-1.5 px-5 py-6 sm:px-8 sm:py-7">
                 <h2
@@ -503,7 +503,22 @@ defmodule HllConditionalActionsWeb.ShopLive.Order do
       <dl class="grid grid-cols-[6.875rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm">
         <%= for {label, value, mono} <- @rows do %>
           <dt class="text-[0.8125rem] text-[var(--sh-text-3)]">{label}</dt>
-          <dd class={["break-words", mono && "font-mono text-[0.8125rem]"]}>{value}</dd>
+          <dd :if={match?({:player, _name, _id}, value)} class="flex min-w-0 flex-col">
+            <span class="break-words">{elem(value, 1)}</span>
+            <span
+              :if={elem(value, 2)}
+              id="receipt-player-id"
+              class="break-all font-mono text-[0.6875rem] text-[var(--sh-text-3)]"
+            >
+              {elem(value, 2)}
+            </span>
+          </dd>
+          <dd
+            :if={!match?({:player, _name, _id}, value)}
+            class={["break-words", mono && "font-mono text-[0.8125rem]"]}
+          >
+            {value}
+          </dd>
         <% end %>
       </dl>
       <div class="shop-divider"></div>
@@ -580,13 +595,18 @@ defmodule HllConditionalActionsWeb.ShopLive.Order do
     |> Enum.reject(&is_nil/1)
   end
 
+  # The player's name with their id under it; just the id when there is no name.
   defp receipt_player(order) do
     name = order.player_name || order.player_id
-    if name == order.player_id, do: name, else: "#{name} · #{order.player_id}"
+    {:player, name, if(name != order.player_id, do: order.player_id)}
   end
 
+  defp plain_value({:player, name, nil}), do: name
+  defp plain_value({:player, name, id}), do: "#{name} · #{id}"
+  defp plain_value(value), do: value
+
   defp receipt_text(order, rows, settings) do
-    lines = for {label, value, _mono} <- rows, do: "#{label}: #{value}"
+    lines = for {label, value, _mono} <- rows, do: "#{label}: #{plain_value(value)}"
 
     money = fn cents -> VipShop.format_money(cents, order.currency) end
 

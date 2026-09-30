@@ -304,6 +304,21 @@ defmodule HllConditionalActionsWeb.ServerCockpitTest do
 
     assert has_element?(view, "#cockpit-live", "Allies (US)")
     assert has_element?(view, "#cockpit-live", "NVA")
+
+    # Vietnam counts its crewed helicopters where WW2 shows the queue
+    # (Vietnam board); nobody flies in this match.
+    assert has_element?(view, "#cockpit-live", "Helicopters crewed")
+    refute has_element?(view, "#cockpit-live", "In queue")
+  end
+
+  test "on a phone the header is the server in scope, without the page's buttons", %{
+    conn: conn,
+    server: server
+  } do
+    {:ok, view, _html} = live(conn, ~p"/servers/#{server}")
+
+    assert has_element?(view, "#header-scope-phone", "EU #1")
+    assert has_element?(view, ~s{[class*="max-md:hidden"] > #cockpit-message})
   end
 
   # ── Helpers ──────────────────────────────────────────────────────────────

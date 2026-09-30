@@ -1187,7 +1187,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
         </div>
         <.recipe_row
           :if={@live_action == :new and is_nil(@recipe)}
-          recipes={Enum.take(Recipes.all(), 6)}
+          recipes={Enum.take(Recipes.all(), 4)}
           total={length(Recipes.all())}
           query={@query}
         />
@@ -1330,7 +1330,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
                       aria-label={gettext("Every (seconds)")}
                     /> s
                   </span>
-                  <span>{gettext("on")}</span>
+                  <span>{gettext("in")}</span>
                   <label class="min-w-0 max-w-full">
                     <span class="sr-only">{gettext("Applies to")}</span>
                     <select
@@ -1436,13 +1436,17 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
               events_open?={@events_open?}
               overlaps={@overlaps}
             />
-            <.live_component
-              module={HllConditionalActionsWeb.RuleLive.TryIt}
-              id="try-it"
-              rule={@preview}
-              servers={@servers}
-              game={@game}
-            />
+            <%!-- A new rule has no history yet: "try it" leads (Builder
+                  board), the replay follows. --%>
+            <div class={["min-w-0", @live_action == :new && "order-first"]}>
+              <.live_component
+                module={HllConditionalActionsWeb.RuleLive.TryIt}
+                id="try-it"
+                rule={@preview}
+                servers={@servers}
+                game={@game}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1768,11 +1772,12 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
   defp groups_operator_label(:nand), do: gettext("not all of")
   defp groups_operator_label(:nor), do: gettext("none of")
 
-  # "[all ▾] of these hold".
-  defp group_operator_label(:and), do: gettext("all")
-  defp group_operator_label(:or), do: gettext("any")
-  defp group_operator_label(:nand), do: gettext("not all")
-  defp group_operator_label(:nor), do: gettext("none")
+  # "[every one ▾] of these hold". Own msgids, not the bare "all"/"none"
+  # shared with other screens: languages agree them with "conditions".
+  defp group_operator_label(:and), do: gettext("every one")
+  defp group_operator_label(:or), do: gettext("at least one")
+  defp group_operator_label(:nand), do: gettext("not every one")
+  defp group_operator_label(:nor), do: gettext("not one")
 
   defp group_suffix(_operator), do: gettext("of these hold")
 

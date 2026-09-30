@@ -7,6 +7,7 @@ defmodule HllConditionalActionsWeb.SettingsComponents do
   """
 
   use Phoenix.Component
+  use Gettext, backend: HllConditionalActionsWeb.Gettext
 
   import PetalComponents.Icon
 
@@ -80,6 +81,24 @@ defmodule HllConditionalActionsWeb.SettingsComponents do
   defp tile_tone("allies", _dashed), do: "bg-allies/14 text-allies"
   defp tile_tone("warning", _dashed), do: "bg-warning/13 text-warning"
   defp tile_tone(_neutral, _dashed), do: "bg-base-300 text-base-content"
+
+  @doc """
+  A role's name as people read it. The three built-in roles are stored under
+  their English names, so they go through gettext; a custom role is shown
+  exactly as it was typed.
+  """
+  @spec role_label(map() | nil) :: String.t() | nil
+  def role_label(%{system?: true, name: "Administrator"}),
+    do: gettext("Administrator")
+
+  def role_label(%{system?: true, name: "Operator"}),
+    do: gettext("Operator")
+
+  def role_label(%{system?: true, name: "Viewer"}),
+    do: gettext("Viewer")
+
+  def role_label(%{name: name}), do: name
+  def role_label(_role), do: nil
 
   @doc """
   A person's initials in a round chip, tinted by who they are so the same
@@ -222,16 +241,19 @@ defmodule HllConditionalActionsWeb.SettingsComponents do
             <.icon name={@icon} class="size-5" />
           </span>
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 id={"#{@id}-title"} class="truncate font-display text-[1.375rem] font-semibold">
+            <h2
+              id={"#{@id}-title"}
+              class="truncate font-display text-[1.375rem] font-semibold leading-[1.2]"
+            >
               {@title}
             </h2>
-            <span :if={@subtitle} class="text-[0.8125rem] text-muted">{@subtitle}</span>
+            <span :if={@subtitle} class="text-[0.8125rem] leading-[1.25] text-muted">{@subtitle}</span>
           </span>
           <form method="dialog">
             <button
               id={"#{@id}-close"}
               class="flex size-10 cursor-pointer items-center justify-center rounded-full border border-base-300 bg-secondary text-subtle transition-colors hover:text-base-content"
-              aria-label={Gettext.gettext(HllConditionalActionsWeb.Gettext, "Close")}
+              aria-label={gettext("Close")}
             >
               <.icon name="hero-x-mark" class="size-4" />
             </button>

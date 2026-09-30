@@ -422,7 +422,9 @@ defmodule HllConditionalActionsWeb.AchievementLive do
           class="flex min-w-0 flex-col gap-1.5 rounded-[1.75rem] bg-base-100 p-[1.375rem] shadow-[var(--shadow-card)]"
         >
           <div class="mb-2.5 flex items-baseline">
-            <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Latest unlocks")}</h2>
+            <h2 class="flex-1 font-display text-[1.25rem] font-semibold">
+              {gettext("Latest unlocks")}
+            </h2>
             <.live_mark />
           </div>
           <p :if={@recent == []} class="py-6 text-center text-sm text-muted">
@@ -764,7 +766,7 @@ defmodule HllConditionalActionsWeb.AchievementLive do
       class="flex flex-col gap-3.5 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5 shadow-[var(--shadow-card)]"
     >
       <div class="flex items-center gap-2">
-        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Preview")}</h2>
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold">{gettext("Preview")}</h2>
         <.live_mark />
       </div>
       <article class={[
@@ -892,13 +894,16 @@ defmodule HllConditionalActionsWeb.AchievementLive do
           </div>
           <div class="flex flex-wrap items-center gap-2.5">
             <div :if={preview.top != []} class="flex">
-              <.team_avatar
+              <span
                 :for={{row, index} <- Enum.with_index(Enum.take(preview.top, 4))}
-                name={row.name || "?"}
-                team={row.team}
-                ring
-                class={["size-[1.875rem] rounded-full text-[0.625rem]", index > 0 && "-ml-2"]}
-              />
+                class={["rounded-full bg-base-100 ring-2 ring-base-100", index > 0 && "-ml-2"]}
+              >
+                <.team_avatar
+                  name={row.name || "?"}
+                  team={row.team}
+                  class="size-[1.875rem] rounded-full text-[0.625rem]"
+                />
+              </span>
               <span
                 :if={preview.count > 4}
                 class="-ml-2 flex size-[1.875rem] items-center justify-center rounded-full bg-base-300 text-[0.625rem] font-semibold text-subtle ring-2 ring-base-100"

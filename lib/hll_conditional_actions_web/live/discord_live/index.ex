@@ -392,14 +392,16 @@ defmodule HllConditionalActionsWeb.DiscordLive.Index do
         </.link>
       </:actions>
 
-      <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_27.5rem]">
+      <div class="grid gap-5 xl:min-h-[56.25rem] xl:grid-cols-[minmax(0,1fr)_27.5rem]">
         <section
           id="webhook-list"
           aria-label={gettext("Webhooks")}
           class="flex min-w-0 flex-col gap-1 rounded-panel bg-base-100 px-3 pb-4 pt-5 sm:px-4"
         >
           <div class="flex items-baseline gap-2.5 px-2 pb-2.5">
-            <h2 class="grow font-display text-xl font-semibold">{gettext("Webhooks")}</h2>
+            <h2 class="grow font-display text-[1.25rem] font-semibold leading-[1.2]">
+              {gettext("Webhooks")}
+            </h2>
             <span id="webhook-count" class="text-[0.8125rem] text-muted">
               {length(@webhooks)}
               <span :if={failing(@webhooks) > 0}>
@@ -523,7 +525,9 @@ defmodule HllConditionalActionsWeb.DiscordLive.Index do
           class="flex flex-col gap-3 self-start rounded-panel bg-base-100 p-5 sm:p-6"
         >
           <.icon_tile icon="hero-chat-bubble-left-right" tone="allies" size="lg" />
-          <h2 class="font-display text-xl font-semibold">{gettext("How to get a webhook URL")}</h2>
+          <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+            {gettext("How to get a webhook URL")}
+          </h2>
           <p class="text-sm text-subtle">
             {gettext(
               "In Discord, open the channel settings, Integrations, Webhooks, and copy a webhook URL. Register it here and pick it in any rule."
@@ -617,7 +621,7 @@ defmodule HllConditionalActionsWeb.DiscordLive.Index do
         </span>
       </div>
 
-      <div :if={@entries != []} class="flex max-h-[22rem] flex-col gap-2 overflow-y-auto">
+      <div :if={@entries != []} class="flex max-h-[19rem] flex-col gap-2 overflow-y-auto">
         <div
           :for={{entry, index} <- Enum.with_index(@entries)}
           id={"delivery-#{index}"}
@@ -696,7 +700,7 @@ defmodule HllConditionalActionsWeb.DiscordLive.Index do
             <span class="text-xs uppercase tracking-[0.06em] text-muted">
               {if @webhook.id, do: gettext("Edit webhook"), else: gettext("New webhook")}
             </span>
-            <h2 class="truncate font-display text-[1.375rem] font-semibold">
+            <h2 class="truncate font-display text-[1.375rem] font-semibold leading-[1.2]">
               {@webhook.name || gettext("New webhook")}
             </h2>
           </span>

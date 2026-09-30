@@ -481,7 +481,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Index do
             aria-label={gettext("Summary of the period")}
             class="flex flex-col gap-3.5 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5"
           >
-            <h2 class="font-display text-xl font-semibold">{period_label(@days)}</h2>
+            <h2 class="font-display text-[1.25rem] font-semibold">{period_label(@days)}</h2>
             <%= if @summary do %>
               <div class="grid grid-cols-2 gap-2.5">
                 <div class="rounded-2xl bg-secondary px-3.5 py-3">
@@ -525,7 +525,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Index do
             class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5"
           >
             <div class="flex items-baseline">
-              <h2 class="flex-1 font-display text-xl font-semibold">{gettext("By map")}</h2>
+              <h2 class="flex-1 font-display text-[1.25rem] font-semibold">{gettext("By map")}</h2>
               <span class="text-xs text-muted">{gettext("wins of each side")}</span>
             </div>
             <%= if @summary do %>

@@ -44,27 +44,30 @@ defmodule HllConditionalActionsWeb.RuleLive.WhyNot do
       |> assign_new(:players, fn -> SavedEvents.players(Enum.map(servers, & &1.id)) end)
 
     # A player named in the link ("why not for this player?") starts the
-    # search; a new rule definition re-judges the events already shown.
-    socket =
-      case assigns[:player] do
-        player when is_binary(player) and player != "" and is_nil(socket.assigns.player) ->
-          week_ago =
-            DateTime.utc_now()
-            |> DateTime.add(-7 * 86_400, :second)
-            |> Calendar.strftime("%Y-%m-%dT%H:%M")
-
+    # search on today, widening to the last week when today has nothing; a
+    # new rule definition re-judges the events already shown.
+    case assigns[:player] do
+      player when is_binary(player) and player != "" and is_nil(socket.assigns.player) ->
+        socket =
           socket
           |> assign(:player, player)
-          |> update(
-            :query,
-            &Map.merge(&1, %{"player" => player, "window" => "custom", "from" => week_ago})
-          )
+          |> update(:query, &Map.merge(&1, %{"player" => player, "window" => "today"}))
+          |> search()
 
-        _other ->
-          socket
-      end
+        {:ok, if(socket.assigns.results == [], do: search(widen(socket)), else: socket)}
 
-    {:ok, if(socket.assigns.player, do: search(socket), else: socket)}
+      _other ->
+        {:ok, if(socket.assigns.player, do: search(socket), else: socket)}
+    end
+  end
+
+  defp widen(socket) do
+    week_ago =
+      DateTime.utc_now()
+      |> DateTime.add(-7 * 86_400, :second)
+      |> Calendar.strftime("%Y-%m-%dT%H:%M")
+
+    update(socket, :query, &Map.merge(&1, %{"window" => "custom", "from" => week_ago}))
   end
 
   @impl Phoenix.LiveComponent
@@ -198,7 +201,7 @@ defmodule HllConditionalActionsWeb.RuleLive.WhyNot do
     |> String.upcase()
   end
 
-  defp player_info(results, player) do
+  defp player_info(results, player, players) do
     case results do
       [%{saved: %{sample: sample}} | _rest] ->
         %{
@@ -209,20 +212,33 @@ defmodule HllConditionalActionsWeb.RuleLive.WhyNot do
         }
 
       _none ->
-        %{name: player, id: nil, vip?: false, team: nil}
+        # No event kept for them: the name the saved events knew, if any.
+        case List.keyfind(players, player, 0) do
+          {id, name} -> %{name: name || id, id: id, vip?: false, team: nil}
+          nil -> %{name: player, id: nil, vip?: false, team: nil}
+        end
     end
   end
 
   defp window_line(query, zone) do
     case window(query, zone) do
       {%DateTime{} = from, to} ->
-        to = to || DateTime.utc_now()
         local_from = local(from, zone)
-        date = DateTime.to_date(local_from)
+        local_to = local(to || DateTime.utc_now(), zone)
+        from_date = DateTime.to_date(local_from)
+        to_date = DateTime.to_date(local_to)
 
-        "#{weekday_short(date)}, #{day_month(date)} · " <>
-          Calendar.strftime(local_from, "%H:%M") <>
-          " – " <> Calendar.strftime(local(to, zone), "%H:%M")
+        # One day reads "Tue, 29 Sep · 00:00 – 21:50"; a longer window names
+        # both ends.
+        if from_date == to_date do
+          "#{weekday_short(from_date)}, #{day_month(from_date)} · " <>
+            Calendar.strftime(local_from, "%H:%M") <>
+            " – " <> Calendar.strftime(local_to, "%H:%M")
+        else
+          "#{day_month(from_date)} " <>
+            Calendar.strftime(local_from, "%H:%M") <>
+            " – #{day_month(to_date)} " <> Calendar.strftime(local_to, "%H:%M")
+        end
 
       _open ->
         gettext("pick the start and the end")
@@ -251,10 +267,13 @@ defmodule HllConditionalActionsWeb.RuleLive.WhyNot do
     assigns =
       assigns
       |> assign(:current, chosen(assigns.results, assigns.selected))
-      |> assign(:info, assigns.player && player_info(assigns.results, assigns.player))
+      |> assign(
+        :info,
+        assigns.player && player_info(assigns.results, assigns.player, assigns.players)
+      )
 
     ~H"""
-    <div id={@id} class="grid items-start gap-5 xl:grid-cols-[25rem_minmax(0,1fr)]">
+    <div id={@id} class="grid items-start gap-5 xl:grid-cols-[25rem_minmax(0,1fr)] xl:items-stretch">
       <section
         aria-label={gettext("Who and when")}
         class="flex min-w-0 flex-col gap-4 rounded-[1.75rem] bg-base-100 px-6 py-[1.375rem]"
@@ -395,7 +414,11 @@ defmodule HllConditionalActionsWeb.RuleLive.WhyNot do
               length(@results)
             )}
           </span>
-          <ul id="why-not-results" role="radiogroup" class="flex flex-col gap-1.5">
+          <ul
+            id="why-not-results"
+            role="radiogroup"
+            class="-mr-2 flex max-h-[22rem] flex-col gap-1.5 overflow-y-auto pr-2"
+          >
             <li :for={result <- @results} id={"why-#{result.saved.id}"}>
               <button
                 type="button"
@@ -442,7 +465,7 @@ defmodule HllConditionalActionsWeb.RuleLive.WhyNot do
         <div
           :if={@current && read_rows(@current) != []}
           id="why-not-read"
-          class="flex flex-col gap-2 rounded-[1.125rem] bg-secondary px-4 py-3.5"
+          class="mt-auto flex flex-col gap-2 rounded-[1.125rem] bg-secondary px-4 py-3.5"
         >
           <span class="text-xs text-muted">
             {gettext("What the engine read at %{time}",

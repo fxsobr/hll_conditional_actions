@@ -423,7 +423,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
             <div class="flex items-center gap-3.5">
               <.person_avatar user={@current_user} class="size-[3.75rem] text-xl" />
               <div class="flex min-w-0 flex-1 flex-col gap-1">
-                <h2 class="truncate font-display text-[1.375rem] font-semibold">
+                <h2 class="truncate font-display text-[1.375rem] font-semibold leading-[1.2]">
                   {@current_user.name || @current_user.username}
                 </h2>
                 <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -432,7 +432,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
                     :if={@current_user.role}
                     class="rounded-full bg-primary/12 px-2 py-[0.1875rem] text-[0.6875rem] font-semibold text-primary"
                   >
-                    {@current_user.role.name}
+                    {role_label(@current_user.role)}
                   </span>
                 </p>
               </div>
@@ -537,9 +537,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
             </ul>
             <p class="text-xs text-muted">
               {gettext("Read only. Roles are changed by an administrator, in")}
-              <.link navigate={~p"/roles"} class="text-primary hover:underline">
-                {gettext("Roles")}
-              </.link>.
+              <.link navigate={~p"/roles"} class="text-primary hover:underline">{gettext("Roles")}</.link>.
             </p>
           </section>
 
@@ -641,7 +639,7 @@ defmodule HllConditionalActionsWeb.AccountLive.Show do
               </span>
               <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                 <div class="flex flex-wrap items-center gap-2.5">
-                  <h2 class="font-display text-[1.375rem] font-semibold">
+                  <h2 class="font-display text-[1.375rem] font-semibold leading-[1.2]">
                     {gettext("Two-step verification")}
                   </h2>
                   <span class={[

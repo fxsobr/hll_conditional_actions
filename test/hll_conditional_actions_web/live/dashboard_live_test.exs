@@ -68,6 +68,13 @@ defmodule HllConditionalActionsWeb.DashboardLiveTest do
       assert has_element?(view, "#onboarding-server", "BR #4 Treino")
       assert has_element?(view, "#onboarding-copy-modules", "BR #1")
 
+      # The header is about that server, tagged new, with no search (Onboarding
+      # board); the rail keeps its own scope.
+      assert has_element?(view, "#header-scope-button", "BR #4 Treino")
+      assert has_element?(view, "#header-scope-button .scope-tag", "new")
+      refute has_element?(view, "#global-search")
+      assert has_element?(view, "#onboarding-events", "As soon as there is a rule")
+
       view
       |> form("#onboarding-modules", %{"modules" => ["rules", "tickets"]})
       |> render_submit()
@@ -126,6 +133,8 @@ defmodule HllConditionalActionsWeb.DashboardLiveTest do
       {:ok, view, _html} = live(conn, ~p"/?onboarding=skip")
 
       assert has_element?(view, "#briefing-greeting")
+      # A tablet gets the round "+" (TabletBriefing board).
+      assert has_element?(view, ~s{#briefing-new-rule[href="/rules/new"]})
       assert has_element?(view, "#overview-kpis #kpi-rules")
       assert has_element?(view, "#overview-kpis #kpi-players")
       assert has_element?(view, "#overview-kpis #kpi-success", "100%")

@@ -718,7 +718,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.StorefrontPanel do
       class="flex min-w-0 flex-col gap-3.5 px-[1.375rem] py-5"
     >
       <div class="flex flex-wrap items-center gap-3">
-        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Preview")}</h2>
+        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Storefront preview")}</h2>
         <div
           role="radiogroup"
           aria-label={gettext("Screen size")}

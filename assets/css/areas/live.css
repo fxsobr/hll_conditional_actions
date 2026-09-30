@@ -111,10 +111,10 @@
   }
 }
 
-/* The cockpit's feed on a phone: the last lines only, the whole feed is a
-   link away. The first child is the empty state. */
+/* The cockpit's feed on a phone: the last three lines only (Mobile board),
+   the whole feed is a link away. The first child is the empty state. */
 @media (max-width: 47.99rem) {
-  .live-feed-short > :nth-child(n + 10) {
+  .live-feed-short > :nth-child(n + 5) {
     display: none;
   }
 }

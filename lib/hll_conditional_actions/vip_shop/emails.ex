@@ -20,6 +20,8 @@ defmodule HllConditionalActions.VipShop.Emails do
   its stored template.
   """
 
+  use Gettext, backend: HllConditionalActionsWeb.Gettext
+
   import Swoosh.Email
 
   alias HllConditionalActions.VipShop.{Design, Settings}
@@ -265,8 +267,6 @@ defmodule HllConditionalActions.VipShop.Emails do
   end
 
   defp join(parts), do: parts |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(" · ")
-
-  defp gettext(msgid), do: Gettext.gettext(HllConditionalActionsWeb.Gettext, msgid)
 
   @doc "Builds the message for a template, ready to deliver."
   @spec build(Settings.t(), String.t(), String.t(), map()) :: Swoosh.Email.t()

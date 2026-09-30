@@ -245,11 +245,21 @@ defmodule HllConditionalActionsWeb.TicketLive.Metrics do
 
   # ── Render helpers ─────────────────────────────────────────────────────────
 
+  # Against a handful of tickets a percentage says little ("↑ 12300%"), so
+  # below ten the change is told in tickets.
   defp delta_label(%{total: total, previous_total: previous, days: days, first_day: first}) do
-    if previous > 0 do
-      pct = round((total - previous) / previous * 100)
-      arrow = if pct >= 0, do: "↑", else: "↓"
-      "#{arrow} #{abs(pct)}% " <> previous_period(days, first)
+    cond do
+      previous <= 0 ->
+        nil
+
+      previous < 10 ->
+        arrow = if total >= previous, do: "↑", else: "↓"
+        "#{arrow} #{abs(total - previous)} " <> previous_period(days, first)
+
+      true ->
+        pct = round((total - previous) / previous * 100)
+        arrow = if pct >= 0, do: "↑", else: "↓"
+        "#{arrow} #{abs(pct)}% " <> previous_period(days, first)
     end
   end
 
@@ -543,7 +553,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Metrics do
         </script>
       </:actions>
 
-      <div class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 min-[80rem]:min-h-[calc(100dvh-8.75rem)] lg:grid-cols-[minmax(0,1fr)_26.25rem] lg:grid-rows-[17.625rem_18.75rem_1fr]">
+      <div class="grid grid-cols-[minmax(0,1fr)] gap-5 md:mt-4 xl:mt-0 min-[80rem]:min-h-[calc(100dvh-8.75rem)] lg:grid-cols-[minmax(0,1fr)_26.25rem] lg:grid-rows-[17.625rem_18.75rem_1fr]">
         <section
           id="metrics-per-day"
           aria-label={gettext("Tickets per day")}
@@ -552,7 +562,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Metrics do
           <div class="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
             <h2 class="font-display text-[1.25rem] font-semibold">{gettext("Tickets per day")}</h2>
             <strong id="metrics-total" class="font-display text-[1.25rem] font-semibold">{@metrics.total}</strong>
-            <span :if={delta_label(@metrics)} class="text-[0.8125rem] text-primary">
+            <span :if={delta_label(@metrics)} id="metrics-delta" class="text-[0.8125rem] text-primary">
               {delta_label(@metrics)}
             </span>
             <span class="flex-1"></span>

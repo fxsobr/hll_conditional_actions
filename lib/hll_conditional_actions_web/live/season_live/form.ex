@@ -422,13 +422,20 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
           </div>
           <label class="flex flex-col gap-2">
             <span class="com-label">{gettext("Starts at")}</span>
-            <input
-              type="datetime-local"
-              name="season[starts_at]"
-              value={@params["starts_at"]}
-              aria-label={gettext("Starts at")}
-              class="com-field text-sm"
-            />
+            <span class="com-field com-date relative flex items-center gap-2 !px-3.5 text-sm">
+              <.icon name="hero-calendar" class="size-4 shrink-0 text-muted" />
+              <span id="season-starts-at-text" class="truncate">
+                {start_text(@params["starts_at"])}
+              </span>
+              <input
+                id="season-starts-at"
+                type="datetime-local"
+                name="season[starts_at]"
+                value={@params["starts_at"]}
+                aria-label={gettext("Starts at")}
+                class="com-date-input"
+              />
+            </span>
           </label>
         </div>
         <p
@@ -580,14 +587,12 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
             </span>
           </div>
           <p :for={msg <- errors(@form, :weights)} class="text-sm text-error">{msg}</p>
-          <div class="grid grid-cols-[1.875rem_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-dashed border-line-strong pt-2.5">
+          <div class="grid grid-cols-[1.875rem_minmax(0,1fr)_auto_2rem] items-center gap-2.5 border-t border-dashed border-line-strong pt-2.5 md:grid-cols-[1.875rem_minmax(0,1fr)_9.375rem_2rem]">
             <span class="flex size-7 items-center justify-center rounded-full bg-primary/14 font-mono text-[0.9375rem] font-semibold text-primary">
               ÷
             </span>
-            <span class="text-sm">
-              {gettext("matches played")}
-              <span class="text-xs text-muted">· {gettext("score per match")}</span>
-            </span>
+            <span class="com-field com-field--sm flex items-center">{gettext("matches played")}</span>
+            <span class="text-xs text-muted">{gettext("score per match")}</span>
             <.toggle_switch
               id="season-per-match"
               name={@form[:per_match].name}
@@ -720,7 +725,9 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
       class="flex min-w-0 flex-col gap-3 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5 shadow-[var(--shadow-card)]"
     >
       <div class="flex items-center gap-2">
-        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Standings preview")}</h2>
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold">
+          {gettext("Standings preview")}
+        </h2>
         <.live_mark />
       </div>
 
@@ -827,7 +834,7 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
           <div
             :if={@change}
             id="season-preview-change"
-            class="flex gap-2.5 rounded-2xl border border-warning/28 bg-warning/8 px-3.5 py-3"
+            class="mt-auto flex gap-2.5 rounded-2xl border border-warning/28 bg-warning/8 px-3.5 py-3"
           >
             <.icon name="hero-exclamation-triangle" class="mt-0.5 size-4 shrink-0 text-warning" />
             <span class="text-[0.8125rem] leading-snug">{@change}</span>
@@ -910,6 +917,18 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
     Enum.map(days, &{gettext("%{count} d", count: &1), to_string(&1)})
   end
 
+  # "17 out, 00:00": the start as the board writes it, over the native picker.
+  defp start_text(value) when is_binary(value) and value != "" do
+    value = if String.length(value) == 16, do: value <> ":00", else: value
+
+    case NaiveDateTime.from_iso8601(value) do
+      {:ok, at} -> "#{short_date(NaiveDateTime.to_date(at))}, #{Calendar.strftime(at, "%H:%M")}"
+      _invalid -> gettext("Pick a date")
+    end
+  end
+
+  defp start_text(_value), do: gettext("Pick a date")
+
   defp vip_hint(value) do
     hours = to_int(value, 0)
     if hours >= 24, do: "h · " <> Dashboard.vip_words(hours), else: "h"
@@ -951,9 +970,17 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
   def crumb(%{season: season}) do
     gettext("Community / Seasons · the current one, %{name}, %{ends}",
       name: season.name,
-      ends: Dashboard.ends_in(season, DateTime.utc_now())
+      ends: closes_in(season, DateTime.utc_now())
     )
   end
 
   def crumb(_none), do: gettext("Community / Seasons")
+
+  defp closes_in(season, now) do
+    case DateTime.diff(season.ends_at, now, :hour) do
+      hours when hours <= 0 -> gettext("closing")
+      hours when hours < 48 -> ngettext("closes in 1 hour", "closes in %{count} hours", hours)
+      hours -> ngettext("closes in 1 day", "closes in %{count} days", div(hours, 24))
+    end
+  end
 end

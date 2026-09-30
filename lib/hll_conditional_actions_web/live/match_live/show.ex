@@ -278,8 +278,10 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
       <div class="relative grid gap-6 p-5 sm:p-7 lg:min-h-[17.5rem] lg:grid-cols-[1fr_1.2fr_1fr] lg:gap-8 lg:px-[2.125rem]">
         <div class="flex flex-col gap-2.5">
           <span class="flex h-7 items-center gap-1.5 self-start rounded-full bg-[#181916]/80 px-3 text-xs font-semibold text-[#cfcfc6]">
-            <.icon name="hero-flag" class="size-3.5" />
-            {gettext("Finished")}<span :if={@ended}> · {long_date(DateTime.to_date(@ended))}</span>
+            <.icon name="hero-check" class="size-3 stroke-[2.4]" />
+            <span>
+              {gettext("Finished")}{if @ended, do: " · " <> long_date(DateTime.to_date(@ended))}
+            </span>
           </span>
           <h2 class="mt-2 font-display text-5xl font-bold leading-[0.95] tracking-[-0.035em] lg:text-6xl">
             {@match.map}
@@ -335,7 +337,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
             class="w-full max-w-[23.75rem]"
           />
           <span
-            :if={result_text(@match)}
+            :if={hero_result(@match)}
             class={[
               "flex h-[1.875rem] items-center rounded-full px-3.5 text-[0.8125rem] font-semibold",
               if(@match.winner == :allies,
@@ -344,7 +346,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
               )
             ]}
           >
-            {result_text(@match)}
+            {hero_result(@match)}
           </span>
         </div>
 
@@ -375,6 +377,15 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
     """
   end
 
+  # Warfare that ends without taking every sector ends on the clock.
+  defp hero_result(%{winner: winner, mode: mode} = match) when winner in [:allies, :axis] do
+    if to_string(mode) == "warfare" and not MatchHistory.total_win?(match),
+      do: gettext("%{side} won on time", side: team_label(winner)),
+      else: result_text(match)
+  end
+
+  defp hero_result(match), do: result_text(match)
+
   # ── MVP ────────────────────────────────────────────────────────────────────
 
   attr :report, :map, required: true
@@ -393,16 +404,18 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
         <span class="text-xs tracking-[0.06em] text-[var(--mvp-dim)] uppercase">
           {gettext("MVP of the match")}
         </span>
-        <.medal tier="gold" size="sm" />
+        <span class="medal medal--gold flex size-9 items-center justify-center" aria-hidden="true">
+          <.icon name="hero-star" class="size-4" />
+        </span>
       </div>
       <.link navigate={~p"/players/#{@mvp.player_id}"} class="flex items-center gap-3.5">
         <.team_avatar
           name={@mvp.name}
           team={@mvp.team}
-          class="size-16 rounded-[1.25rem] text-xl"
+          class="size-16 rounded-[1.25rem] text-[1.25rem]"
         />
         <span class="flex min-w-0 flex-col gap-0.5">
-          <strong class="truncate font-display text-3xl font-bold leading-none tracking-[-0.02em]">
+          <strong class="truncate font-display text-[1.875rem] font-bold leading-none tracking-[-0.02em]">
             {@mvp.name}
           </strong>
           <span class="truncate text-[0.8125rem] text-[var(--mvp-dim)]">{mvp_line(@mvp)}</span>
@@ -443,7 +456,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
     ~H"""
     <div class="rounded-[0.875rem] bg-[var(--mvp-tile)] px-3 py-2.5">
       <div class="text-[0.6875rem] text-[var(--mvp-dim)]">{@label}</div>
-      <div class="font-display text-xl font-semibold">{@value}</div>
+      <div class="font-display text-[1.25rem] font-semibold">{@value}</div>
     </div>
     """
   end
@@ -481,7 +494,9 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
       class="flex min-w-0 flex-col gap-3 rounded-[1.75rem] bg-base-100 px-5 py-[1.125rem]"
     >
       <div class="flex flex-wrap items-baseline gap-x-3">
-        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Best by category")}</h2>
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold">
+          {gettext("Best by category")}
+        </h2>
         <span class="text-xs text-muted">
           <span class="text-allies">{gettext("blue Allies")}</span>
           · <span class="text-axis">{gettext("orange Axis")}</span>
@@ -499,7 +514,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
               <div class="flex items-baseline gap-2">
                 <span class={["size-2 shrink-0 rounded-full", team_dot(first.team)]}></span>
                 <strong class="min-w-0 flex-1 truncate text-sm font-semibold">{first.name}</strong>
-                <span class="font-display text-xl font-semibold">{value(first.value)}</span>
+                <span class="font-display text-[1.25rem] font-semibold">{value(first.value)}</span>
               </div>
               <div :for={row <- rest} class="flex items-center gap-2 text-xs">
                 <span class={["size-1.5 shrink-0 rounded-full", team_dot(row.team)]}></span>
@@ -539,7 +554,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
       class="flex flex-col gap-1.5 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5"
     >
       <div class="mb-1.5 flex flex-wrap items-baseline gap-x-3">
-        <h2 class="flex-1 font-display text-xl font-semibold">{gettext("Best squads")}</h2>
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold">{gettext("Best squads")}</h2>
         <span class="text-xs text-muted">{gettext("squad score added up")}</span>
       </div>
       <p :if={@squads == []} class="py-6 text-center text-sm text-muted">
@@ -600,7 +615,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
       class="flex flex-col gap-1 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5"
     >
       <div class="mb-2 flex flex-wrap items-baseline gap-x-3">
-        <h2 class="flex-1 font-display text-xl font-semibold">
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold">
           {gettext("Rules that fired in this match")}
         </h2>
         <.link
@@ -688,10 +703,10 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
       class="flex min-w-0 flex-col rounded-[1.75rem] bg-base-100 px-4 py-5 sm:px-6"
     >
       <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2 class="font-display text-xl font-semibold">{gettext("Full scoreboard")}</h2>
+        <h2 class="font-display text-[1.25rem] font-semibold">{gettext("Full scoreboard")}</h2>
         <.seg id="scoreboard-teams" label={gettext("Team")}>
           <:item click="team" value="all" active={@team == "all"}>
-            {gettext("All %{count}", count: @report.players)}
+            {gettext("All players %{count}", count: @report.players)}
           </:item>
           <:item click="team" value="allies" active={@team == "allies"} class="text-allies">
             {gettext("Allies %{count}", count: @report.teams.allies)}
@@ -800,7 +815,7 @@ defmodule HllConditionalActionsWeb.MatchLive.Show do
           phx-click="show_all"
           class="h-10 rounded-full border border-base-300 bg-secondary px-[1.125rem] text-[0.8125rem] transition-colors hover:bg-base-300"
         >
-          {gettext("Show all %{count}", count: @total)}
+          {gettext("Show the %{count} players", count: @total)}
         </button>
       </div>
     </section>

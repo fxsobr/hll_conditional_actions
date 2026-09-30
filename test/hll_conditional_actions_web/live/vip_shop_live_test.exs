@@ -53,6 +53,14 @@ defmodule HllConditionalActionsWeb.VipShopLiveTest do
       assert conn |> get(~p"/shop") |> response(404)
     end
 
+    test "says it is coming soon while the admin keeps it closed", %{conn: conn} do
+      {:ok, _settings} = VipShop.set_closed(true)
+
+      page = conn |> get(~p"/shop") |> html_response(503) |> LazyHTML.from_document()
+      assert page |> LazyHTML.query("#shop-closed") |> Enum.count() == 1
+      assert page |> LazyHTML.query("[id^=package-]") |> Enum.empty?()
+    end
+
     test "sends visitors to sign in before buying", %{conn: conn, package: package} do
       assert {:error, {:redirect, %{to: "/shop/login"}}} = live(conn, ~p"/shop/buy/#{package.id}")
     end
@@ -400,6 +408,7 @@ defmodule HllConditionalActionsWeb.VipShopLiveTest do
 
     test "an admin gives VIP by player ID", %{conn: conn, package: package} do
       {:ok, view, _html} = live(conn, ~p"/vip-shop/purchases/grant")
+      assert has_element?(view, "#grant-button[aria-expanded=true]")
 
       server_id = hd(package.servers).id
 

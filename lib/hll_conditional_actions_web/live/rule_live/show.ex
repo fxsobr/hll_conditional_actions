@@ -853,6 +853,8 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
   # ── Helpers ────────────────────────────────────────────────────────────────
 
   defp tab_param(tab) when tab in @tabs, do: tab
+  # The tab is labelled "Versions"; links written that way land on it too.
+  defp tab_param("versions"), do: "changes"
   defp tab_param(_other), do: "overview"
 
   defp can_edit?(assigns),
@@ -1544,29 +1546,45 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
       id="rule-readiness"
       class={[
         "flex flex-wrap items-center gap-x-5 gap-y-3 rounded-3xl px-[1.125rem] py-4 sm:rounded-[1.75rem] sm:px-7 sm:py-[1.375rem]",
-        if(@ready, do: "bg-primary text-primary-content", else: "bg-accent/10 ring-1 ring-accent/30")
+        if(@ready,
+          do: "bg-primary-300 text-primary-950",
+          else: "bg-accent/10 ring-1 ring-accent/30"
+        )
       ]}
     >
-      <span class={[
-        "flex size-[2.375rem] shrink-0 items-center justify-center rounded-full sm:size-13",
-        if(@ready, do: "bg-primary-content text-primary", else: "bg-accent/15 text-accent")
-      ]}>
-        <.icon name={if @ready, do: "hero-check", else: "hero-beaker"} class="size-5 sm:size-6" />
-      </span>
+      <div class="flex min-w-0 flex-1 basis-60 items-center gap-3 sm:gap-5">
+        <span class={[
+          "flex size-[2.375rem] shrink-0 items-center justify-center rounded-full sm:size-13",
+          if(@ready, do: "bg-primary-950 text-primary-300", else: "bg-accent/15 text-accent")
+        ]}>
+          <.icon name={if @ready, do: "hero-check", else: "hero-beaker"} class="size-5 sm:size-6" />
+        </span>
 
-      <div class="flex min-w-0 flex-1 basis-60 flex-col gap-1">
-        <h2 class="font-display text-[1.3125rem] font-semibold tracking-[-0.02em] sm:text-[1.75rem]">
-          {if @ready, do: gettext("Ready to act for real"), else: gettext("Still simulating")}
-        </h2>
-        <p class={["text-[0.8125rem] sm:text-sm", if(@ready, do: "opacity-80", else: "text-subtle")]}>
-          {readiness_line(@simulation, @issues)}
-        </p>
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 class="font-display text-[1.3125rem] font-semibold tracking-[-0.02em] sm:text-[1.75rem]">
+            <span :if={@ready} class="sm:hidden">{gettext("Ready to act")}</span>
+            <span :if={@ready} class="max-sm:hidden">{gettext("Ready to act for real")}</span>
+            <span :if={!@ready}>{gettext("Still simulating")}</span>
+          </h2>
+          <p class={[
+            "text-sm max-sm:hidden",
+            if(@ready, do: "opacity-80", else: "text-subtle")
+          ]}>
+            {readiness_line(@simulation, @issues)}
+          </p>
+        </div>
       </div>
+      <p class={[
+        "w-full text-[0.8125rem] sm:hidden",
+        if(@ready, do: "opacity-80", else: "text-subtle")
+      ]}>
+        {readiness_line(@simulation, @issues)}
+      </p>
 
       <dl :if={@simulation.runs > 0} class="grid grid-cols-2 gap-2 max-sm:w-full sm:flex sm:gap-8">
         <div class={[
           "flex flex-col gap-0.5 max-sm:rounded-[0.875rem] max-sm:px-3 max-sm:py-2",
-          if(@ready, do: "max-sm:bg-primary-content/8", else: "max-sm:bg-accent/10")
+          if(@ready, do: "max-sm:bg-primary-950/8", else: "max-sm:bg-accent/10")
         ]}>
           <dt class={["text-[0.6875rem] sm:text-xs", if(@ready, do: "opacity-80", else: "text-muted")]}>
             {gettext("Simulating since")}
@@ -1577,7 +1595,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
         </div>
         <div class={[
           "flex flex-col gap-0.5 max-sm:rounded-[0.875rem] max-sm:px-3 max-sm:py-2",
-          if(@ready, do: "max-sm:bg-primary-content/8", else: "max-sm:bg-accent/10")
+          if(@ready, do: "max-sm:bg-primary-950/8", else: "max-sm:bg-accent/10")
         ]}>
           <dt class={["text-[0.6875rem] sm:text-xs", if(@ready, do: "opacity-80", else: "text-muted")]}>
             {if punishes?(@rule),
@@ -1728,7 +1746,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
     <li class="flex items-start gap-3">
       <span class={[
         "flex size-[1.375rem] shrink-0 items-center justify-center rounded-[0.4375rem]",
-        if(@ok, do: "bg-primary text-primary-content", else: "bg-warning/13 text-warning")
+        if(@ok, do: "bg-primary-300 text-primary-950", else: "bg-warning/13 text-warning")
       ]}>
         <.icon name={if @ok, do: "hero-check", else: "hero-exclamation-triangle"} class="size-3.5" />
         <span class="sr-only">{if @ok, do: gettext("done"), else: gettext("not yet")}</span>
@@ -1881,13 +1899,13 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
         </div>
 
         <div class="hidden grid-cols-[5.25rem_minmax(0,1fr)_7.5rem_minmax(0,1.1fr)_12.5rem_12.5rem_4.5rem_2rem] gap-3 border-y border-base-300 px-3.5 py-2 text-[0.6875rem] uppercase tracking-[0.08em] text-muted xl:grid">
-          <span>{gettext("Time")}</span>
+          <span>{gettext("Hour")}</span>
           <span>{gettext("Player")}</span>
           <span>{gettext("Server")}</span>
           <span>{gettext("Event")}</span>
           <span>{gettext("Result")}</span>
           <span>{gettext("Step")}</span>
-          <span>{gettext("Duration")}</span>
+          <span class="text-right">{gettext("Duration")}</span>
           <span></span>
         </div>
 
@@ -1936,7 +1954,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
                   if(row.outcome in [:waiting, :capped], do: gettext("did not go up"), else: "—")}
               </span>
               <span class={[
-                "font-mono text-xs max-xl:hidden",
+                "text-right font-mono text-xs max-xl:hidden",
                 if(row.outcome == :failed, do: "text-error", else: "text-subtle")
               ]}>
                 {(row.execution && duration(row.execution)) || "—"}
@@ -2046,7 +2064,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
   defp step_text(%{step: step, steps: steps, execution: execution}) when is_integer(step) do
     action =
       case execution && execution.results do
-        [first | _rest] -> " · " <> action_label(first["type"])
+        [first | _rest] -> " · " <> short_action_label(first["type"])
         _none -> ""
       end
 

@@ -680,7 +680,7 @@ defmodule HllConditionalActionsWeb.ShopLive.Checkout do
     >
       <div class="shop-art relative h-24 shrink-0 sm:h-[8.75rem]">
         <img src={@art} alt="" class="shop-art-img" />
-        <div class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sh-panel)_20%,transparent)_0%,color-mix(in_oklab,var(--sh-panel)_95%,transparent)_100%)]">
+        <div class="absolute inset-0 z-[-1] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sh-panel)_20%,transparent)_0%,color-mix(in_oklab,var(--sh-panel)_95%,transparent)_100%)]">
         </div>
         <div class="absolute inset-x-4 bottom-3 flex items-end justify-between gap-3 sm:inset-x-6 sm:bottom-4">
           <span class="flex min-w-0 flex-col gap-0.5">

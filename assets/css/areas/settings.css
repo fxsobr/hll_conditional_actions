@@ -47,7 +47,29 @@
 
 :root:not(.dark) .settings-scheme-card[aria-checked="true"] {
   border-color: var(--color-base-content);
-  box-shadow: 0 0 0 1px var(--color-base-content);
+  box-shadow: 0 0 0 3px #e4f3b5;
+}
+
+/* On paper the cards and the time zone field are white, not the soft grey. */
+:root:not(.dark) .settings-scheme-card,
+:root:not(.dark) .settings-paper-field {
+  background: #ffffff;
+}
+
+:root:not(.dark) .settings-scheme-preview--light {
+  border: 1px solid #e2e1d8;
+}
+
+/* The lime tile of the hub's Servers header: a lime wash in the dark, the
+   board's #E4F3B5 tint on paper. */
+.settings-lime-tile {
+  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+:root:not(.dark) .settings-lime-tile {
+  background: #e4f3b5;
+  color: #3f5c00;
 }
 
 .settings-scheme-preview {
@@ -131,6 +153,11 @@
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-subtle);
+}
+
+/* The boards mark no field as required: the form says so when it is sent. */
+.settings-form .pc-label--required::after {
+  content: none;
 }
 
 /* The Ajustes checkboxes: 18px, ticked in the signal colour. */
@@ -253,6 +280,17 @@
 .settings-switch--implied span::after {
   transform: translateX(1rem);
   background: var(--color-primary);
+}
+
+/* The legend's sample of that state: a dashed pill, no knob. */
+.settings-implied-chip {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in oklab, var(--color-primary) 60%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 14%, transparent);
 }
 
 /* The servers list: the server stretches, the rest keep their width so the
@@ -401,6 +439,16 @@
 .dark .mkt-card,
 .dark .mkt-panel {
   box-shadow: none;
+}
+
+/* The installed segments of "Neste servidor": the signal in the dark, a
+   brighter olive than the primary on paper. */
+.mkt-seg-on {
+  background: var(--color-primary);
+}
+
+:root:not(.dark) .mkt-seg-on {
+  background: #6e9a00;
 }
 
 .mkt-card--available {

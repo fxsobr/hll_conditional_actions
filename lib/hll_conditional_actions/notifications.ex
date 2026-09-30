@@ -37,8 +37,8 @@ defmodule HllConditionalActions.Notifications do
   @limit 30
 
   @doc """
-  Every notification of a user, unread first, then the most urgent and the
-  newest. `attention` is the open list of `HllConditionalActions.Attention.items/3`
+  Every notification of a user, unread first, a fallen log stream on top,
+  then the most urgent and the newest. `attention` is the open list of `HllConditionalActions.Attention.items/3`
   for the same user and servers.
   """
   @spec list(map() | nil, [map()], [map()]) :: [item()]
@@ -56,7 +56,11 @@ defmodule HllConditionalActions.Notifications do
 
     items
     |> Enum.map(&%{&1 | unread?: not MapSet.member?(read, &1.key)})
-    |> Enum.sort_by(&{not &1.unread?, severity(&1.severity), -unix(&1.at)})
+    # A fallen stream heads the list: it has no time of its own and every
+    # rule of that server is blind while it lasts (Notifications board).
+    |> Enum.sort_by(
+      &{not &1.unread?, &1.kind != :stream_down, severity(&1.severity), -unix(&1.at)}
+    )
     |> Enum.take(@limit)
   end
 

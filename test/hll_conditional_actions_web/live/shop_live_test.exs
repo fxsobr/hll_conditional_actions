@@ -306,6 +306,7 @@ defmodule HllConditionalActionsWeb.ShopLiveTest do
       assert has_element?(view, "#order-status")
       assert has_element?(view, "#delivery-#{server.id}")
       assert has_element?(view, "#download-receipt")
+      assert has_element?(view, "#receipt-player-id", "7656")
     end
 
     test "the reminder switch saves the customer's choice", %{conn: conn, package: package} do

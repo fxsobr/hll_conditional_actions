@@ -448,7 +448,7 @@ defmodule HllConditionalActionsWeb.UserLive.Index do
                   role_tone(user.role),
                   not user.active && "opacity-60"
                 ]}>
-                  {user.role && user.role.name}
+                  {role_label(user.role)}
                 </span>
               </span>
 
@@ -772,7 +772,7 @@ defmodule HllConditionalActionsWeb.UserLive.Index do
                 checked={role_checked?(@form, role.id)}
                 class="sr-only"
               />
-              <span class="truncate">{role.name}</span>
+              <span class="truncate">{role_label(role)}</span>
               <.icon
                 :if={role_checked?(@form, role.id)}
                 name="hero-check"

@@ -279,7 +279,9 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
             aria-label={gettext("On this server")}
             class="mkt-panel flex flex-col gap-3.5 rounded-panel bg-base-100 p-[1.375rem]"
           >
-            <h2 class="font-display text-xl font-semibold">{gettext("On this server")}</h2>
+            <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+              {gettext("On this server")}
+            </h2>
             <div class="flex items-baseline gap-2">
               <span
                 id="marketplace-count"
@@ -300,7 +302,7 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
                 :for={index <- 1..@total//1}
                 class={[
                   "h-2 rounded",
-                  if(index <= MapSet.size(@installed), do: "bg-primary", else: "bg-base-300")
+                  if(index <= MapSet.size(@installed), do: "mkt-seg-on", else: "bg-base-300")
                 ]}
               ></span>
             </div>
@@ -317,7 +319,9 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
             aria-label={gettext("The other servers")}
             class="mkt-panel flex flex-col gap-3 rounded-panel bg-base-100 p-[1.375rem] xl:flex-1"
           >
-            <h2 class="font-display text-xl font-semibold">{gettext("The other servers")}</h2>
+            <h2 class="font-display text-[1.25rem] font-semibold leading-[1.2]">
+              {gettext("The other servers")}
+            </h2>
             <.link
               :for={other <- @others}
               id={"other-server-#{other.server.id}"}

@@ -8,6 +8,7 @@ defmodule HllConditionalActionsWeb.ShopAuth do
   """
 
   use HllConditionalActionsWeb, :verified_routes
+  use Gettext, backend: HllConditionalActionsWeb.Gettext
 
   import Plug.Conn
   import Phoenix.Controller
@@ -49,18 +50,29 @@ defmodule HllConditionalActionsWeb.ShopAuth do
   end
 
   @doc """
-  Plug: the shop is only served while at least one server installed it and
-  the admin has not closed it to the public.
+  Plug: the shop is only served while at least one server installed it; while
+  the admin keeps it closed, visitors get a "Coming soon" page.
   """
   def require_open_shop(conn, _opts) do
-    if VipShop.open?() and not Map.get(VipShop.settings(), :closed, false) do
-      conn
-    else
-      conn
-      |> put_status(:not_found)
-      |> put_view(HllConditionalActionsWeb.ErrorHTML)
-      |> render(:"404")
-      |> halt()
+    settings = if VipShop.shop_servers() != [], do: VipShop.settings()
+
+    cond do
+      is_nil(settings) ->
+        conn
+        |> put_status(:not_found)
+        |> put_view(HllConditionalActionsWeb.ErrorHTML)
+        |> render(:"404")
+        |> halt()
+
+      Map.get(settings, :closed, false) ->
+        conn
+        |> put_status(:service_unavailable)
+        |> put_view(HllConditionalActionsWeb.ShopClosedHTML)
+        |> render(:show, settings: settings, page_title: settings.shop_title)
+        |> halt()
+
+      true ->
+        conn
     end
   end
 
@@ -79,7 +91,7 @@ defmodule HllConditionalActionsWeb.ShopAuth do
        socket
        |> Phoenix.LiveView.put_flash(
          :info,
-         Gettext.gettext(HllConditionalActionsWeb.Gettext, "Sign in to continue.")
+         gettext("Sign in to continue.")
        )
        |> Phoenix.LiveView.redirect(to: ~p"/shop/login")}
     end

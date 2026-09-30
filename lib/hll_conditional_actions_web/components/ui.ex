@@ -158,7 +158,11 @@ defmodule HllConditionalActionsWeb.Ui do
         @class
       ]}
     >
-      <span class={["mb-1 flex size-12 items-center justify-center rounded-2xl", state_tone(@tone)]}>
+      <.empty_art :if={art_for(@icon)} kind={art_for(@icon)} />
+      <span
+        :if={!art_for(@icon)}
+        class={["mb-1 flex size-12 items-center justify-center rounded-2xl", state_tone(@tone)]}
+      >
         <.icon name={@icon} class="size-6" />
       </span>
 
@@ -175,6 +179,80 @@ defmodule HllConditionalActionsWeb.Ui do
         {render_slot(@action)}
       </div>
     </div>
+    """
+  end
+
+  # The drawings of the States board for the three empties it shows: no
+  # rule yet, an empty inbox, a search that found nothing.
+  defp art_for("hero-bolt"), do: :rules
+  defp art_for(icon) when icon in ["hero-inbox", "hero-inbox-stack"], do: :inbox
+  defp art_for("hero-magnifying-glass"), do: :search
+  defp art_for(_icon), do: nil
+
+  attr :kind, :atom, required: true
+
+  defp empty_art(%{kind: :rules} = assigns) do
+    ~H"""
+    <svg width="64" height="48" viewBox="0 0 64 48" fill="none" aria-hidden="true" class="mb-1">
+      <rect
+        x="6"
+        y="6"
+        width="36"
+        height="12"
+        rx="6"
+        class="stroke-line-strong"
+        stroke-width="1.5"
+        stroke-dasharray="4 4"
+      />
+      <rect
+        x="14"
+        y="22"
+        width="44"
+        height="12"
+        rx="6"
+        class="stroke-line-strong"
+        stroke-width="1.5"
+        stroke-dasharray="4 4"
+      />
+      <rect x="6" y="38" width="24" height="8" rx="4" class="fill-primary" />
+    </svg>
+    """
+  end
+
+  defp empty_art(%{kind: :inbox} = assigns) do
+    ~H"""
+    <svg width="64" height="48" viewBox="0 0 64 48" fill="none" aria-hidden="true" class="mb-1">
+      <path
+        d="M8 26h14l4 6h12l4-6h14"
+        class="stroke-line-strong"
+        stroke-width="1.5"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M14 10h36l6 16v14H8V26l6-16z"
+        class="stroke-line-strong"
+        stroke-width="1.5"
+        stroke-linejoin="round"
+      />
+      <circle cx="46" cy="10" r="8" class="fill-primary" />
+      <path
+        d="m42.5 10 2.5 2.5 4.5-5"
+        class="stroke-primary-content"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    """
+  end
+
+  defp empty_art(%{kind: :search} = assigns) do
+    ~H"""
+    <svg width="64" height="48" viewBox="0 0 64 48" fill="none" aria-hidden="true" class="mb-1">
+      <circle cx="26" cy="22" r="14" class="stroke-line-strong" stroke-width="1.5" />
+      <path d="m36 32 12 12" class="stroke-line-strong" stroke-width="1.5" stroke-linecap="round" />
+      <path d="M20 22h12" class="stroke-muted" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
     """
   end
 
@@ -238,6 +316,11 @@ defmodule HllConditionalActionsWeb.Ui do
   attr :id, :string, default: nil
   attr :role, :string, default: nil, doc: "the user's role name"
   attr :permission, :string, default: nil, doc: "the missing permission, in words"
+
+  attr :can, :string,
+    default: nil,
+    doc: ~s(what the role still does here, "sees the rules but cannot edit them")
+
   attr :back, :string, default: "/", doc: "where the way out goes"
   attr :class, :any, default: nil
   slot :actions
@@ -253,13 +336,17 @@ defmodule HllConditionalActionsWeb.Ui do
         <span class="rounded-lg bg-secondary px-2 py-1 font-mono text-xs text-subtle">403</span>
       </div>
       <p class="text-[0.8125rem] leading-[1.45] text-subtle">
-        <%= if @role do %>
-          {gettext("Your role,")}
-          <strong class="font-semibold text-base-content">{@role}</strong>{gettext(
-            ", cannot do this."
-          )}
-        <% else %>
-          {gettext("Your role cannot do this.")}
+        <%= cond do %>
+          <% @role && @can -> %>
+            {gettext("Your role,")}
+            <strong class="font-semibold text-base-content">{@role}</strong>, {@can}.
+          <% @role -> %>
+            {gettext("Your role,")}
+            <strong class="font-semibold text-base-content">{@role}</strong>{gettext(
+              ", cannot do this."
+            )}
+          <% true -> %>
+            {gettext("Your role cannot do this.")}
         <% end %>
         <span :if={@permission}>
           {gettext("The “%{permission}” permission is missing.", permission: @permission)}

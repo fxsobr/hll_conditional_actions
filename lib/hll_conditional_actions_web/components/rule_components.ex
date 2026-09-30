@@ -62,7 +62,7 @@ defmodule HllConditionalActionsWeb.RuleComponents do
 
   defp header_button_class(true),
     do:
-      "flex h-12 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full bg-primary pr-[1.375rem] pl-[1.125rem] text-sm font-semibold text-primary-content transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      "flex h-12 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full bg-[var(--tone-cta)] pr-[1.375rem] pl-[1.125rem] text-sm font-semibold text-[var(--tone-on-cta)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 
   defp header_button_class(false),
     do:
@@ -327,15 +327,21 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     """
   end
 
+  # Boards: ink on the light paper and the signal in the dark while live,
+  # lavender while simulating, the idle track while off or paused.
   defp switch_track(:draft, _enabled), do: "border border-dashed border-base-300"
   defp switch_track(_state, false), do: "bg-base-300"
   defp switch_track(:simulating, true), do: "bg-accent"
-  defp switch_track(:paused, true), do: "bg-warning"
-  defp switch_track(_live, true), do: "bg-primary"
+  defp switch_track(:paused, true), do: "bg-base-300"
+  defp switch_track(_live, true), do: "bg-[var(--tone-cta)]"
 
   defp switch_knob(:draft, _enabled), do: "bg-secondary"
-  defp switch_knob(_state, false), do: "bg-muted"
-  defp switch_knob(_state, true), do: "bg-primary-content"
+
+  defp switch_knob(state, enabled) when state == :paused or enabled == false,
+    do: "bg-white dark:bg-muted"
+
+  defp switch_knob(:simulating, true), do: "bg-white dark:bg-primary-content"
+  defp switch_knob(_live, true), do: "bg-white dark:bg-primary-content"
 
   @doc """
   The "…" menu of a row: a borderless round trigger and the same Alpine
@@ -836,19 +842,12 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     end
   end
 
-  @doc "A number with thousands separated the Brazilian way: 12.480."
+  @doc "A whole number with the viewer's thousands separator: 12.480 or 12,480."
   @spec number(integer() | nil) :: String.t()
   def number(nil), do: "0"
 
-  def number(value) when is_integer(value) do
-    value
-    |> abs()
-    |> Integer.to_string()
-    |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1.")
-    |> String.reverse()
-    |> then(&if(value < 0, do: "-" <> &1, else: &1))
-  end
+  def number(value) when is_integer(value),
+    do: HllConditionalActionsWeb.NumberFormat.integer(value)
 
   def number(value), do: to_string(value)
 
@@ -886,7 +885,7 @@ defmodule HllConditionalActionsWeb.RuleComponents do
         ]}>
           {index}
         </span>
-        <span class="truncate text-sm">{action_text(action)}</span>
+        <span class="truncate text-sm">{ladder_label(action, @compact)}</span>
         <span class={[
           "flex rounded bg-secondary",
           if(@compact,
@@ -919,13 +918,20 @@ defmodule HllConditionalActionsWeb.RuleComponents do
   defp ladder_width(0, _max), do: 0
   defp ladder_width(count, max), do: max(round(count / max * 100), 3)
 
-  defp ladder_fill(type, simulation?) do
-    case Icons.action_tone(type) do
-      :error -> "bg-error"
-      :warning -> "bg-axis"
-      _info -> if(simulation?, do: "bg-accent", else: "bg-primary")
-    end
-  end
+  # The boards colour a rung by how hard it lands: bans red, a kick orange,
+  # anything softer in the rule's own tone.
+  defp ladder_fill(type, _simulation?)
+       when type in [:temp_ban_player, :perma_ban_player, :blacklist_player],
+       do: "bg-error"
+
+  defp ladder_fill(:kick_player, _simulation?), do: "bg-axis"
+  defp ladder_fill(_type, true), do: "bg-accent"
+  defp ladder_fill(_type, _live), do: "bg-primary"
+
+  # The phone's shorter rows name the softer rungs in one word.
+  defp ladder_label(%{type: :temp_ban_player} = action, _compact), do: action_text(action)
+  defp ladder_label(action, true), do: short_action_text(action)
+  defp ladder_label(action, _full), do: action_text(action)
 
   @doc """
   Which rung of the ladder a run was on, as segments: `step` of `steps`
@@ -1024,7 +1030,7 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     %{
       label: condition_field_label(field),
       operator: operator_label(condition["operator"]),
-      expected: condition["expected"],
+      expected: read_value(condition["expected"]),
       actual: read_value(condition["actual"]),
       pass: condition["result"] == true
     }
@@ -1034,7 +1040,7 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     %{
       label: Labels.field(field),
       operator: Labels.operator(condition.operator),
-      expected: condition.expected,
+      expected: read_value(condition.expected),
       actual: read_value(condition.actual),
       pass: condition.result == true
     }
@@ -1450,7 +1456,7 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     actions =
       case execution.results do
         [] -> nil
-        results -> Enum.map_join(results, ", ", &action_label(&1["type"]))
+        results -> Enum.map_join(results, ", ", &short_action_label(&1["type"]))
       end
 
     case Enum.reject([step, actions], &is_nil/1) do
@@ -1536,6 +1542,40 @@ defmodule HllConditionalActionsWeb.RuleComponents do
   @spec action_label(String.t() | atom() | nil) :: String.t()
   def action_label(type) when is_atom(type) and not is_nil(type), do: Labels.action(type)
   def action_label(type), do: to_existing(type, &Labels.action/1)
+
+  @doc """
+  The one-word name of an action for tight rows ("Offence 2 of 4 · Punish"),
+  falling back to the full label.
+  """
+  @spec short_action_label(String.t() | atom() | nil) :: String.t()
+  def short_action_label(type) when is_binary(type) do
+    short_action_label(String.to_existing_atom(type))
+  rescue
+    ArgumentError -> to_string(type)
+  end
+
+  def short_action_label(:message_player), do: gettext("Message")
+  def short_action_label(:message_all_players), do: gettext("Message everyone")
+  def short_action_label(:punish_player), do: gettext("Punish")
+  def short_action_label(:kick_player), do: gettext("Kick")
+  def short_action_label(:temp_ban_player), do: gettext("Ban")
+  def short_action_label(:perma_ban_player), do: gettext("Permanent ban")
+  def short_action_label(:send_discord_webhook), do: gettext("Discord")
+  def short_action_label(type), do: action_label(type)
+
+  @doc """
+  The short name of a configured action: "Ban 2 h" when the ban says how
+  long, otherwise `short_action_label/1`.
+  """
+  @spec short_action_text(map()) :: String.t()
+  def short_action_text(%{type: :temp_ban_player, parameters: params}) do
+    case params && (params["duration_hours"] || params[:duration_hours]) do
+      nil -> short_action_label(:temp_ban_player)
+      hours -> gettext("Ban %{count} h", count: to_int(hours))
+    end
+  end
+
+  def short_action_text(%{type: type}), do: short_action_label(type)
 
   @doc "The heroicon of a stored trigger."
   @spec trigger_icon(atom() | String.t() | nil) :: String.t()

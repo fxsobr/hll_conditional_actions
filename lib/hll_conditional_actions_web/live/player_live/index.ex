@@ -430,7 +430,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Index do
           >
             <span
               :if={filter == "online"}
-              class="size-[7px] shrink-0 rounded-full bg-primary"
+              class="mr-1 size-[7px] shrink-0 rounded-full bg-primary"
               aria-hidden="true"
             ></span>
             {chip_label(filter)}
@@ -562,7 +562,7 @@ defmodule HllConditionalActionsWeb.PlayerLive.Index do
                   team={player.live && player.live.stream? && player.live.team}
                   size="sm"
                 />
-                <span class="flex min-w-0 flex-col">
+                <span class="flex min-w-0 flex-col leading-[1.25]">
                   <strong class="truncate font-semibold">{player.name || player.id}</strong>
                   <span class="truncate font-mono text-[0.6875rem] text-muted">{player.id}</span>
                   <span class="players-row-phone-now">

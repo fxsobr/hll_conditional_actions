@@ -17,9 +17,11 @@ defmodule HllConditionalActionsWeb.CommandPalette do
   use HllConditionalActionsWeb, :live_component
 
   alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Players
   alias HllConditionalActions.Search
   alias HllConditionalActions.Servers
   alias HllConditionalActionsWeb.Layouts
+  alias HllConditionalActionsWeb.LiveComponents
   alias HllConditionalActionsWeb.MapArt
   alias HllConditionalActionsWeb.Nav
   alias HllConditionalActionsWeb.RelativeTime
@@ -34,7 +36,9 @@ defmodule HllConditionalActionsWeb.CommandPalette do
        filter: "all",
        results: empty(),
        recent: nil,
-       matches_loading?: false
+       matches_loading?: false,
+       live: nil,
+       live_loading?: false
      )}
   end
 
@@ -76,6 +80,12 @@ defmodule HllConditionalActionsWeb.CommandPalette do
   def handle_async(:matches, _failed, socket),
     do: {:noreply, assign(socket, recent: [], matches_loading?: false)}
 
+  def handle_async(:live, {:ok, live}, socket),
+    do: {:noreply, assign(socket, live: live, live_loading?: false)}
+
+  def handle_async(:live, _failed, socket),
+    do: {:noreply, assign(socket, live: :unknown, live_loading?: false)}
+
   defp run(socket) do
     %{current_user: user, query: query} = socket.assigns
 
@@ -87,7 +97,7 @@ defmodule HllConditionalActionsWeb.CommandPalette do
         players = Search.players(user, term)
         player_ids = Enum.map(players, & &1.id)
 
-        socket = maybe_fetch_matches(socket, term)
+        socket = socket |> maybe_fetch_matches(term) |> maybe_fetch_live(players)
 
         names = Map.new(players, &{&1.id, &1.name || &1.id})
 
@@ -127,6 +137,36 @@ defmodule HllConditionalActionsWeb.CommandPalette do
   end
 
   defp maybe_fetch_matches(socket, _term), do: socket
+
+  # Who is playing right now, with the VIP list and the watchlist, read once
+  # per page the first time a query finds a player: the player lines say
+  # "online", the team and what stands out about them.
+  defp maybe_fetch_live(%{assigns: %{live: nil, live_loading?: false}} = socket, [_ | _]) do
+    user = socket.assigns.current_user
+
+    if Accounts.can?(user, :view_stats) do
+      servers = Players.servers_for(user)
+
+      socket
+      |> assign(:live_loading?, true)
+      |> start_async(:live, fn -> read_live(servers) end)
+    else
+      assign(socket, :live, :unknown)
+    end
+  end
+
+  defp maybe_fetch_live(socket, _players), do: socket
+
+  defp read_live(servers) do
+    {players, status} = Players.live(servers)
+
+    %{
+      players: players,
+      answered?: status != %{} and Enum.all?(status, fn {_id, result} -> result == :ok end),
+      vips: Players.vips(servers),
+      watched: Players.watchlist(servers)
+    }
+  end
 
   defp empty, do: Map.new(@groups, &{String.to_existing_atom(&1), []})
 
@@ -372,6 +412,7 @@ defmodule HllConditionalActionsWeb.CommandPalette do
                 term={@term}
                 now={@now}
                 nav={@nav}
+                live={@live}
               />
             <% end %>
 
@@ -416,14 +457,42 @@ defmodule HllConditionalActionsWeb.CommandPalette do
   attr :term, :string, default: nil
   attr :now, :any, required: true
   attr :nav, :map, default: nil
+  attr :live, :any, default: nil
 
   defp result(%{group: "players"} = assigns) do
+    live = if is_map(assigns.live), do: assigns.live, else: nil
+    online = live && live.players[assigns.item.id]
+
+    assigns =
+      assign(assigns,
+        online: online,
+        team: online && team_name(online, assigns.nav),
+        # "offline" only when every server answered: one that did not could
+        # have them.
+        offline?: live != nil and live.answered? and is_nil(online),
+        vip?: live != nil and Map.has_key?(live.vips, assigns.item.id),
+        watched?: live != nil and Map.has_key?(live.watched, assigns.item.id)
+      )
+
+    assigns =
+      assign(assigns, :line, online && online_line(online, assigns.vip?, assigns.watched?))
+
     ~H"""
     <.link navigate={~p"/players/#{@item.id}"} role="option" class="palette-option" data-option>
-      <span class="palette-tile palette-tile--axis text-xs font-bold">{initials(@item.name)}</span>
+      <span class={["palette-tile text-xs font-bold", !@offline? && "palette-tile--axis"]}>
+        {initials(@item.name)}
+      </span>
       <span class="palette-text">
         <span class="palette-title"><.marked text={@item.name || @item.id} term={@term} /></span>
-        <span class="palette-sub">{player_line(@item, @now, @nav)}</span>
+        <span :if={@online} class="palette-sub text-subtle">
+          <span :if={@team} class={team_text(@online.team)}>{@team}</span><span :if={@team}> · </span>{@line}
+        </span>
+        <span :if={!@online} class="palette-sub">
+          {player_line(@item, @now, @nav, @offline?, @vip?, @watched?)}
+        </span>
+      </span>
+      <span :if={@online} class="palette-online">
+        <span class="size-1.5 rounded-full bg-primary"></span>{gettext("online")}
       </span>
       <kbd class="kbd palette-enter">Enter</kbd>
     </.link>
@@ -442,9 +511,7 @@ defmodule HllConditionalActionsWeb.CommandPalette do
             · {server_name(@item.rule)}
           <% end %>
           <%= if @item.hits > 0 and @item.player_name do %>
-            · {ngettext("hit %{player} once", "hit %{player} %{count} times", @item.hits,
-              player: @item.player_name
-            )}
+            · <.hit_line hits={@item.hits} player={@item.player_name} term={@term} />
           <% end %>
         </span>
       </span>
@@ -573,12 +640,31 @@ defmodule HllConditionalActionsWeb.CommandPalette do
     assigns = assign(assigns, :parts, split_match(assigns.text || "", assigns.term))
 
     ~H"""
-    <%= for {kind, part} <- @parts do %>
-      <span :if={kind == :hit} class="text-primary">{part}</span>
-      <%= if kind == :text do %>
-        {part}
-      <% end %>
-    <% end %>
+    <span :for={{kind, part} <- @parts} class={kind == :hit && "text-primary"}>{part}</span>
+    """
+  end
+
+  attr :hits, :integer, required: true
+  attr :player, :string, required: true
+  attr :term, :string, default: nil
+
+  # "hit Rudi_88 19 times", with the part of the name that matched marked.
+  defp hit_line(assigns) do
+    text =
+      ngettext("hit %{player} once", "hit %{player} %{count} times", assigns.hits,
+        player: "\u0000"
+      )
+
+    {before, rest} =
+      case String.split(text, "\u0000", parts: 2) do
+        [before, rest] -> {before, rest}
+        [whole] -> {whole, ""}
+      end
+
+    assigns = assign(assigns, before: before, rest: rest)
+
+    ~H"""
+    <span>{@before}</span><.marked text={@player} term={@term} /><span>{@rest}</span>
     """
   end
 
@@ -615,36 +701,59 @@ defmodule HllConditionalActionsWeb.CommandPalette do
   defp group_heading("pages", nil), do: gettext("Go to")
   defp group_heading(group, _term), do: group_label(group)
 
-  defp player_line(player, now, nav) do
-    server =
-      player.server_id &&
-        Enum.find((nav && nav[:servers]) || [], &(&1.id == player.server_id))
-
+  defp player_line(player, now, nav, offline?, vip?, watched?) do
     [
-      player.seen_at &&
-        if(server,
-          do:
-            gettext("seen %{ago} on %{server}",
-              ago: RelativeTime.ago(player.seen_at, now),
-              server: server.name
-            ),
-          else: gettext("seen %{ago}", ago: RelativeTime.ago(player.seen_at, now))
-        ),
+      offline? && gettext("offline"),
+      seen(player, now, nav),
       player.matches > 0 && ngettext("1 match", "%{count} matches", player.matches),
       player.hits > 0 && ngettext("1 rule hit", "%{count} rule hits", player.hits),
-      player.tickets > 0 && ngettext("1 ticket", "%{count} tickets", player.tickets)
+      player.tickets > 0 && ngettext("1 ticket", "%{count} tickets", player.tickets),
+      vip? && gettext("VIP"),
+      watched? && gettext("watchlist")
     ]
     |> Enum.filter(& &1)
     |> Enum.join(" · ")
   end
 
+  defp seen(%{seen_at: nil}, _now, _nav), do: nil
+
+  defp seen(player, now, nav) do
+    ago = RelativeTime.ago(player.seen_at, now)
+
+    case player.server_id && Enum.find((nav && nav[:servers]) || [], &(&1.id == player.server_id)) do
+      nil -> gettext("seen %{ago}", ago: ago)
+      server -> gettext("seen %{ago} on %{server}", ago: ago, server: server.name)
+    end
+  end
+
+  # Someone playing now: where, VIP, watchlist and team kills this match.
+  defp online_line(entry, vip?, watched?) do
+    [
+      gettext("playing on %{server}", server: entry.server_name),
+      vip? && gettext("VIP"),
+      watched? && gettext("watchlist"),
+      entry.team_kills > 0 &&
+        ngettext("1 TK this match", "%{count} TKs this match", entry.team_kills)
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
+
+  defp team_name(%{team: team, server_id: server_id}, nav) when team in ["allies", "axis"] do
+    server = Enum.find((nav && nav[:servers]) || [], &(&1.id == server_id))
+    LiveComponents.team_names(server && server.game)[team]
+  end
+
+  defp team_name(_entry, _nav), do: nil
+
   defp server_name(%{server: %{name: name}}), do: name
   defp server_name(_rule), do: nil
 
-  defp ticket_title(ticket) do
-    ticket.category ||
-      gettext("Ticket from %{player}", player: ticket.player_name || ticket.player_id)
-  end
+  defp ticket_title(%{category: category}) when is_binary(category) and category != "",
+    do: HllConditionalActionsWeb.TicketComponents.category_label(category)
+
+  defp ticket_title(ticket),
+    do: gettext("Ticket from %{player}", player: ticket.player_name || ticket.player_id)
 
   defp ticket_line(%{status: :closed} = ticket, _now) do
     by = ticket.closed_by && (ticket.closed_by.name || ticket.closed_by.username)

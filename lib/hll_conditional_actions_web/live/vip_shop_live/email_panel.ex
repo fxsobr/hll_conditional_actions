@@ -525,7 +525,7 @@ defmodule HllConditionalActionsWeb.VipShopLive.EmailPanel do
               id="template_body"
               rows="6"
               aria-label={gettext("E-mail body")}
-              class="block w-full resize-y border-0 bg-transparent px-3.5 py-2.5 text-[0.8125rem] leading-[1.55] outline-0 focus:ring-0"
+              class="block min-h-[8.5rem] w-full resize-y border-0 [field-sizing:content] bg-transparent px-3.5 py-2.5 text-[0.8125rem] leading-[1.55] outline-0 focus:ring-0"
             >{@template_form[:body].value}</textarea>
           </div>
         </div>

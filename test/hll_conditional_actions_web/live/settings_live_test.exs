@@ -217,6 +217,34 @@ defmodule HllConditionalActionsWeb.SettingsPagesTest do
     refute has_element?(view, "#role-permission-view_servers")
   end
 
+  test "a view held next to its manage shows as included and is kept on save", %{conn: conn} do
+    role = role_fixture(%{permissions: ["view_tickets", "manage_tickets"]})
+
+    {:ok, view, _html} = live(conn, ~p"/roles/#{role.id}/edit")
+
+    refute has_element?(view, "#role-permission-view_tickets")
+    assert has_element?(view, "#role-form input[type=hidden][value=view_tickets]")
+
+    view |> form("#role-form") |> render_submit()
+
+    assert Enum.sort(Accounts.get_role!(role.id).permissions) ==
+             ["manage_tickets", "view_tickets"]
+  end
+
+  test "built-in roles are shown by their translated name, custom ones as typed" do
+    alias HllConditionalActions.Accounts.Role
+    import HllConditionalActionsWeb.SettingsComponents, only: [role_label: 1]
+
+    assert role_label(%Role{name: "Viewer", system?: true}) == "Viewer"
+    assert role_label(%Role{name: "Viewer", system?: false}) == "Viewer"
+    assert role_label(%Role{name: "Event crew", system?: false}) == "Event crew"
+    assert role_label(nil) == nil
+
+    Gettext.with_locale(HllConditionalActionsWeb.Gettext, "pt_BR", fn ->
+      assert role_label(%Role{name: "Operator", system?: true}) == "Operador"
+    end)
+  end
+
   test "the Discord editor sits beside the list", %{conn: conn} do
     webhook =
       Repo.insert!(%Webhook{
