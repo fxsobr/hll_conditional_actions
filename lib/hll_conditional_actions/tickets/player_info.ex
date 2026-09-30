@@ -27,6 +27,7 @@ defmodule HllConditionalActions.Tickets.PlayerInfo do
           sessions: integer() | nil,
           playtime_seconds: integer() | nil,
           names: [String.t()],
+          team_kills: non_neg_integer() | nil,
           profile?: boolean()
         }
 
@@ -92,9 +93,15 @@ defmodule HllConditionalActions.Tickets.PlayerInfo do
       sessions: profile["sessions_count"],
       playtime_seconds: profile["total_playtime_seconds"],
       names: names(profile["names"]),
+      team_kills: team_kills(player),
       profile?: profile != %{}
     }
   end
+
+  # This match's team kills, from the live list (CRCON names it either way).
+  defp team_kills(%{"team_kills" => count}) when is_integer(count), do: count
+  defp team_kills(%{"teamkills" => count}) when is_integer(count), do: count
+  defp team_kills(_player), do: nil
 
   defp vip?(%{"is_vip" => vip}, _profile) when is_boolean(vip), do: vip
   defp vip?(_player, %{"vips" => vips}) when is_list(vips), do: vips != []

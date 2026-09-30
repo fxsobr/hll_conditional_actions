@@ -35,6 +35,14 @@ defmodule HllConditionalActions.Tickets.Ticket do
     field :source, Ecto.Enum, values: [:chat, :rule], default: :chat
     field :category, :string
     field :context, {:array, :map}, default: []
+    # The chat command the player typed, for "opened with !admin".
+    field :opened_with, :string
+    # The other player the ticket is about - the one being reported.
+    field :reported_player_id, :string
+    field :reported_player_name, :string
+    field :announced_at, :utc_datetime
+    field :close_warned_at, :utc_datetime
+    field :outside_hours, :boolean, default: false
 
     has_many :messages, HllConditionalActions.Tickets.Message,
       preload_order: [asc: :inserted_at, asc: :id]
@@ -89,10 +97,13 @@ defmodule HllConditionalActions.Tickets.Ticket do
       :source,
       :rule_id,
       :category,
-      :context
+      :context,
+      :opened_with,
+      :reported_player_id,
+      :reported_player_name,
+      :outside_hours
     ])
     |> validate_required([:server_id, :player_id, :last_activity_at])
-    |> unique_constraint([:server_id, :player_id], name: :tickets_one_open_per_player)
   end
 
   @doc false
@@ -108,9 +119,13 @@ defmodule HllConditionalActions.Tickets.Ticket do
       :close_reason,
       :last_activity_at,
       :closed_at,
-      :first_response_at
+      :first_response_at,
+      :category,
+      :reported_player_id,
+      :reported_player_name,
+      :announced_at,
+      :close_warned_at
     ])
     |> validate_length(:close_reason, max: 255)
-    |> unique_constraint([:server_id, :player_id], name: :tickets_one_open_per_player)
   end
 end

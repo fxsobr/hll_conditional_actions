@@ -35,8 +35,9 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
        |> put_flash(:error, gettext("You do not have access to that page."))
        |> push_navigate(to: ~p"/tickets")}
     else
+      # Ticket changes arrive through `HllConditionalActionsWeb.Nav`, which
+      # subscribes every user who may read tickets.
       if connected?(socket) do
-        Tickets.subscribe()
         # Ages move on even when nothing happens.
         :timer.send_interval(@refresh_ms, :refresh)
       end
@@ -108,7 +109,8 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
       )
 
     socket
-    |> assign(:tickets, tickets)
+    |> assign(:tickets_empty?, tickets == [])
+    |> stream(:tickets, tickets, reset: true, dom_id: &"ticket-#{&1.id}")
     |> assign(:counts, Tickets.view_counts(user, server_id))
     |> assign(:categories, Tickets.categories(user))
     |> assign(:player_counts, Tickets.counts_by_player(user, Enum.map(tickets, & &1.player_id)))
@@ -176,7 +178,7 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
 
   defp age_class(:overdue), do: "bg-error"
   defp age_class(:aging), do: "bg-warning"
-  defp age_class(:fresh), do: "bg-success"
+  defp age_class(:fresh), do: "bg-primary"
   defp age_class(:idle), do: "bg-base-300"
 
   defp age_title(:overdue), do: gettext("Waiting too long")
@@ -208,40 +210,21 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
     >
       <:actions>
         <TicketComponents.alert_toggle id="ticket-alert-toggle" />
-        <.button
-          link_type="live_redirect"
-          to={if @server, do: ~p"/servers/#{@server.id}/tickets/metrics", else: ~p"/tickets/metrics"}
-          size="sm"
-          variant="ghost"
-          color="gray"
-          icon="hero-chart-bar"
-          label={gettext("Metrics")}
-        />
-        <.button
-          :if={@can_manage?}
-          link_type="live_redirect"
-          to={
-            if @server, do: ~p"/servers/#{@server.id}/tickets/settings", else: ~p"/tickets/settings"
-          }
-          size="sm"
-          variant="outline"
-          color="gray"
-          icon="hero-cog-6-tooth"
-          label={gettext("Ticket settings")}
-        />
       </:actions>
+
+      <TicketComponents.config_tabs server={@server} current={:tickets} can_manage?={@can_manage?} />
 
       <div
         :if={!@configured? and @can_manage?}
         id="tickets-setup"
-        class="flex flex-wrap items-center gap-4 rounded-box border border-primary/30 bg-primary/5 p-4 sm:p-5"
+        class="flex flex-wrap items-center gap-4 rounded-[1.75rem] border border-primary/30 bg-primary/8 p-5 sm:p-6"
       >
-        <span class="flex size-11 shrink-0 items-center justify-center rounded-field bg-primary/15 text-primary">
-          <.icon name="hero-sparkles" class="size-6" />
-        </span>
+        <.icon_tile icon="hero-sparkles" tone="primary" size="lg" />
         <div class="min-w-0 flex-1">
-          <p class="font-semibold">{gettext("Let players call an admin from the game")}</p>
-          <p class="text-sm text-muted">
+          <p class="font-display text-lg font-semibold">
+            {gettext("Let players call an admin from the game")}
+          </p>
+          <p class="text-sm text-subtle">
             {gettext(
               "The wizard sets up the command, the messages and the office hours in a few steps."
             )}
@@ -250,185 +233,205 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
         <.button
           link_type="live_redirect"
           to={if @server, do: ~p"/servers/#{@server.id}/tickets/setup", else: ~p"/tickets/setup"}
-          size="sm"
           color="primary"
           icon="hero-arrow-right"
           label={gettext("Start the wizard")}
         />
       </div>
 
-      <div
+      <p
         :if={@server && @configured? && !@settings_by_server[@server.id].enabled}
         id="tickets-off"
+        class="flex items-center gap-2 rounded-2xl bg-warning/13 px-4 py-3 text-sm text-warning"
       >
-        <.alert
-          color="warning"
-          variant="soft"
-          with_icon
-          label={gettext("Tickets are off on this server: players' commands are ignored.")}
-        />
-      </div>
+        <.icon name="hero-exclamation-triangle" class="size-4 shrink-0" />
+        {gettext("Tickets are off on this server: players' commands are ignored.")}
+      </p>
 
-      <nav
-        id="ticket-views"
-        aria-label={gettext("Views")}
-        class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1"
-      >
-        <button
-          :for={view <- Tickets.views()}
-          type="button"
-          phx-click="view"
-          phx-value-view={view}
-          aria-current={@filters["view"] == to_string(view) && "page"}
-          data-view={view}
-          class={[
-            "flex shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors",
-            if(@filters["view"] == to_string(view),
-              do: "border-primary/40 bg-primary/10 font-medium text-primary",
-              else:
-                "border-base-300 bg-base-100 text-subtle hover:border-primary/30 hover:text-base-content"
-            )
-          ]}
+      <section class="flex flex-col gap-4 rounded-[1.75rem] bg-base-100 p-4 sm:p-5">
+        <nav
+          id="ticket-views"
+          aria-label={gettext("Views")}
+          class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
         >
-          <.icon name={view_icon(view)} class="size-4" />
-          {view_label(view)}
-          <span class={[
-            "rounded-full px-1.5 text-xs tabular-nums leading-5",
-            if(view in [:unassigned, :waiting_admin] and @counts[view] > 0,
-              do: "bg-warning font-semibold text-warning-content",
-              else: "bg-base-200 text-muted"
-            )
-          ]}>
-            {@counts[view]}
-          </span>
-        </button>
-      </nav>
-
-      <.filter_bar id="ticket-filters" on_change="filter">
-        <.search_input
-          name="q"
-          label={gettext("Search")}
-          value={@filters["q"]}
-          placeholder={gettext("Player name or ID")}
-          class="max-sm:w-full sm:w-56"
-        />
-        <.filter_select
-          :if={@categories != []}
-          name="category"
-          label={gettext("Category")}
-          value={@filters["category"]}
-          prompt={gettext("All categories")}
-          options={Enum.map(@categories, &{&1, &1})}
-        />
-        <.filter_select
-          :if={is_nil(@server) and length(@servers) > 1}
-          name="server_id"
-          label={gettext("Server")}
-          value={@filters["server_id"]}
-          prompt={gettext("All servers")}
-          options={Enum.map(@servers, &{&1.name, &1.id})}
-        />
-      </.filter_bar>
-
-      <.empty_state
-        :if={@tickets == []}
-        icon="hero-chat-bubble-left-right"
-        title={gettext("No tickets")}
-        description={
-          gettext("When a player types a ticket command in the game chat, the ticket shows up here.")
-        }
-      />
-
-      <ul :if={@tickets != []} id="tickets" class="space-y-2">
-        <li
-          :for={ticket <- @tickets}
-          id={"ticket-#{ticket.id}"}
-          data-age={age_tone(ticket, attention(@settings_by_server, ticket.server_id), @now)}
-          class="group relative flex items-stretch gap-3 overflow-hidden rounded-box bg-base-100 shadow-figma-card transition-shadow hover:shadow-md"
-        >
-          <span
+          <button
+            :for={view <- Tickets.views()}
+            type="button"
+            phx-click="view"
+            phx-value-view={view}
+            aria-current={@filters["view"] == to_string(view) && "page"}
+            data-view={view}
             class={[
-              "w-1.5 shrink-0",
-              age_class(age_tone(ticket, attention(@settings_by_server, ticket.server_id), @now))
+              "inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[0.8125rem] transition-colors",
+              if(@filters["view"] == to_string(view),
+                do: "border-base-content bg-base-content font-semibold text-base-100",
+                else: "border-base-300 bg-secondary text-subtle hover:text-base-content"
+              )
             ]}
-            title={
-              age_title(age_tone(ticket, attention(@settings_by_server, ticket.server_id), @now))
-            }
-          ></span>
+          >
+            <.icon name={view_icon(view)} class="size-4" />
+            {view_label(view)}
+            <span class={[
+              "rounded-full px-1.5 font-mono text-xs tabular-nums leading-5",
+              if(view in [:unassigned, :waiting_admin] and @counts[view] > 0,
+                do: "bg-warning font-semibold text-warning-content",
+                else: "opacity-70"
+              )
+            ]}>
+              {@counts[view]}
+            </span>
+          </button>
+        </nav>
 
-          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 py-3 pr-3">
-            <div class="min-w-0 flex-1 basis-64">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <.link
-                  navigate={ticket_path(@server, ticket)}
-                  class="truncate font-semibold after:absolute after:inset-0 hover:underline"
-                >
-                  {ticket.player_name || ticket.player_id}
-                </.link>
-                <.tone_badge
-                  :if={ticket.priority != :normal}
-                  tone={Labels.ticket_priority_tone(ticket.priority)}
-                  size="xs"
-                >
-                  {Labels.ticket_priority(ticket.priority)}
-                </.tone_badge>
-                <.tone_badge :if={ticket.category} tone="primary" size="xs" icon="hero-tag">
-                  {ticket.category}
-                </.tone_badge>
-                <.tone_badge :if={ticket.source == :rule} tone="info" size="xs" icon="hero-bolt">
-                  {gettext("Rule")}
-                </.tone_badge>
-                <span
-                  :if={Map.get(@player_counts, ticket.player_id, 0) > 1}
-                  class="text-xs text-muted"
-                  title={gettext("Tickets this player opened")}
-                >
-                  · {ngettext(
-                    "1 ticket",
-                    "%{count} tickets",
-                    Map.get(@player_counts, ticket.player_id, 0)
-                  )}
-                </span>
-              </div>
-              <p :if={last_line(ticket)} class="mt-0.5 truncate text-sm text-subtle">
-                <span :if={last_line(ticket).author == :admin} class="text-muted">
-                  {gettext("Admin:")}
-                </span>
-                {last_line(ticket).body}
-              </p>
-            </div>
+        <.filter_bar id="ticket-filters" on_change="filter">
+          <.search_input
+            name="q"
+            label={gettext("Search")}
+            value={@filters["q"]}
+            placeholder={gettext("Player name or ID")}
+            class="max-sm:w-full sm:w-56"
+          />
+          <.filter_select
+            :if={@categories != []}
+            name="category"
+            label={gettext("Category")}
+            value={@filters["category"]}
+            prompt={gettext("All categories")}
+            options={Enum.map(@categories, &{&1, &1})}
+          />
+          <.filter_select
+            :if={is_nil(@server) and length(@servers) > 1}
+            name="server_id"
+            label={gettext("Server")}
+            value={@filters["server_id"]}
+            prompt={gettext("All servers")}
+            options={Enum.map(@servers, &{&1.name, &1.id})}
+          />
+        </.filter_bar>
 
-            <div class="flex shrink-0 items-center gap-3 text-sm">
-              <span :if={is_nil(@server)} class="hidden text-muted md:inline">{ticket.server.name}</span>
-              <.tone_badge tone={Labels.ticket_status_tone(ticket.status)}>
-                {Labels.ticket_status(ticket.status)}
-              </.tone_badge>
-              <span class="w-24 text-right text-xs text-muted">
-                <.local_time id={"ticket-#{ticket.id}-activity"} at={ticket.last_activity_at} />
-              </span>
+        <.empty_state
+          :if={@tickets_empty?}
+          card={false}
+          icon="hero-chat-bubble-left-right"
+          title={gettext("No tickets")}
+          description={
+            gettext(
+              "When a player types a ticket command in the game chat, the ticket shows up here."
+            )
+          }
+        />
+
+        <ul id="tickets" phx-update="stream" class="flex flex-col gap-1">
+          <li
+            :for={{dom_id, ticket} <- @streams.tickets}
+            id={dom_id}
+            data-age={age_tone(ticket, attention(@settings_by_server, ticket.server_id), @now)}
+            class="group relative flex items-center gap-3 rounded-[1.125rem] p-3 transition-colors hover:bg-secondary"
+          >
+            <span class="relative">
+              <TicketComponents.avatar_tile name={ticket.player_name || ticket.player_id} />
               <span
-                :if={ticket.assigned_to}
-                class="relative z-10 flex items-center gap-1 text-xs text-muted"
-                title={gettext("Assigned to")}
-              >
-                <.icon name="hero-user-circle" class="size-4" />
-                <span class="max-w-24 truncate">{user_name(ticket.assigned_to)}</span>
-              </span>
-              <.button
-                :if={@can_manage? and is_nil(ticket.assigned_to) and ticket.status != :closed}
-                type="button"
-                size="xs"
-                color="primary"
-                variant="outline"
-                phx-click="claim"
-                phx-value-id={ticket.id}
-                class="relative z-10"
-                label={gettext("Claim")}
-              />
+                class={[
+                  "absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-base-100",
+                  age_class(age_tone(ticket, attention(@settings_by_server, ticket.server_id), @now))
+                ]}
+                title={
+                  age_title(age_tone(ticket, attention(@settings_by_server, ticket.server_id), @now))
+                }
+              ></span>
+            </span>
+
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+              <div class="min-w-0 flex-1 basis-64">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <.link
+                    navigate={ticket_path(@server, ticket)}
+                    class="truncate text-sm font-semibold after:absolute after:inset-0 hover:underline"
+                  >
+                    <span class="font-mono text-xs font-normal text-muted">#{ticket.id}</span>
+                    · {ticket.player_name || ticket.player_id}
+                  </.link>
+                  <.pill
+                    :if={ticket.priority != :normal}
+                    tone={Labels.ticket_priority_tone(ticket.priority)}
+                    dot={false}
+                    class="h-5 px-2 text-[0.6875rem]"
+                  >
+                    {Labels.ticket_priority(ticket.priority)}
+                  </.pill>
+                  <.pill
+                    :if={ticket.category}
+                    tone="engine"
+                    dot={false}
+                    class="h-5 px-2 text-[0.6875rem]"
+                  >
+                    {ticket.category}
+                  </.pill>
+                  <.pill
+                    :if={ticket.source == :rule}
+                    tone="engine"
+                    dot={false}
+                    class="h-5 px-2 text-[0.6875rem]"
+                  >
+                    <.icon name="hero-bolt" class="size-3" /> {gettext("Rule")}
+                  </.pill>
+                  <span
+                    :if={Map.get(@player_counts, ticket.player_id, 0) > 1}
+                    class="text-xs text-muted"
+                    title={gettext("Tickets this player opened")}
+                  >
+                    · {ngettext(
+                      "1 ticket",
+                      "%{count} tickets",
+                      Map.get(@player_counts, ticket.player_id, 0)
+                    )}
+                  </span>
+                </div>
+                <p :if={last_line(ticket)} class="mt-0.5 truncate text-[0.8125rem] text-muted">
+                  <span :if={last_line(ticket).author == :admin} class="text-subtle">
+                    {gettext("Admin:")}
+                  </span>
+                  {last_line(ticket).body}
+                </p>
+              </div>
+
+              <div class="flex shrink-0 flex-wrap items-center gap-3 text-sm">
+                <span :if={is_nil(@server)} class="hidden text-xs text-muted md:inline">
+                  {ticket.server.name}
+                </span>
+                <.pill
+                  tone={TicketComponents.status_pill(ticket.status)}
+                  class="h-6 px-2.5 text-[0.6875rem]"
+                >
+                  {Labels.ticket_status(ticket.status)}
+                </.pill>
+                <span class="w-20 text-right font-mono text-[0.6875rem] text-muted">
+                  <.local_time id={"ticket-#{ticket.id}-activity"} at={ticket.last_activity_at} />
+                </span>
+                <span
+                  :if={ticket.assigned_to}
+                  class="relative z-10 flex items-center gap-1 text-xs text-muted"
+                  title={gettext("Assigned to")}
+                >
+                  <.icon name="hero-user-circle" class="size-4" />
+                  <span class="max-w-24 truncate">{user_name(ticket.assigned_to)}</span>
+                </span>
+                <.button
+                  :if={@can_manage? and is_nil(ticket.assigned_to) and ticket.status != :closed}
+                  type="button"
+                  size="xs"
+                  color="primary"
+                  variant="outline"
+                  phx-click="claim"
+                  phx-value-id={ticket.id}
+                  class="relative z-10"
+                  label={gettext("Claim")}
+                />
+              </div>
             </div>
-          </div>
-        </li>
-      </ul>
+          </li>
+        </ul>
+      </section>
     </Layouts.app>
     """
   end

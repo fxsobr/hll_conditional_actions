@@ -159,6 +159,7 @@ A ticket waiting longer than *alert after minutes* shows as urgent in
 | --- | --- |
 | `view_tickets` | *See player tickets*: the inbox, a ticket, the metrics |
 | `manage_tickets` | *Answer and close player tickets*, plus the settings and the wizard |
+| `manage_players` | *Act on players*: message, punish, kick, ban and watch the caller or the reported player from a ticket (and the same, plus VIP, from the player pages) |
 
 Users only see tickets of the servers assigned to them.
 

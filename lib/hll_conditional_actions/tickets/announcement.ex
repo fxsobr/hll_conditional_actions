@@ -49,7 +49,10 @@ defmodule HllConditionalActions.Tickets.Announcement do
   @spec payload(Server.t(), Settings.t(), Ticket.t(), String.t()) :: map()
   def payload(server, settings, ticket, text) do
     Gettext.with_locale(locale(), fn ->
-      roles = role_ids(settings.discord_mention_role_ids)
+      roles =
+        if mention?(settings, ticket),
+          do: role_ids(settings.discord_mention_role_ids),
+          else: []
 
       title =
         if ticket.source == :rule,
@@ -87,6 +90,20 @@ defmodule HllConditionalActions.Tickets.Announcement do
   @spec role_ids(String.t() | nil) :: [String.t()]
   def role_ids(nil), do: []
   def role_ids(text), do: text |> String.split(~r/[\s,]+/, trim: true)
+
+  @doc """
+  Whether a ticket is important enough to mention the roles: its priority
+  at least the server's `mention_min_priority`.
+
+      iex> alias HllConditionalActions.Tickets.{Announcement, Settings, Ticket}
+      iex> Announcement.mention?(%Settings{mention_min_priority: "high"}, %Ticket{priority: :normal})
+      false
+      iex> Announcement.mention?(%Settings{mention_min_priority: "high"}, %Ticket{priority: :urgent})
+      true
+  """
+  @spec mention?(Settings.t(), Ticket.t()) :: boolean()
+  def mention?(%Settings{mention_min_priority: min}, %Ticket{priority: priority}),
+    do: Ticket.rank(priority) >= Ticket.rank(Ticket.parse_priority(min || "low"))
 
   defp color(:urgent), do: @urgent_color
   defp color(:high), do: @high_color

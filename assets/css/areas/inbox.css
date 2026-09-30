@@ -1,0 +1,160 @@
+/* Styles of the inbox area of the overhaul (the Caixa, the ticket pages).
+   Utilities first; add rules here only for what Tailwind classes cannot
+   express: the area's own shades, which differ between the themes in ways
+   the shared tokens do not cover. */
+
+:root {
+  --inbox-line: #e7e6de;
+  --inbox-well: #f4f3ee;
+  --inbox-field: #ffffff;
+  --inbox-field-line: #e2e1d8;
+  --inbox-strong: #d8d7cd;
+  --inbox-cited-bg: #fbeee4;
+  --inbox-cited-line: #f0d9c6;
+  --inbox-cited-text: #8a4a1c;
+  --inbox-cited-button: #ffffff;
+  --inbox-cited-solid: #e0782f;
+  --inbox-cited-solid-text: #2a1405;
+  --inbox-note-text: #2e2270;
+  --inbox-solid: #16170f;
+  --inbox-solid-text: #f3f2ec;
+  --inbox-send-icon: #d2f36b;
+  --inbox-teal: #1e7f6c;
+  --inbox-panel-shadow: 0 1px 2px rgba(22, 23, 15, 0.05);
+  --inbox-row-shadow: 0 1px 3px rgba(22, 23, 15, 0.06);
+}
+
+.dark {
+  --inbox-line: #22241f;
+  --inbox-well: #141512;
+  --inbox-field: #20211d;
+  --inbox-field-line: #2e3029;
+  --inbox-strong: #3a3d30;
+  --inbox-cited-bg: #1f1a16;
+  --inbox-cited-line: #3a2c22;
+  --inbox-cited-text: #c9a68d;
+  --inbox-cited-button: #2a211b;
+  --inbox-cited-solid: #ff9f5a;
+  --inbox-cited-solid-text: #2a1405;
+  --inbox-note-text: #d9d2f5;
+  --inbox-solid: #d2f36b;
+  --inbox-solid-text: #1a2006;
+  --inbox-send-icon: #1a2006;
+  --inbox-teal: #7fd6c2;
+  --inbox-panel-shadow: none;
+  --inbox-row-shadow: none;
+}
+
+/* The panels sit on the ground with a hairline shadow in the light theme. */
+.inbox-panel {
+  box-shadow: var(--inbox-panel-shadow);
+}
+
+/* The main action: ink on paper in the light theme, the signal in the dark. */
+.inbox-solid {
+  background: var(--inbox-solid);
+  color: var(--inbox-solid-text);
+}
+
+.inbox-send {
+  background: var(--inbox-solid);
+  color: var(--inbox-send-icon);
+}
+
+/* Chips and the answer box: white in the light theme, raised in the dark. */
+.inbox-chip {
+  background: var(--inbox-field);
+}
+
+.inbox-composer {
+  background: var(--inbox-field);
+}
+
+/* The selected row of the list. */
+.inbox-row-current {
+  background: var(--inbox-field);
+  border-color: var(--inbox-strong);
+  box-shadow: var(--inbox-row-shadow);
+}
+
+.dark .inbox-row-current {
+  background: var(--color-secondary);
+}
+
+/* The player a ticket is about: a warm card of its own. */
+.inbox-cited {
+  background: var(--inbox-cited-bg);
+  border-color: var(--inbox-cited-line);
+}
+
+.inbox-cited-text {
+  color: var(--inbox-cited-text);
+}
+
+.inbox-cited-button {
+  background: var(--inbox-cited-button);
+  border-color: var(--inbox-cited-line);
+}
+
+.inbox-cited-solid {
+  background: var(--inbox-cited-solid);
+  color: var(--inbox-cited-solid-text);
+}
+
+.inbox-note-text {
+  color: var(--inbox-note-text);
+}
+
+/* The Caixa and the ticket page fill the window under the header from `md`
+   up: the list and the conversation scroll inside their panels, so the
+   answer box never leaves the bottom of the window. The frame measures
+   where it starts (`--inbox-frame-top`, set by its hook); below it sits the
+   floating tab bar under `xl`, the page margin from `xl`. */
+@media (min-width: 48rem) {
+  .inbox-frame {
+    height: calc(100dvh - var(--inbox-frame-top, 11rem) - 8.25rem);
+    min-height: 30rem;
+  }
+}
+
+@media (min-width: 80rem) {
+  .inbox-frame {
+    height: calc(100dvh - var(--inbox-frame-top, 7.25rem) - 1.75rem);
+    min-height: 34rem;
+  }
+}
+
+/* The wait bar of a ticket row: how much of the server's alert time the
+   player has already waited. */
+.inbox-wait {
+  display: flex;
+  height: 4px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--color-base-300);
+}
+
+.inbox-wait > span {
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* Category colours (the settings page, the metrics bars). */
+.inbox-color-red { --inbox-color: var(--color-error); }
+.inbox-color-amber { --inbox-color: var(--color-warning); }
+.inbox-color-lime { --inbox-color: var(--color-primary); }
+.inbox-color-teal { --inbox-color: var(--inbox-teal); }
+.inbox-color-lavender { --inbox-color: var(--color-accent); }
+.inbox-color-gray { --inbox-color: var(--color-subtle); }
+
+.inbox-swatch {
+  background: var(--inbox-color);
+}
+
+/* The heatmap of the metrics page: four steps of the signal. */
+.inbox-heat-0 { background: var(--inbox-line); }
+.inbox-heat-1 { background: color-mix(in srgb, var(--color-primary) 16%, transparent); }
+.inbox-heat-2 { background: color-mix(in srgb, var(--color-primary) 34%, transparent); }
+.inbox-heat-3 { background: color-mix(in srgb, var(--color-primary) 60%, transparent); }
+.inbox-heat-4 { background: var(--color-primary); }
