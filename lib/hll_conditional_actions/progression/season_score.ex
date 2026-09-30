@@ -17,6 +17,8 @@ defmodule HllConditionalActions.Progression.SeasonScore do
     field :wins, :integer, default: 0
     field :losses, :integer, default: 0
     field :matches, :integer, default: 0
+    field :allies_matches, :integer, default: 0
+    field :axis_matches, :integer, default: 0
     field :rank, :integer
     field :rewarded_at, :utc_datetime
     field :last_match_at, :utc_datetime

@@ -35,6 +35,7 @@ defmodule HllConditionalActions.Progression.Season do
     field :scoring, Ecto.Enum, values: Scoring.methods(), default: :sum
     field :metric, Ecto.Enum, values: Metrics.match()
     field :weights, :map, default: %{}
+    field :per_match, :boolean, default: false
     field :starts_at, :utc_datetime
     field :ends_at, :utc_datetime
     field :duration_days, :integer
@@ -64,6 +65,7 @@ defmodule HllConditionalActions.Progression.Season do
       :rating,
       :metric,
       :weights,
+      :per_match,
       :starts_at,
       :duration_days,
       :winners_count,
@@ -109,7 +111,7 @@ defmodule HllConditionalActions.Progression.Season do
   end
 
   # A sum or an average needs the stat it counts; a mix needs at least one
-  # stat that weighs something. Weights are kept as whole numbers.
+  # stat that weighs something. Weights keep up to two decimals.
   defp validate_scoring(changeset) do
     case get_field(changeset, :scoring) do
       scoring when scoring in [:sum, :average] -> validate_required(changeset, [:metric])

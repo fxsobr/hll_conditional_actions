@@ -54,6 +54,28 @@ defmodule HllConditionalActions.Progression.ScoringTest do
     assert %{"a" => %{score: 210}} = Scoring.score_match(weighted, [player], %{}, nil)
   end
 
+  test "weights may have decimals, and a combined score can be per match" do
+    weighted =
+      season(%{
+        scoring: :weighted,
+        weights: %{"kills" => "0,5", "support" => 1.5},
+        per_match: true
+      })
+
+    player = p("a", "allies", %{"kills" => 10, "support" => 100})
+
+    assert %{"a" => %{total: 155, score: 155, matches: 1}} =
+             Scoring.score_match(weighted, [player], %{}, nil)
+
+    assert %{"a" => %{total: 310, score: 155, matches: 2}} =
+             Scoring.score_match(
+               weighted,
+               [player],
+               %{"a" => %{score: 155, total: 155, matches: 1, wins: 0, losses: 0}},
+               nil
+             )
+  end
+
   describe "Elo" do
     @elo %{scoring: :elo, metric: nil, weights: %{}, rating: %{}}
 

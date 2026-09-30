@@ -1,0 +1,673 @@
+/* Styles of the community area of the overhaul. Utilities first; add rules here only for what
+   Tailwind classes cannot express. */
+
+/* The generic controls sit in the components layer, so utilities on the
+   same element (hidden, max-md:hidden, padding) still win. */
+@layer components {
+  /* ── Header pill buttons (48px) ─────────────────────────────────────────── */
+  .com-pill {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding: 0 1.25rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: 999px;
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, opacity 150ms ease;
+  }
+
+  .com-pill:hover {
+    background: var(--color-secondary);
+  }
+
+  .com-pill:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .com-pill--primary {
+    border: 0;
+    padding: 0 1.375rem 0 1.125rem;
+    background: var(--tone-cta);
+    color: var(--tone-on-cta);
+    font-weight: 600;
+  }
+
+  .com-pill--primary:hover {
+    background: var(--tone-cta);
+    opacity: 0.9;
+  }
+
+  .com-back {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: 999px;
+    background: var(--color-base-100);
+    transition: background-color 150ms ease;
+  }
+
+  .com-back:hover {
+    background: var(--color-secondary);
+  }
+
+  /* ── Small pill tabs inside panels ──────────────────────────────────────── */
+  .com-seg {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: var(--color-base-100);
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .com-seg--raised {
+    background: var(--color-secondary);
+  }
+
+  .com-seg-item {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2rem;
+    padding: 0 0.875rem;
+    border-radius: 999px;
+    color: var(--color-subtle);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .com-seg-item:hover {
+    color: var(--color-base-content);
+  }
+
+  .com-seg-item[aria-selected="true"] {
+    background: var(--color-base-content);
+    color: var(--color-base-100);
+    font-weight: 600;
+  }
+
+  /* ── Segmented radio groups of the forms ────────────────────────────────── */
+  .com-radio-seg {
+    display: grid;
+    gap: 0.25rem;
+    height: 3rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-line-raised);
+    border-radius: 0.875rem;
+    background: var(--color-secondary);
+  }
+
+  .com-radio-seg--round {
+    height: 2.75rem;
+    border-radius: 999px;
+  }
+
+  .com-radio-seg-item {
+    display: flex;
+    min-width: 0;
+    cursor: pointer;
+  }
+
+  .com-radio-seg-item > span {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4375rem;
+    min-width: 0;
+    padding: 0 0.5rem;
+    border-radius: 0.625rem;
+    color: var(--color-subtle);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .com-radio-seg--round .com-radio-seg-item > span {
+    border-radius: 999px;
+  }
+
+  .com-radio-seg-item:hover > span {
+    color: var(--color-base-content);
+  }
+
+  .com-radio-seg-item input:checked + span {
+    background: var(--color-base-content);
+    color: var(--color-base-100);
+    font-weight: 600;
+  }
+
+  .com-radio-seg-item input:focus-visible + span {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+
+  /* A tier choice: the chosen one takes the medal's colour. */
+  .com-tier-seg .com-radio-seg-item input:checked + span {
+    background: color-mix(in oklab, var(--tier) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tier) 55%, transparent);
+    color: var(--tier-text);
+  }
+
+  .com-tier-seg .com-radio-seg-item:nth-child(1) { --tier: #d08c5b; --tier-text: #d08c5b; }
+  .com-tier-seg .com-radio-seg-item:nth-child(2) { --tier: #c9cdd3; --tier-text: var(--color-base-content); }
+  .com-tier-seg .com-radio-seg-item:nth-child(3) { --tier: #f4c95d; --tier-text: var(--color-warning); }
+  .com-tier-seg .com-radio-seg-item:nth-child(4) { --tier: #c3b3ff; --tier-text: var(--color-accent); }
+
+  /* ── Switch ─────────────────────────────────────────────────────────────── */
+  .com-switch {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 1.625rem;
+  }
+
+  .com-switch input[type="checkbox"] {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  .com-switch-knob {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    padding: 0.1875rem;
+    border-radius: 999px;
+    background: var(--color-base-300);
+    transition: background-color 150ms ease;
+  }
+
+  .com-switch-knob::after {
+    content: "";
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--color-base-100);
+    transition: transform 150ms ease, background-color 150ms ease;
+  }
+
+  .com-switch input:checked + .com-switch-knob {
+    background: var(--color-primary);
+  }
+
+  .com-switch input:checked + .com-switch-knob::after {
+    transform: translateX(1.125rem);
+    background: var(--color-primary-content);
+  }
+
+  .com-switch--engine input:checked + .com-switch-knob {
+    background: var(--color-accent);
+  }
+
+  .com-switch input:focus-visible + .com-switch-knob {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .com-switch--sm {
+    width: 2rem;
+    height: 1.25rem;
+  }
+
+  .com-switch--sm .com-switch-knob {
+    padding: 0.125rem;
+  }
+
+  .com-switch--sm .com-switch-knob::after {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .com-switch--sm input:checked + .com-switch-knob::after {
+    transform: translateX(0.75rem);
+  }
+
+  /* ── Stepper ────────────────────────────────────────────────────────────── */
+  .com-stepper {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+    align-items: center;
+    height: 3rem;
+    border: 1px solid var(--color-line-raised);
+    border-radius: 0.875rem;
+    background: var(--color-secondary);
+  }
+
+  .com-stepper button {
+    height: 100%;
+    color: var(--color-subtle);
+    font-size: 1.125rem;
+    cursor: pointer;
+  }
+
+  .com-stepper button:hover {
+    color: var(--color-base-content);
+  }
+
+  .com-stepper input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    text-align: center;
+    font-size: 1rem;
+    outline: 0;
+    -moz-appearance: textfield;
+  }
+
+  .com-stepper input::-webkit-outer-spin-button,
+  .com-stepper input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* ── Form fields (48px, raised) ─────────────────────────────────────────── */
+  .com-field {
+    width: 100%;
+    height: 3rem;
+    padding: 0 1rem;
+    border: 1px solid var(--color-line-raised);
+    border-radius: 0.875rem;
+    background: var(--color-secondary);
+    color: var(--color-base-content);
+    font-size: 0.9375rem;
+    outline: 0;
+    transition: border-color 150ms ease;
+  }
+
+  .com-field:focus,
+  .com-field:focus-within {
+    border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+  }
+
+  textarea.com-field {
+    height: auto;
+    padding: 0.75rem 1rem;
+    line-height: 1.5;
+    resize: none;
+  }
+
+  select.com-field {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238c8e85' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    background-size: 1rem;
+    cursor: pointer;
+  }
+
+  .com-field--sm {
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+    background-color: var(--color-base-100);
+  }
+
+  .com-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-subtle);
+  }
+
+  /* A filter pill of the lists: a label and a native select in one pill. */
+  .com-filter {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.5rem;
+    padding: 0 0.875rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: 999px;
+    background: var(--color-secondary);
+    font-size: 0.8125rem;
+  }
+
+  .com-filter select {
+    appearance: none;
+    border: 0;
+    padding: 0 1.25rem 0 0;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238c8e85' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right center / 0.875rem;
+    color: var(--color-base-content);
+    font: inherit;
+    outline: 0;
+    cursor: pointer;
+  }
+
+  .com-filter select option {
+    background: var(--color-base-100);
+  }
+
+  /* ── Section labels of the forms ────────────────────────────────────────── */
+  .com-section-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .com-section-label--rule {
+    border-top: 1px solid var(--color-line-soft);
+    padding-top: 0.875rem;
+  }
+
+}
+
+/* ── Server chips (multi choice) ────────────────────────────────────────── */
+.com-chip {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.com-chip > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--color-line-raised);
+  border-radius: 999px;
+  background: var(--color-secondary);
+  color: var(--color-subtle);
+  font-size: 0.8125rem;
+  transition: all 150ms ease;
+}
+
+.com-chip input:checked + span {
+  border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.com-chip input:checked + span .com-chip-check {
+  display: inline-block;
+}
+
+.com-chip-check {
+  display: none;
+}
+
+.com-chip input:focus-visible + span {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* ── Seasons ────────────────────────────────────────────────────────────── */
+
+/* The running season's photo hero stays dark in both themes. */
+.season-hero {
+  --color-base-content: #f3f2ec;
+  --color-subtle: #cfcfc6;
+  --color-primary: #d2f36b;
+  color: #f3f2ec;
+  background: #181916;
+}
+
+.season-hero-scrim {
+  background: linear-gradient(180deg, rgba(15, 16, 14, 0.35) 0%, rgba(15, 16, 14, 0.95) 75%);
+}
+
+.season-hero-chip {
+  background: rgba(24, 25, 22, 0.8);
+  color: #f3f2ec;
+}
+
+/* The podium: silver and bronze numbers; the winner on the signal. */
+.podium-silver { color: #c9cdd3; }
+.podium-bronze { color: #d08c5b; }
+
+:root:not(.dark) .podium-silver { color: #4f5660; }
+:root:not(.dark) .podium-bronze { color: #8a4f22; }
+
+.podium-first {
+  background: #d2f36b;
+  color: #1a2006;
+}
+
+.podium-first-meta {
+  color: #3a4514;
+}
+
+.season-standings-grid {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 3.5rem 4.5rem;
+  column-gap: 0.75rem;
+  align-items: center;
+}
+
+@media (min-width: 48rem) {
+  .season-standings-grid {
+    grid-template-columns: 3rem minmax(0, 1fr) 5.625rem 5.625rem 7.5rem 4.375rem;
+  }
+}
+
+.prize-line {
+  flex-grow: 1;
+  border-top: 1px dashed color-mix(in oklab, var(--color-primary) 50%, transparent);
+}
+
+:root:not(.dark) .prize-line {
+  border-top-color: #9cc23a;
+}
+
+/* The parts of a combined score: one colour per stat. */
+.part-0 { background: var(--color-primary); }
+.part-1 { background: #7fd6c2; }
+.part-2 { background: #8cc4ff; }
+.part-3 { background: #ff9f5a; }
+.part-4 { background: #c3b3ff; }
+.part-5 { background: #f4c95d; }
+
+:root:not(.dark) .part-1 { background: #2f9c86; }
+:root:not(.dark) .part-2 { background: #1f66b8; }
+:root:not(.dark) .part-3 { background: #b8561a; }
+:root:not(.dark) .part-4 { background: #6b55c9; }
+:root:not(.dark) .part-5 { background: #b88a12; }
+
+.formula-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.125rem 5rem 2rem;
+  gap: 0.625rem;
+  align-items: center;
+}
+
+@media (min-width: 48rem) {
+  .formula-row {
+    grid-template-columns: 1.875rem minmax(0, 1fr) 1.125rem 6rem 9.375rem 2rem;
+  }
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1.875rem minmax(0, 1fr) 3.5rem 4rem 3.375rem;
+  gap: 0.625rem;
+  align-items: center;
+}
+
+/* ── Achievements ───────────────────────────────────────────────────────── */
+.com-tier-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 999px;
+  background: var(--color-base-100);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.com-tier-chip:hover {
+  background: var(--color-secondary);
+}
+
+.com-tier-chip.is-active {
+  border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.achievement-tile--gold {
+  border-color: rgba(244, 201, 93, 0.3);
+}
+
+.achievement-tile--legendary {
+  border-color: #3a3552;
+  background: #1d1b26;
+}
+
+.achievement-tile--legendary .achievement-tile-sub {
+  color: #a49cc4;
+}
+
+:root:not(.dark) .achievement-tile--gold {
+  border-color: rgba(184, 138, 18, 0.35);
+}
+
+:root:not(.dark) .achievement-tile--legendary {
+  border-color: #d9d0f7;
+  background: #f4f1fd;
+}
+
+:root:not(.dark) .achievement-tile--legendary .achievement-tile-sub {
+  color: #5d4fa0;
+}
+
+.tier-dot--bronze { background: #d08c5b; }
+.tier-dot--silver { background: #c9cdd3; }
+.tier-dot--gold { background: #f4c95d; }
+.tier-dot--legendary { background: #c3b3ff; }
+
+.hex {
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+
+/* The simulation switch sits on a lavender card. */
+.engine-card {
+  border: 1px solid #2d2940;
+  background: #1d1b26;
+}
+
+.engine-card-title { color: #d9d2f5; }
+.engine-card-sub { color: #a49cc4; }
+
+:root:not(.dark) .engine-card {
+  border-color: #d9d0f7;
+  background: #f4f1fd;
+}
+
+:root:not(.dark) .engine-card-title { color: #43329a; }
+:root:not(.dark) .engine-card-sub { color: #5d4fa0; }
+
+.game-message {
+  border: 1px solid var(--color-base-300);
+  background: #0a0b09;
+  color: #e6e5de;
+}
+
+.game-message-dim {
+  color: #b3b4ab;
+}
+
+.histogram-bar {
+  background: var(--color-line-strong);
+}
+
+.histogram-bar--hit {
+  background: #f4c95d;
+}
+
+:root:not(.dark) .histogram-bar--hit {
+  background: #b88a12;
+}
+
+/* ── Matches ────────────────────────────────────────────────────────────── */
+.match-row-grid {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  column-gap: 0.875rem;
+  align-items: center;
+}
+
+@media (min-width: 64rem) {
+  .match-row-grid {
+    grid-template-columns: 6rem minmax(0, 1fr) 6.5rem 4rem 4rem 6.5rem 7.375rem 1rem;
+  }
+}
+
+.match-report-hero {
+  color: #f3f2ec;
+  background: #181916;
+}
+
+.match-hero-scrim {
+  background: linear-gradient(90deg, rgba(15, 16, 14, 0.94) 0%, rgba(15, 16, 14, 0.8) 45%, rgba(15, 16, 14, 0.6) 100%);
+}
+
+.match-hero-tile {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(24, 25, 22, 0.74);
+}
+
+.match-report-hero .text-allies { color: #8cc4ff; }
+.match-report-hero .text-axis { color: #ff9f5a; }
+.match-report-hero .bg-allies { background: #8cc4ff; }
+.match-report-hero .bg-axis { background: #ff9f5a; }
+
+.mvp-card {
+  border: 1px solid #3a2c22;
+  background: #1f1a16;
+  --mvp-dim: #c9a68d;
+  --mvp-tile: #2a211b;
+}
+
+:root:not(.dark) .mvp-card {
+  border-color: #ecd9c7;
+  background: #fbf3ec;
+  --mvp-dim: #8a5a36;
+  --mvp-tile: #f3e6da;
+}
+
+.scoreboard-grid {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 3rem 3.5rem;
+  column-gap: 0.75rem;
+  align-items: center;
+}
+
+@media (min-width: 64rem) {
+  .scoreboard-grid {
+    grid-template-columns: 2.5rem minmax(0, 1.8fr) 6rem repeat(7, minmax(0, 1fr));
+  }
+}

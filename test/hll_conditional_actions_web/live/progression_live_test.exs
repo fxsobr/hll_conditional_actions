@@ -33,14 +33,33 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
     test "an empty gallery offers the starter set", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server}/achievements")
 
-      view |> element("button[phx-click=starter_set]") |> render_click()
+      view |> element("#starter-set button") |> render_click()
 
       assert has_element?(view, "#achievements li", "Sharpshooter")
       assert has_element?(view, "#achievements li", "Simulation")
+      assert has_element?(view, "#starter-set", "12")
+    end
+
+    test "the gallery filters by tier and scope", %{conn: conn, server: server} do
+      Progression.create_starter_set(server.id)
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server}/achievements")
+
+      assert has_element?(view, "#tier-legendary", "2")
+      view |> element("#tier-legendary") |> render_click()
+      assert has_element?(view, "#achievements li", "Regular")
+      refute has_element?(view, "#achievements li", "Sharpshooter")
+
+      view |> element("#tier-all") |> render_click()
+      view |> element("#achievement-scope button", "Over the career") |> render_click()
+      assert has_element?(view, "#achievements li", "Veteran")
+      refute has_element?(view, "#achievements li", "Sharpshooter")
     end
 
     test "creating one, for the server", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server}/achievements/new")
+
+      assert has_element?(view, "#achievement-preview")
+      assert has_element?(view, "#achievement-game-message")
 
       view
       |> form("#achievement-form",
@@ -55,9 +74,11 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
       )
       |> render_submit()
 
-      assert_patch(view, ~p"/servers/#{server}/achievements")
+      assert_redirect(view, ~p"/servers/#{server}/achievements")
+
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server}/achievements")
       assert has_element?(view, "#achievements li", "Iron wall")
-      assert has_element?(view, "#achievements li", "VIP 24h")
+      assert has_element?(view, "#achievements li", "+24 h VIP")
       assert [%{server_id: server_id}] = Progression.list_achievements(server.id)
       assert server_id == server.id
 
@@ -78,7 +99,7 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
         season: %{
           name: "Winter cup",
           metric: "support",
-          duration_days: "21",
+          duration_days: "14",
           winners_count: "5",
           min_matches: "3",
           reward_vip_hours: "72"
@@ -86,13 +107,38 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
       )
       |> render_submit()
 
-      assert [%{name: "Winter cup", duration_days: 21, winners_count: 5} = season] =
+      assert [%{name: "Winter cup", duration_days: 14, winners_count: 5} = season] =
                Progression.list_seasons()
 
-      assert DateTime.diff(season.ends_at, season.starts_at, :day) == 21
+      assert DateTime.diff(season.ends_at, season.starts_at, :day) == 14
 
       {path, _flash} = assert_redirect(view)
       assert path == "/seasons/#{season.id}"
+    end
+
+    test "a combined season from the formula rows, per match", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/seasons/new")
+
+      assert has_element?(view, "#season-formula-editor")
+      view |> element("#season-add-metric") |> render_click()
+
+      view
+      |> form("#season-form",
+        season: %{
+          name: "Autumn",
+          formula: %{
+            "0" => %{"metric" => "combat", "weight" => "1"},
+            "1" => %{"metric" => "support", "weight" => "0,5"}
+          }
+        }
+      )
+      |> render_submit()
+
+      assert [%{scoring: :weighted, per_match: true, weights: weights}] =
+               Progression.list_seasons()
+
+      assert weights["combat"] == 1
+      assert weights["support"] == 0.5
     end
 
     test "a rating season across two servers", %{conn: conn, server: server} do
@@ -115,7 +161,7 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
       assert has_element?(show, "#rating-summary")
     end
 
-    test "the standings page shows who is in line", %{conn: conn, server: server} do
+    test "the season page shows the podium and the prize line", %{conn: conn, server: server} do
       {:ok, season} =
         Progression.create_season(%{
           name: "Season 1",
@@ -127,13 +173,38 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
         })
 
       Progression.record_match(server, %{
-        "a" => player(%{"player_id" => "a", "name" => "Ana", "kills" => 30})
+        "a" => player(%{"player_id" => "a", "name" => "Ana", "kills" => 30}),
+        "b" => player(%{"player_id" => "b", "name" => "Bo", "kills" => 10})
       })
 
       {:ok, view, _html} = live(conn, ~p"/seasons/#{season.id}")
 
-      assert has_element?(view, "#season-standings", "Ana")
-      assert has_element?(view, "#season-standings", "In line")
+      assert has_element?(view, "#season-podium", "Ana")
+      assert has_element?(view, "#season-standings", "Bo")
+      assert has_element?(view, "#prize-line")
+      assert has_element?(view, "#season-formula")
+
+      {:ok, index, _html} = live(conn, ~p"/seasons")
+      assert has_element?(index, "#season-name", "Season 1")
+    end
+
+    test "editing a season", %{conn: conn, server: server} do
+      {:ok, season} =
+        Progression.create_season(%{
+          name: "Season 1",
+          server_id: server.id,
+          metric: :kills,
+          duration_days: 7
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/seasons/#{season.id}/edit")
+
+      view
+      |> form("#season-form", season: %{name: "Season one", reward_vip_hours: "48"})
+      |> render_submit()
+
+      assert_redirect(view, ~p"/seasons/#{season.id}")
+      assert %{name: "Season one", reward_vip_hours: 48} = Progression.get_season!(season.id)
     end
   end
 end
