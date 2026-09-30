@@ -29,6 +29,13 @@ config :hll_conditional_actions, HllConditionalActionsWeb.Endpoint,
     ip: if(System.get_env("DEV_BIND_ALL") in ~w(true 1), do: {0, 0, 0, 0}, else: {127, 0, 0, 1}),
     port: String.to_integer(System.get_env("PORT", "4000"))
   ],
+  # A public tunnel (cloudflared, ngrok) lets payment providers reach the
+  # webhooks; DEV_PUBLIC_URL makes the links the app hands out use it.
+  url:
+    (case System.get_env("DEV_PUBLIC_URL") do
+       blank when blank in [nil, ""] -> [host: "localhost"]
+       public -> URI.parse(public) |> then(&[host: &1.host, scheme: &1.scheme, port: &1.port])
+     end),
   check_origin: false,
   code_reloader: true,
   debug_errors: true,

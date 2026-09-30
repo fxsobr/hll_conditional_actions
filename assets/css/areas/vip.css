@@ -1,0 +1,643 @@
+/* Loja VIP admin (VipShop, VipPackages, VipPurchases, VipCoupons, VipPayments,
+   VipEmails, VipStorefront, VipSettings, VipOnboarding boards). The boards
+   tint chips and cards with values the shared tokens do not carry (the light
+   board's #E4F3B5 lime tint, its amber and lavender pairs), so they are kept
+   here as variables that flip with the scheme. */
+
+:root {
+  --vip-ok-bg: #e4f3b5;
+  --vip-ok-fg: #3f5c00;
+  --vip-ok-soft: #f1f8dc;
+  --vip-ok-line: #9cc23a;
+  --vip-dot: #6e9a00;
+  --vip-lime: #d2f36b;
+  --vip-on-lime: #1a2006;
+  --vip-lime-muted: #3a4514;
+  --vip-lime-faint: #56631f;
+  --vip-warn-fg: #6a4b00;
+  --vip-warn-bg: #fcefc8;
+  --vip-warn-soft: #fdf6e2;
+  --vip-warn-line: #ebcf86;
+  --vip-warn-fill: #e0a81e;
+  --vip-eng-fg: #43329a;
+  --vip-eng-bg: #e7e1fb;
+  --vip-eng-soft: #f1edfd;
+  --vip-eng-line: #dcd3f7;
+  --vip-eng-text: #5e5596;
+  --vip-err-fg: #b3261e;
+  --vip-err-bg: #fbe3e0;
+  --vip-danger-text: #c23b32;
+  --vip-underline: #16170f;
+  --vip-control: #ffffff;
+  --vip-track: #d8d7cd;
+  --vip-well: #efeee8;
+  --vip-switch-off: #d8d7cd;
+  --vip-knob-off: #ffffff;
+}
+
+.dark {
+  --vip-ok-bg: rgba(210, 243, 107, 0.12);
+  --vip-ok-fg: #d2f36b;
+  --vip-ok-soft: rgba(210, 243, 107, 0.08);
+  --vip-ok-line: rgba(210, 243, 107, 0.4);
+  --vip-dot: #d2f36b;
+  --vip-warn-fg: #f4c95d;
+  --vip-warn-bg: rgba(244, 201, 93, 0.14);
+  --vip-warn-soft: rgba(244, 201, 93, 0.07);
+  --vip-warn-line: rgba(244, 201, 93, 0.3);
+  --vip-warn-fill: #f4c95d;
+  --vip-eng-fg: #c3b3ff;
+  --vip-eng-bg: rgba(195, 179, 255, 0.13);
+  --vip-eng-soft: rgba(195, 179, 255, 0.08);
+  --vip-eng-line: rgba(195, 179, 255, 0.3);
+  --vip-eng-text: #d6ccff;
+  --vip-err-fg: #ff7b72;
+  --vip-err-bg: rgba(255, 123, 114, 0.14);
+  --vip-danger-text: #ff9c95;
+  --vip-underline: #d2f36b;
+  --vip-control: #20211d;
+  --vip-track: #33352e;
+  --vip-well: #14160f;
+  --vip-switch-off: #33352e;
+  --vip-knob-off: #8c8e85;
+}
+
+/* Component classes sit in the components layer, so utilities on the same
+   element (a height, a padding) win over them. */
+@layer components {
+  /* ── The area's tabs: underlined text, not pills ─────────────────────────── */
+
+  .vip-tabs {
+    display: flex;
+    gap: 1.375rem;
+    border-bottom: 1px solid var(--color-line-soft);
+    font-size: 0.875rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .vip-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .vip-tab {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: -1px;
+    padding: 0 0.125rem 0.75rem;
+    border-bottom: 2px solid transparent;
+    color: var(--color-muted);
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+
+  .vip-tab:hover {
+    color: var(--color-base-content);
+  }
+
+  .vip-tab[aria-current="page"] {
+    border-bottom-color: var(--vip-underline);
+    color: var(--color-base-content);
+    font-weight: 600;
+  }
+
+  /* ── Chips, dots and tints ───────────────────────────────────────────────── */
+
+  .vip-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 999px;
+    padding: 0.25rem 0.5625rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+    background: var(--color-secondary);
+    color: var(--color-subtle);
+  }
+
+  .vip-chip-ok {
+    background: var(--vip-ok-bg);
+    color: var(--vip-ok-fg);
+  }
+
+  .vip-chip-warn {
+    background: var(--vip-warn-bg);
+    color: var(--vip-warn-fg);
+  }
+
+  .vip-chip-eng {
+    background: var(--vip-eng-bg);
+    color: var(--vip-eng-fg);
+  }
+
+  .vip-chip-err {
+    background: var(--vip-err-bg);
+    color: var(--vip-err-fg);
+  }
+
+  .vip-chip-lime {
+    background: var(--vip-lime);
+    color: var(--vip-on-lime);
+  }
+
+  .vip-chip-ink {
+    background: var(--vip-on-lime);
+    color: var(--vip-lime);
+  }
+
+  .vip-ok {
+    color: var(--vip-ok-fg);
+  }
+
+  .vip-warn {
+    color: var(--vip-warn-fg);
+  }
+
+  .vip-eng {
+    color: var(--vip-eng-fg);
+  }
+
+  .vip-err {
+    color: var(--vip-err-fg);
+  }
+
+  .vip-danger {
+    color: var(--vip-danger-text);
+  }
+
+  .vip-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .vip-ok .vip-dot,
+  .vip-dot-ok {
+    background: var(--vip-dot);
+  }
+
+  .vip-warn-box {
+    background: var(--vip-warn-soft);
+    border: 1px solid var(--vip-warn-line);
+  }
+
+  .vip-warn-line {
+    border-color: var(--vip-warn-line);
+  }
+
+  .vip-ok-box {
+    background: var(--vip-ok-soft);
+    border: 1px solid var(--vip-ok-line);
+  }
+
+  .vip-eng-box {
+    background: var(--vip-eng-soft);
+    border: 1px solid var(--vip-eng-line);
+    color: var(--vip-eng-text);
+  }
+
+  .vip-selected {
+    border: 1px solid var(--vip-ok-line);
+    box-shadow: 0 0 0 3px var(--vip-ok-soft);
+  }
+
+  .vip-lime-card {
+    background: var(--vip-lime);
+    color: var(--vip-on-lime);
+  }
+
+  .vip-lime-card .vip-lime-muted {
+    color: var(--vip-lime-muted);
+  }
+
+  .vip-lime-card .vip-lime-faint {
+    color: var(--vip-lime-faint);
+  }
+
+  .vip-well {
+    background: var(--vip-well);
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+  .vip-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding: 0 1.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-base-300);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      opacity 0.15s;
+  }
+
+  .vip-btn:hover {
+    border-color: var(--color-line-strong);
+  }
+
+  .vip-btn:disabled,
+  .vip-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    background: var(--color-secondary);
+    color: var(--color-muted);
+  }
+
+  .vip-btn-cta {
+    border-color: transparent;
+    background: var(--tone-cta);
+    color: var(--tone-on-cta);
+    font-weight: 600;
+  }
+
+  .vip-btn-cta:hover {
+    border-color: transparent;
+    opacity: 0.9;
+  }
+
+  .vip-btn-raised {
+    background: var(--color-secondary);
+  }
+
+  .vip-btn-warn {
+    border: 0;
+    background: var(--vip-warn-fill);
+    color: var(--color-on-warn);
+    font-weight: 600;
+  }
+
+  .vip-btn-ghost {
+    border-color: var(--color-line-raised);
+    background: transparent;
+  }
+
+  .vip-btn-sm {
+    height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .vip-btn-md {
+    height: 2.25rem;
+    padding: 0 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  .vip-btn-lg {
+    height: 2.75rem;
+    padding: 0 1.125rem;
+  }
+
+  /* ── Fields ──────────────────────────────────────────────────────────────── */
+
+  .vip-field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    width: 100%;
+    min-width: 0;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-secondary);
+    padding: 0 0.875rem;
+    color: var(--color-base-content);
+    font-size: 0.875rem;
+    outline: 0;
+    transition: border-color 0.15s;
+  }
+
+  .vip-field:focus,
+  .vip-field:focus-within {
+    border-color: var(--vip-ok-line);
+  }
+
+  .vip-field.vip-changed {
+    border-color: var(--vip-warn-line);
+  }
+
+  .vip-field input,
+  .vip-field select {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: 0;
+    padding: 0;
+  }
+
+  .vip-field input:focus,
+  .vip-field select:focus {
+    box-shadow: none;
+  }
+
+  textarea.vip-field {
+    height: auto;
+    padding: 0.75rem 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  .vip-check {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--vip-lime);
+  }
+
+  :root:not(.dark) .vip-check {
+    accent-color: var(--vip-dot);
+  }
+
+  /* A switch drawn over a checkbox, so it posts with the form. */
+  .vip-switch {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 1.625rem;
+    cursor: pointer;
+  }
+
+  .vip-switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .vip-switch span {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--vip-switch-off);
+    transition: background-color 0.15s;
+  }
+
+  .vip-switch span::after {
+    content: "";
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--vip-knob-off);
+    transition: transform 0.15s;
+  }
+
+  .vip-switch input:checked + span {
+    background: var(--vip-lime);
+  }
+
+  :root:not(.dark) .vip-switch input:checked + span {
+    background: var(--vip-dot);
+  }
+
+  .vip-switch input:checked + span::after {
+    transform: translateX(1.125rem);
+    background: var(--vip-on-lime);
+  }
+
+  :root:not(.dark) .vip-switch input:checked + span::after {
+    background: #ffffff;
+  }
+
+  .vip-switch input:focus-visible + span {
+    outline: 2px solid var(--vip-ok-line);
+    outline-offset: 2px;
+  }
+
+  .vip-switch input:disabled + span {
+    opacity: 0.5;
+  }
+
+  /* Segmented choice (Porcentagem / Valor fixo, SMTP / SendGrid / Brevo). */
+  .vip-seg {
+    display: flex;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: var(--color-secondary);
+  }
+
+  .vip-seg label,
+  .vip-seg button,
+  .vip-seg a {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 2.25rem;
+    padding: 0 0.875rem;
+    border-radius: 999px;
+    color: var(--color-subtle);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .vip-seg input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .vip-seg label:has(input:checked),
+  .vip-seg [aria-pressed="true"],
+  .vip-seg [aria-current="true"] {
+    background: var(--color-base-content);
+    color: var(--color-base-100);
+    font-weight: 600;
+  }
+
+  .vip-seg-eng [aria-pressed="true"],
+  .vip-seg-eng label:has(input:checked) {
+    background: var(--vip-eng-fg);
+    color: var(--color-base-100);
+  }
+
+  .vip-seg-sm label,
+  .vip-seg-sm button {
+    height: 1.75rem;
+    padding: 0 0.625rem;
+    font-size: 0.75rem;
+  }
+
+  /* Filter chips of the purchases and coupons pages. */
+  .vip-filter {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-line-raised);
+    background: transparent;
+    color: var(--color-base-content);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .vip-filter[aria-current="true"] {
+    border-color: transparent;
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+  }
+
+  .vip-filter-warn {
+    border-color: var(--vip-warn-line);
+    color: var(--vip-warn-fg);
+    background: var(--vip-warn-soft);
+  }
+
+  .vip-filter-err {
+    border-color: color-mix(in oklab, var(--vip-err-fg) 40%, transparent);
+    color: var(--vip-err-fg);
+    background: color-mix(in oklab, var(--vip-err-fg) 8%, transparent);
+  }
+
+  /* The coupon uses bar. */
+  .vip-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-line-raised);
+    overflow: hidden;
+  }
+
+  .vip-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--vip-dot);
+  }
+
+  .vip-bar-warn > span {
+    background: var(--vip-warn-fill);
+  }
+
+  .vip-bar-off > span {
+    background: var(--color-muted);
+  }
+
+  /* The progress segments of the setup guide. */
+  .vip-steps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .vip-steps > span {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--vip-track);
+  }
+
+  .vip-steps > span.done {
+    background: var(--vip-dot);
+  }
+
+  .vip-steps > span.current {
+    background: var(--color-base-content);
+  }
+
+  /* Drag and drop of the package list and the storefront sections. */
+  .vip-sortable [data-sort-id] {
+    cursor: default;
+  }
+
+  .vip-sortable [data-sort-handle] {
+    cursor: grab;
+  }
+
+  .vip-sortable .vip-dragging {
+    opacity: 0.4;
+  }
+
+  /* The email preview: a light message whatever the admin's theme. */
+  .vip-mail {
+    background: #efeee8;
+    color: #16170f;
+  }
+
+  .vip-mail-card {
+    background: #ffffff;
+    color: #16170f;
+  }
+
+  .vip-mail mark {
+    background: transparent;
+    color: inherit;
+    text-decoration: underline dashed #9cc23a;
+    text-underline-offset: 3px;
+    box-shadow: inset 0 -0.5em 0 rgba(210, 243, 107, 0.45);
+  }
+
+  /* The toolbar placeholders of the template editor. */
+  .vip-token {
+    display: inline-flex;
+    align-items: center;
+    height: 1.75rem;
+    padding: 0 0.625rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line-raised);
+    background: transparent;
+    color: var(--color-subtle);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .vip-token:hover {
+    border-color: var(--vip-ok-line);
+    color: var(--color-base-content);
+  }
+
+  /* Storefront preview: the public shop's own tokens (Design.css_vars). */
+  .vip-shop-preview {
+    background: var(--shop-bg);
+    color: var(--shop-text);
+  }
+
+  .vip-shop-preview .sp-surface {
+    background: var(--shop-surface);
+    border-color: var(--shop-border);
+  }
+
+  .vip-shop-preview .sp-muted {
+    color: var(--shop-muted);
+  }
+
+  .vip-shop-preview .sp-accent {
+    background: var(--shop-accent);
+    color: var(--shop-on-accent);
+  }
+
+  .vip-shop-preview .sp-accent-text {
+    color: var(--shop-accent);
+  }
+
+  .vip-shop-preview .sp-accent-card {
+    background: var(--shop-accent);
+    color: var(--shop-on-accent);
+  }
+}

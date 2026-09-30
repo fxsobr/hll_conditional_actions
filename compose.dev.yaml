@@ -56,6 +56,9 @@ services:
       # Binding to every interface is what makes the port reachable from the
       # host; outside Docker the dev server stays on loopback.
       DEV_BIND_ALL: "true"
+      # The public tunnel address, so payment webhooks and return links work
+      # (see the payments pages of the wiki).
+      DEV_PUBLIC_URL: ${DEV_PUBLIC_URL:-}
       PHX_HOST: localhost
     # CRCON usually runs on the same machine. From inside a container
     # `localhost` is the container itself, so the CRCON URL has to be either
