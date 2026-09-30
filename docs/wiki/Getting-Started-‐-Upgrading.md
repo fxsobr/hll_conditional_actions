@@ -23,12 +23,12 @@
 ```bash
 cd ~/hll_conditional_actions
 git fetch --tags
-git checkout v0.3.1
+git checkout v0.3.2
 docker compose pull
 docker compose up -d
 ```
 
-Replace `v0.3.1` with the version you are moving to. The
+Replace `v0.3.2` with the version you are moving to. The
 [releases page](https://github.com/fxsobr/hll_conditional_actions/releases)
 lists them, and **About** in the app tells you when there is a newer one.
 
@@ -78,7 +78,7 @@ though no code is being compiled.
 The compose file names the image with the version **it** was released as:
 
 ```yaml
-image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.3.1}
+image: ghcr.io/fxsobr/hll_conditional_actions:${APP_VERSION:-v0.3.2}
 ```
 
 So checking out the tag is what selects the image. `pull` then fetches exactly
@@ -209,7 +209,7 @@ backup and no choice.
 
 ## Following a tag, or following main
 
-`git checkout v0.3.1` leaves you in what git calls a detached HEAD. That is
+`git checkout v0.3.2` leaves you in what git calls a detached HEAD. That is
 the right state for a server: it pins you to exactly that commit, and nothing
 moves under you.
 
