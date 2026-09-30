@@ -51,7 +51,7 @@ defmodule HllConditionalActionsWeb.Ui do
         <div
           :if={@title || @action != []}
           class={[
-            "flex flex-wrap items-center justify-between gap-2 border-b border-base-300 pb-3",
+            "flex flex-wrap items-center justify-between gap-2 pb-1",
             not @padded && "px-4 pt-4 sm:px-5"
           ]}
         >
@@ -89,15 +89,18 @@ defmodule HllConditionalActionsWeb.Ui do
 
   def stat(assigns) do
     ~H"""
-    <div class="flex flex-col gap-3 rounded-box bg-base-100 p-4 shadow-figma-card sm:p-5">
-      <p class="overview-card-title border-b border-base-300 pb-3">
-        <span class={["flex size-6 items-center justify-center rounded-selector", icon_box(@tone)]}>
-          <.icon name={@icon} class="size-3.5" />
-        </span>
+    <div class="flex flex-col gap-2 rounded-box bg-base-100 p-4 shadow-figma-card sm:p-5">
+      <p class="flex items-center justify-between gap-2 text-[0.8125rem] text-subtle">
         <span class="truncate">{@label}</span>
+        <span class={[
+          "flex size-7 shrink-0 items-center justify-center rounded-selector",
+          icon_box(@tone)
+        ]}>
+          <.icon name={@icon} class="size-4" />
+        </span>
       </p>
 
-      <p class="truncate text-3xl font-semibold tracking-tight tabular-nums">
+      <p class="mt-auto truncate font-display text-[2.375rem] font-semibold leading-none tracking-tight tabular-nums">
         <%= if @inner_block != [] do %>
           {render_slot(@inner_block)}
         <% else %>
@@ -121,32 +124,369 @@ defmodule HllConditionalActionsWeb.Ui do
   # ── Empty states ───────────────────────────────────────────────────────────
 
   @doc """
-  The empty state: icon chip, a title, one paragraph, at most one action.
+  The empty state (States board, "Vazio"): an icon, a title in the display
+  face, one short paragraph and at most one action, centred on a panel.
+
+      <.empty_state icon="hero-bolt" title={gettext("No rules yet")}
+        description={gettext("Start from a ready recipe.")}>
+        <:action>
+          <.link navigate={~p"/rules/new"} class="chip-button chip-button--signal">…</.link>
+        </:action>
+      </.empty_state>
+
+  The `:action` slot takes the button itself; `chip-button` (secondary),
+  `chip-button--signal` (the one lime action) and `chip-button--inverse` are
+  the board's shapes.
   """
   attr :icon, :string, required: true
   attr :title, :string, required: true
   attr :description, :string, default: nil
-  attr :card, :boolean, default: true
+  attr :card, :boolean, default: true, doc: "draw it on its own panel"
+  attr :tone, :string, default: "primary", values: ~w(primary neutral engine warning error)
+  attr :id, :string, default: nil
+  attr :class, :any, default: nil
   slot :action, doc: "a single call to action"
+  slot :inner_block, doc: "rich text in place of `description`"
 
   def empty_state(assigns) do
     ~H"""
-    <div class={[
-      "flex flex-col items-center gap-2 py-12 text-center",
-      @card && "rounded-box bg-base-100 shadow-figma-card"
-    ]}>
-      <div class="flex size-12 items-center justify-center rounded-field bg-gradient-primary">
-        <.icon name={@icon} class="size-6 text-primary" />
+    <div
+      id={@id}
+      class={[
+        "flex flex-col items-center justify-center gap-2 px-7 py-10 text-center",
+        @card && "rounded-[1.75rem] bg-base-100",
+        @class
+      ]}
+    >
+      <span class={["mb-1 flex size-12 items-center justify-center rounded-2xl", state_tone(@tone)]}>
+        <.icon name={@icon} class="size-6" />
+      </span>
+
+      <h2 class="font-display text-lg font-semibold">{@title}</h2>
+
+      <p
+        :if={@description || @inner_block != []}
+        class="max-w-[19rem] text-[0.8125rem] leading-[1.45] text-subtle"
+      >
+        {@description}{render_slot(@inner_block)}
+      </p>
+
+      <div :if={@action != []} class="mt-1.5 flex flex-wrap justify-center gap-2">
+        {render_slot(@action)}
       </div>
-
-      <h2 class="text-title-large">{@title}</h2>
-
-      <p :if={@description} class="max-w-md px-4 text-body-small text-muted">{@description}</p>
-
-      <div :if={@action != []} class="mt-2">{render_slot(@action)}</div>
     </div>
     """
   end
+
+  defp state_tone("neutral"), do: "bg-secondary text-subtle"
+  defp state_tone("engine"), do: "bg-accent/13 text-accent"
+  defp state_tone("warning"), do: "bg-warning/13 text-warning"
+  defp state_tone("error"), do: "bg-error/14 text-error"
+  defp state_tone(_primary), do: "bg-primary/12 text-primary"
+
+  # ── Error, permission and banners ──────────────────────────────────────────
+
+  @doc """
+  Something failed and the page says what and what to do (States board,
+  "Erro"): an icon tile, a title, what happened, and the ways out.
+
+      <.error_state id="crcon-down" title={gettext("CRCON of %{server} is down", server: name)}>
+        {gettext("We tried 3 times.")}
+        <:actions>
+          <button class="chip-button chip-button--inverse" phx-click="retry">…</button>
+        </:actions>
+        <:aside>{gettext("next in 28 s")}</:aside>
+      </.error_state>
+  """
+  attr :id, :string, default: nil
+  attr :title, :string, required: true
+  attr :icon, :string, default: "hero-server-stack"
+  attr :class, :any, default: nil
+  slot :inner_block
+  slot :actions
+  slot :aside, doc: "a quiet note at the end of the actions row, e.g. the next retry"
+
+  def error_state(assigns) do
+    ~H"""
+    <section id={@id} role="alert" class={["state-panel state-panel--error", @class]}>
+      <div class="flex items-center gap-3">
+        <span class="flex size-[2.375rem] shrink-0 items-center justify-center rounded-xl bg-error/14 text-error">
+          <.icon name={@icon} class="size-5" />
+        </span>
+        <strong class="font-display text-lg font-semibold">{@title}</strong>
+      </div>
+      <p :if={@inner_block != []} class="text-[0.8125rem] leading-[1.45] text-subtle">
+        {render_slot(@inner_block)}
+      </p>
+      <div
+        :if={@actions != [] or @aside != []}
+        class="mt-auto flex flex-wrap items-center gap-2 pt-2"
+      >
+        {render_slot(@actions)}
+        <span :if={@aside != []} class="ml-auto font-mono text-[0.6875rem] text-muted">
+          {render_slot(@aside)}
+        </span>
+      </div>
+    </section>
+    """
+  end
+
+  @doc """
+  The user may see the page but not do this (States board, "Sem
+  permissão"): which role they have and which permission is missing.
+  """
+  attr :id, :string, default: nil
+  attr :role, :string, default: nil, doc: "the user's role name"
+  attr :permission, :string, default: nil, doc: "the missing permission, in words"
+  attr :back, :string, default: "/", doc: "where the way out goes"
+  attr :class, :any, default: nil
+  slot :actions
+
+  def no_permission(assigns) do
+    ~H"""
+    <section id={@id} class={["state-panel", @class]}>
+      <div class="flex items-center gap-3">
+        <span class="flex size-[2.375rem] shrink-0 items-center justify-center rounded-xl bg-secondary text-subtle">
+          <.icon name="hero-lock-closed" class="size-5" />
+        </span>
+        <strong class="flex-1 font-display text-lg font-semibold">{gettext("No permission")}</strong>
+        <span class="rounded-lg bg-secondary px-2 py-1 font-mono text-xs text-subtle">403</span>
+      </div>
+      <p class="text-[0.8125rem] leading-[1.45] text-subtle">
+        <%= if @role do %>
+          {gettext("Your role,")}
+          <strong class="font-semibold text-base-content">{@role}</strong>{gettext(
+            ", cannot do this."
+          )}
+        <% else %>
+          {gettext("Your role cannot do this.")}
+        <% end %>
+        <span :if={@permission}>
+          {gettext("The “%{permission}” permission is missing.", permission: @permission)}
+        </span>
+      </p>
+      <div class="mt-auto flex flex-wrap gap-2 pt-2">
+        {render_slot(@actions)}
+        <.link navigate={@back} class="chip-button chip-button--ghost">
+          {gettext("Back to the Briefing")}
+        </.link>
+      </div>
+    </section>
+    """
+  end
+
+  @doc """
+  A strip that tells what is wrong right now across the page (States
+  board): `error` with a glowing dot (a stream down, offline), `warning`
+  with an icon tile (a rule paused on its own). The action is optional.
+  """
+  attr :id, :string, default: nil
+  attr :tone, :string, default: "error", values: ~w(error warning)
+  attr :title, :string, required: true
+  attr :detail, :string, default: nil
+  attr :icon, :string, default: "hero-pause"
+  attr :class, :any, default: nil
+  slot :action
+
+  def banner(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      role={if @tone == "error", do: "alert", else: "status"}
+      class={["state-banner", "state-banner--#{@tone}", @class]}
+    >
+      <span
+        :if={@tone == "error"}
+        class="state-banner-dot size-[0.5625rem] shrink-0 rounded-full bg-error"
+        aria-hidden="true"
+      ></span>
+      <span
+        :if={@tone == "warning"}
+        class="flex size-[1.875rem] shrink-0 items-center justify-center rounded-[0.625rem] bg-warning/16 text-warning"
+      >
+        <.icon name={@icon} class="size-4" />
+      </span>
+      <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+        <strong class="text-sm font-semibold">{@title}</strong>
+        <span
+          :if={@detail}
+          class={["text-xs", if(@tone == "error", do: "text-error", else: "text-warning")]}
+        >
+          {@detail}
+        </span>
+      </span>
+      {render_slot(@action)}
+    </div>
+    """
+  end
+
+  # ── Loading ────────────────────────────────────────────────────────────────
+
+  @doc """
+  The loading placeholders of the States board ("Carregando"), shaped like
+  what is on its way: `kpis` (a row of big-number tiles), `table` (rows
+  with a lead tile) and `feed` (time, icon, line, and what is being waited
+  for). Marked busy for assistive technology.
+  """
+  attr :id, :string, default: nil
+  attr :variant, :string, default: "table", values: ~w(kpis table feed)
+  attr :count, :integer, default: 3, doc: "tiles or rows"
+  attr :label, :string, default: nil, doc: "feed only: what is being waited for"
+  attr :class, :any, default: nil
+
+  def loading_state(%{variant: "kpis"} = assigns) do
+    ~H"""
+    <section
+      id={@id}
+      aria-busy="true"
+      aria-label={gettext("Loading")}
+      class={["grid gap-2.5 rounded-[1.75rem] bg-base-100 p-3", @class]}
+      style={"grid-template-columns: repeat(#{@count}, minmax(0, 1fr))"}
+    >
+      <div
+        :for={i <- 1..@count}
+        class="flex min-h-[7rem] flex-col justify-between gap-6 rounded-[1.25rem] bg-secondary px-[1.125rem] py-4"
+      >
+        <span class="skeleton-bar h-2.5" style={"width: #{Enum.at([70, 60, 65, 55, 75], rem(i, 5))}%"}></span>
+        <span class="flex flex-col gap-2">
+          <span class="skeleton-bar skeleton-bar--strong h-[1.625rem] w-1/2 rounded-lg"></span>
+          <span class="skeleton-bar h-2 w-4/5"></span>
+        </span>
+      </div>
+    </section>
+    """
+  end
+
+  def loading_state(%{variant: "feed"} = assigns) do
+    ~H"""
+    <section
+      id={@id}
+      aria-busy="true"
+      aria-label={@label || gettext("Loading")}
+      class={["flex flex-col gap-4 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-4", @class]}
+    >
+      <div
+        :for={i <- 1..@count}
+        class="grid grid-cols-[3.625rem_1.125rem_minmax(0,1fr)] items-center gap-3"
+      >
+        <span class="skeleton-bar skeleton-bar--soft h-2"></span>
+        <span class="size-[1.125rem] rounded-full bg-secondary"></span>
+        <span class="skeleton-bar h-2.5" style={"width: #{Enum.at([76, 58, 88], rem(i, 3))}%"}></span>
+      </div>
+      <span :if={@label} class="flex items-center gap-2 text-xs text-muted">
+        <span class="size-[7px] rounded-full border-[1.5px] border-primary"></span>
+        {@label}
+      </span>
+    </section>
+    """
+  end
+
+  def loading_state(assigns) do
+    ~H"""
+    <section
+      id={@id}
+      aria-busy="true"
+      aria-label={gettext("Loading")}
+      class={["flex flex-col gap-4 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-4", @class]}
+    >
+      <div
+        :for={i <- 1..@count}
+        class="grid grid-cols-[1.75rem_minmax(0,1fr)_3.75rem_3.125rem] items-center gap-3"
+      >
+        <span class="size-7 rounded-[0.5625rem] bg-secondary"></span>
+        <span class="skeleton-bar h-2.5" style={"width: #{Enum.at([70, 55, 82], rem(i, 3))}%"}></span>
+        <span class="skeleton-bar skeleton-bar--soft h-2.5"></span>
+        <span class="skeleton-bar skeleton-bar--soft h-2.5"></span>
+      </div>
+    </section>
+    """
+  end
+
+  # ── Confirmation ───────────────────────────────────────────────────────────
+
+  @doc """
+  The confirmation dialog of the States board: centred, an icon tile in the
+  action's tone, a question for a title, what will happen under it, the
+  fields the action needs, and a footer with a note, Cancel and the action.
+
+  Like `modal/1` it renders open, so drive it with `:if`, and pass the
+  command that leaves that state as `on_cancel`.
+
+      <.confirm_dialog :if={@banning} id="ban" tone="axis" icon="hero-no-symbol"
+        title={gettext("Ban %{player} for 2 hours?", player: name)}
+        on_cancel={JS.push("cancel_ban")}>
+        …fields…
+        <:note>{gettext("Stays in their history")}</:note>
+        <:confirm><button class="chip-button chip-button--danger" …>…</button></:confirm>
+      </.confirm_dialog>
+  """
+  attr :id, :string, required: true
+  attr :title, :string, required: true
+  attr :subtitle, :string, default: nil
+  attr :icon, :string, default: "hero-exclamation-triangle"
+  attr :tone, :string, default: "axis", values: ~w(axis error warning primary engine neutral)
+  attr :on_cancel, JS, default: %JS{}
+  slot :inner_block
+  slot :note
+  slot :confirm, required: true
+
+  def confirm_dialog(assigns) do
+    ~H"""
+    <dialog
+      id={@id}
+      class="app-modal app-modal--center"
+      phx-hook=".AppModal"
+      data-cancel={@on_cancel}
+      role="alertdialog"
+      aria-labelledby={"#{@id}-title"}
+    >
+      <div class="flex flex-col gap-3.5 rounded-[1.625rem] border border-line-raised bg-base-100 px-6 py-[1.375rem] shadow-[var(--shadow-dialog)]">
+        <div class="flex items-start gap-3.5">
+          <span class={[
+            "flex size-11 shrink-0 items-center justify-center rounded-[0.875rem]",
+            confirm_tone(@tone)
+          ]}>
+            <.icon name={@icon} class="size-5" />
+          </span>
+          <div class="flex min-w-0 flex-1 flex-col gap-[3px]">
+            <h3
+              id={"#{@id}-title"}
+              class="font-display text-[1.375rem] font-semibold tracking-[-0.01em]"
+            >
+              {@title}
+            </h3>
+            <p :if={@subtitle} class="text-[0.8125rem] text-subtle">{@subtitle}</p>
+          </div>
+          <form method="dialog">
+            <button
+              class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-secondary text-subtle"
+              aria-label={gettext("Close")}
+            >
+              <.icon name="hero-x-mark" class="size-4" />
+            </button>
+          </form>
+        </div>
+
+        {render_slot(@inner_block)}
+
+        <div class="mt-0.5 flex flex-wrap items-center gap-2.5">
+          <span class="flex-1 text-xs text-muted">{render_slot(@note)}</span>
+          <form method="dialog">
+            <button class="chip-button h-12 px-5 text-sm">{gettext("Cancel")}</button>
+          </form>
+          {render_slot(@confirm)}
+        </div>
+      </div>
+    </dialog>
+    """
+  end
+
+  defp confirm_tone("axis"), do: "bg-axis/16 text-axis"
+  defp confirm_tone("error"), do: "bg-error/14 text-error"
+  defp confirm_tone("warning"), do: "bg-warning/13 text-warning"
+  defp confirm_tone("primary"), do: "bg-primary/12 text-primary"
+  defp confirm_tone("engine"), do: "bg-accent/13 text-accent"
+  defp confirm_tone(_neutral), do: "bg-secondary text-subtle"
 
   # ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -193,10 +533,10 @@ defmodule HllConditionalActionsWeb.Ui do
       data-cancel={@on_cancel}
       aria-labelledby={"#{@id}-title"}
     >
-      <div class="flex h-full flex-col border-l border-base-300 bg-base-100 shadow-figma-card-large">
-        <div class="flex shrink-0 items-start justify-between gap-3 border-b border-base-300 px-5 py-4 sm:px-6">
+      <div class="flex h-full flex-col bg-base-100 shadow-figma-card-large lg:rounded-l-[1.75rem]">
+        <div class="flex shrink-0 items-start justify-between gap-3 border-b border-base-300 px-5 py-5 sm:px-7">
           <div class="min-w-0">
-            <h3 id={"#{@id}-title"} class="text-title-large">{@title}</h3>
+            <h3 id={"#{@id}-title"} class="font-display text-xl font-semibold">{@title}</h3>
 
             <p :if={@subtitle} class="mt-0.5 text-label-small text-muted">{@subtitle}</p>
           </div>
@@ -321,7 +661,7 @@ defmodule HllConditionalActionsWeb.Ui do
 
   def segmented(assigns) do
     ~H"""
-    <fieldset class="flex items-center gap-0.5 rounded-field border border-base-300 bg-base-100 p-0.5">
+    <fieldset class="flex items-center gap-1 rounded-full bg-secondary p-1">
       <legend class="sr-only">{@label}</legend>
 
       <label :for={{label, value} <- @options} class="cursor-pointer">
@@ -332,7 +672,7 @@ defmodule HllConditionalActionsWeb.Ui do
           checked={to_string(@value) == to_string(value)}
           class="peer sr-only"
         />
-        <span class="block whitespace-nowrap rounded-selector px-2.5 py-1 text-label-small text-muted transition-colors hover:text-base-content peer-checked:bg-primary/10 peer-checked:font-medium peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50">
+        <span class="block whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs text-subtle transition-colors hover:text-base-content peer-checked:bg-base-content peer-checked:font-semibold peer-checked:text-base-100 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50">
           {label}
         </span>
       </label>
@@ -525,7 +865,7 @@ defmodule HllConditionalActionsWeb.Ui do
   """
   attr :tone, :string,
     default: "neutral",
-    values: ~w(neutral primary info success warning error ghost)
+    values: ~w(neutral primary info success warning error ghost engine)
 
   attr :icon, :string, default: nil
   attr :size, :string, default: "sm", values: ~w(xs sm)
@@ -548,6 +888,7 @@ defmodule HllConditionalActionsWeb.Ui do
   end
 
   defp badge_color("primary"), do: "primary"
+  defp badge_color("engine"), do: "secondary"
   defp badge_color("info"), do: "info"
   defp badge_color("success"), do: "success"
   defp badge_color("warning"), do: "warning"
@@ -571,9 +912,9 @@ defmodule HllConditionalActionsWeb.Ui do
 
   def rule_state(assigns) do
     ~H"""
-    <.tone_badge tone={rule_state_tone(@rule)} size={@size} icon={rule_state_icon(@rule)}>
+    <.pill tone={rule_state_pill(@rule)} class={@size == "xs" && "h-6 px-2.5 text-[0.6875rem]"}>
       {rule_state_label(@rule)}
-    </.tone_badge>
+    </.pill>
     """
   end
 
@@ -600,16 +941,18 @@ defmodule HllConditionalActionsWeb.Ui do
 
   def rule_paused?(_rule), do: false
 
-  defp rule_state_icon(rule) do
+  defp rule_state_pill(rule) do
     case rule_state_tone(rule) do
-      "neutral" -> "hero-pause-circle"
-      "info" -> "hero-clock"
-      "warning" -> "hero-beaker"
-      _live -> "hero-bolt"
+      "neutral" -> "neutral"
+      "info" -> "warning"
+      "warning" -> "simulating"
+      _live -> "live"
     end
   end
 
-  defp rule_state_label(rule) do
+  @doc "The word for a rule's state: Live, Simulating, Paused or Off."
+  @spec rule_state_label(map()) :: String.t()
+  def rule_state_label(rule) do
     case rule_state_tone(rule) do
       "neutral" -> gettext("Off")
       "info" -> gettext("Paused")
@@ -798,24 +1141,22 @@ defmodule HllConditionalActionsWeb.Ui do
   end
 
   @doc """
-  The app's mark: a shield with a bolt, the same drawing as the favicon.
-  Decorative; the product name always sits next to it.
+  The app's mark: two chevrons on the signal tile, the same drawing as the
+  rail's logo. Decorative; the product name always sits next to it.
   """
   attr :class, :any, default: "size-9"
 
   def logo_mark(assigns) do
     ~H"""
     <svg viewBox="0 0 64 64" fill="none" class={@class} aria-hidden="true">
-      <rect width="64" height="64" rx="16" fill="#0f5132" />
+      <rect width="64" height="64" rx="20" fill="#d2f36b" />
       <path
-        d="M32 9 50 16v14c0 12.2-7.6 21.4-18 25-10.4-3.6-18-12.8-18-25V16l18-7Z"
-        fill="#10b981"
-        fill-opacity=".18"
-        stroke="#34d399"
-        stroke-width="2.5"
+        d="m17.3 29.3 14.7-10.6 14.7 10.6M17.3 42 32 31.3 46.7 42"
+        stroke="#1a2006"
+        stroke-width="5"
+        stroke-linecap="round"
         stroke-linejoin="round"
       />
-      <path d="M35.5 17 24 35h8.5l-3 12L41 29h-8.5l3-12Z" fill="#ecfdf5" />
     </svg>
     """
   end
@@ -927,5 +1268,353 @@ defmodule HllConditionalActionsWeb.Ui do
   """
   def show_dialog(js \\ %JS{}, id) do
     JS.dispatch(js, "app:show-dialog", to: "##{id}")
+  end
+
+  # ── Posto de Comando pieces ────────────────────────────────────────────────
+  # The components of the overhaul's Components board that pages share. Each
+  # paints with the semantic tokens only, so it follows light and dark.
+
+  @doc """
+  A status pill: a dot and a word. `simulating` gets the dashed engine dot,
+  `live` the solid signal dot.
+
+      <.pill tone="live">{gettext("Live")}</.pill>
+      <.pill tone="simulating">{gettext("Simulating")}</.pill>
+  """
+  attr :tone, :string,
+    default: "neutral",
+    values: ~w(live simulating neutral warning error info engine)
+
+  attr :dot, :boolean, default: true
+  attr :class, :any, default: nil
+  attr :id, :string, default: nil
+  slot :inner_block, required: true
+
+  def pill(assigns) do
+    ~H"""
+    <span
+      id={@id}
+      class={[
+        "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-semibold",
+        pill_tone(@tone),
+        @class
+      ]}
+    >
+      <span
+        :if={@dot}
+        class={[
+          "size-[7px] shrink-0 rounded-full",
+          if(@tone == "simulating",
+            do: "border-[1.5px] border-dashed border-current",
+            else: "bg-current"
+          )
+        ]}
+        aria-hidden="true"
+      ></span>
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  defp pill_tone("live"), do: "bg-primary/12 text-primary"
+  defp pill_tone(tone) when tone in ["simulating", "engine"], do: "bg-accent/13 text-accent"
+  defp pill_tone("warning"), do: "bg-warning/13 text-warning"
+  defp pill_tone("error"), do: "bg-error/14 text-error"
+  defp pill_tone("info"), do: "bg-info/14 text-info"
+  defp pill_tone(_neutral), do: "bg-secondary text-subtle"
+
+  @doc """
+  A small tile holding an icon, tinted by tone: the lead of list rows and the
+  corner of panels.
+  """
+  attr :icon, :string, required: true
+
+  attr :tone, :string,
+    default: "neutral",
+    values: ~w(neutral primary engine warning error info allies axis)
+
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+
+  def icon_tile(assigns) do
+    ~H"""
+    <span class={[
+      "flex shrink-0 items-center justify-center",
+      tile_size(@size),
+      tile_tone(@tone)
+    ]}>
+      <.icon name={@icon} class={if @size == "sm", do: "size-3.5", else: "size-[1.125rem]"} />
+    </span>
+    """
+  end
+
+  defp tile_size("sm"), do: "size-7 rounded-[0.625rem]"
+  defp tile_size("lg"), do: "size-11 rounded-[0.875rem]"
+  defp tile_size(_md), do: "size-10 rounded-xl"
+
+  defp tile_tone("primary"), do: "bg-primary/12 text-primary"
+  defp tile_tone("engine"), do: "bg-accent/13 text-accent"
+  defp tile_tone("warning"), do: "bg-warning/13 text-warning"
+  defp tile_tone("error"), do: "bg-error/14 text-error"
+  defp tile_tone("info"), do: "bg-info/14 text-info"
+  defp tile_tone("allies"), do: "bg-allies/14 text-allies"
+  defp tile_tone("axis"), do: "bg-axis/14 text-axis"
+  defp tile_tone(_neutral), do: "bg-secondary text-subtle"
+
+  @doc """
+  One row of a list inside a panel: icon tile, title, one line of context,
+  and whatever sits on the right (a pill, a time, a count).
+  """
+  attr :icon, :string, default: nil
+  attr :tone, :string, default: "neutral"
+  attr :title, :string, required: true
+  attr :meta, :string, default: nil
+  attr :rest, :global, include: ~w(navigate patch href)
+  slot :aside
+
+  def list_row(assigns) do
+    ~H"""
+    <.link
+      class="flex items-center gap-3.5 rounded-2xl px-2 py-2.5 transition-colors hover:bg-secondary"
+      {@rest}
+    >
+      <.icon_tile :if={@icon} icon={@icon} tone={@tone} />
+      <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+        <strong class="truncate text-sm font-semibold">{@title}</strong>
+        <span :if={@meta} class="truncate text-xs text-muted">{@meta}</span>
+      </span>
+      {render_slot(@aside)}
+    </.link>
+    """
+  end
+
+  @doc """
+  A team's name or number in its colour: blue for the Allies, orange for the
+  Axis. `team` takes the CRCON spelling (`allies`/`axis`).
+  """
+  attr :team, :string, required: true
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def team_chip(assigns) do
+    ~H"""
+    <span class={[team_text(@team), "font-semibold", @class]}>{render_slot(@inner_block)}</span>
+    """
+  end
+
+  @doc "The text colour of a team."
+  @spec team_text(String.t() | atom() | nil) :: String.t()
+  def team_text(team) when team in ["allies", :allies, "Allies"], do: "text-allies"
+  def team_text(team) when team in ["axis", :axis, "Axis"], do: "text-axis"
+  def team_text(_none), do: "text-base-content"
+
+  @doc """
+  The five sectors of a warfare match, coloured by who holds them.
+  """
+  attr :allied, :integer, required: true, doc: "sectors held by the Allies (0-5)"
+  attr :total, :integer, default: 5
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+  attr :class, :any, default: nil
+
+  def sector_bar(assigns) do
+    ~H"""
+    <div
+      class={["grid gap-1", @class]}
+      style={"grid-template-columns: repeat(#{@total}, minmax(0, 1fr))"}
+      role="img"
+      aria-label={
+        gettext("Allies hold %{allied} of %{total} sectors", allied: @allied, total: @total)
+      }
+    >
+      <span
+        :for={index <- 1..@total}
+        class={[
+          "rounded-[4px]",
+          case @size do
+            "sm" -> "h-[5px]"
+            "lg" -> "h-3"
+            _md -> "h-2.5"
+          end,
+          if(index <= @allied, do: "bg-allies", else: "bg-axis")
+        ]}
+      ></span>
+    </div>
+    """
+  end
+
+  @doc "How many players each team has, as one split bar."
+  attr :allies, :integer, required: true
+  attr :axis, :integer, required: true
+  attr :class, :any, default: nil
+
+  def balance_bar(assigns) do
+    ~H"""
+    <div
+      class={["flex h-2 gap-[3px] overflow-hidden rounded", @class]}
+      role="img"
+      aria-label={gettext("%{allies} Allies, %{axis} Axis", allies: @allies, axis: @axis)}
+    >
+      <span class="rounded bg-allies" style={"flex-grow: #{max(@allies, 0)}"}></span>
+      <span class="rounded bg-axis" style={"flex-grow: #{max(@axis, 0)}"}></span>
+    </div>
+    """
+  end
+
+  @doc """
+  A row of small bars for a short series (the last 7 days, the last 10
+  matches). The last bar can be highlighted.
+  """
+  attr :values, :list, required: true
+  attr :highlight_last, :boolean, default: false
+  attr :class, :any, default: "h-10"
+  attr :label, :string, required: true
+
+  def sparkline(assigns) do
+    assigns = assign(assigns, :max, Enum.max([1 | assigns.values]))
+
+    ~H"""
+    <div class={["flex items-end gap-1", @class]} role="img" aria-label={@label}>
+      <span
+        :for={{value, index} <- Enum.with_index(@values, 1)}
+        class={[
+          "min-h-[2px] flex-1 rounded-[3px]",
+          if(@highlight_last and index == length(@values), do: "bg-primary", else: "bg-base-300")
+        ]}
+        style={"height: #{round(value / @max * 100)}%"}
+      ></span>
+    </div>
+    """
+  end
+
+  @doc """
+  An achievement medal: a hexagon in the tier's colour with an icon.
+  """
+  attr :tier, :string, required: true, values: ~w(bronze silver gold legendary)
+  attr :icon, :string, default: "hero-trophy"
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+
+  def medal(assigns) do
+    ~H"""
+    <span
+      class={[
+        "medal flex shrink-0 items-center justify-center",
+        "medal--#{@tier}",
+        case @size do
+          "sm" -> "size-8"
+          "lg" -> "size-16"
+          _md -> "size-14"
+        end
+      ]}
+      aria-hidden="true"
+    >
+      <.icon :if={@size != "sm"} name={@icon} class="size-6" />
+    </span>
+    """
+  end
+
+  @doc """
+  What the engine read for one condition, and whether it passed:
+  "✓ read 3" / "✗ read “yes”". `pass` nil means not evaluated.
+  """
+  attr :pass, :any, required: true
+  slot :inner_block, required: true
+
+  def trace_chip(assigns) do
+    ~H"""
+    <span class={[
+      "inline-flex h-7 items-center justify-center gap-1.5 rounded-full px-3 font-mono text-xs",
+      case @pass do
+        true -> "bg-primary/12 text-primary"
+        false -> "bg-error/14 text-error"
+        _not_evaluated -> "bg-secondary text-muted"
+      end
+    ]}>
+      <span aria-hidden="true">
+        {case @pass do
+          true -> "✓"
+          false -> "✗"
+          _ -> "–"
+        end}
+      </span>
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  @doc """
+  Pill tabs that are links (sub-pages of an area, the tabs of a rule). For
+  a choice inside a form use `segmented/1`.
+  """
+  attr :id, :string, required: true
+  attr :label, :string, required: true
+
+  slot :tab, required: true do
+    attr :navigate, :string
+    attr :patch, :string
+    attr :active, :boolean
+    attr :count, :any
+  end
+
+  def sub_tabs(assigns) do
+    ~H"""
+    <nav id={@id} aria-label={@label} class="flex">
+      <div class="flex flex-wrap gap-1 rounded-full bg-base-100 p-1">
+        <.link
+          :for={tab <- @tab}
+          navigate={tab[:navigate]}
+          patch={tab[:patch]}
+          aria-current={tab[:active] && "page"}
+          class={[
+            "flex h-9 items-center gap-2 rounded-full px-4 text-[0.8125rem] transition-colors",
+            if(tab[:active],
+              do: "bg-base-content font-semibold text-base-100",
+              else: "text-subtle hover:text-base-content"
+            )
+          ]}
+        >
+          {render_slot(tab)}
+          <span :if={tab[:count] not in [nil, 0]} class="font-mono text-xs opacity-70">
+            {tab[:count]}
+          </span>
+        </.link>
+      </div>
+    </nav>
+    """
+  end
+
+  @doc """
+  The big number of a tile: label on top, the value in the display face,
+  one line of context under it. `stat/1` keeps its icon; this is the plain
+  one the KPI rows use.
+  """
+  attr :label, :string, required: true
+  attr :value, :any, required: true
+  attr :hint, :string, default: nil
+  attr :tone, :string, default: nil, values: [nil, "primary", "warning", "engine", "error"]
+  attr :class, :any, default: nil
+
+  def kpi_tile(assigns) do
+    ~H"""
+    <div class={[
+      "flex flex-col justify-between gap-3 rounded-[1.25rem] bg-secondary px-4.5 py-4",
+      @class
+    ]}>
+      <span class="text-[0.8125rem] text-subtle">{@label}</span>
+      <span>
+        <span class={[
+          "block font-display text-[2.375rem] font-semibold leading-none tracking-tight tabular-nums",
+          case @tone do
+            "primary" -> "text-primary"
+            "warning" -> "text-warning"
+            "engine" -> "text-accent"
+            "error" -> "text-error"
+            _ -> nil
+          end
+        ]}>
+          {@value}
+        </span>
+        <span :if={@hint} class="mt-1 block truncate text-xs text-muted">{@hint}</span>
+      </span>
+    </div>
+    """
   end
 end

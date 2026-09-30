@@ -22,59 +22,67 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ─────────────────────────────────────────────────────────────────────────
-   rules design system [[[[[[[[[[[[[[[[[[[[[[[[[[— ported from the rules repos's
-   `frontend/src/index.css` (branch `development`) and
-   `design-system-overview.md`.
+   Posto de Comando — the app's design system (overhaul, 2026-09).
 
-   Emerald primary on white, cool-gray neutrals, Geist type, soft elevation,
-   pill CTAs. Full 50–950 ramps feed Petal's components; the single-tone
-   aliases underneath keep this app's semantic utilities (bg-base-100,
-   text-primary, border-base-300, text-error …) working and scheme-aware.
+   A toned olive-neutral ground, one signal colour (lime) for what asks for
+   action or is live, lavender for the engine and simulation, and the two
+   teams in blue (Allies) and orange (Axis) so they differ in lightness too.
+   Bricolage Grotesque for titles and big numbers, Schibsted Grotesk for the
+   interface, JetBrains Mono for ids, times and logs.
+
+   The full 50–950 ramps feed Petal's components. The lime ramp runs from
+   the bright signal (300) to deep olives (600–800): light mode uses the
+   olives, dark mode the bright end, so one ramp reads well on both. The
+   single-tone aliases underneath keep this app's semantic utilities
+   (bg-base-100, text-primary, border-base-300, text-error …) working and
+   scheme-aware. Canvas: "HLL Conditional Actions — Overhaul", Tokens board.
    ───────────────────────────────────────────────────────────────────────── */
 @theme {
-  /* Emerald — rules brand. 600/700 are the exact rules primary/primary-dark. */
-  --color-primary-50: oklch(97.9% 0.021 166.1);
-  --color-primary-100: oklch(95% 0.052 163.1);
-  --color-primary-200: oklch(90.5% 0.093 164.2);
-  --color-primary-300: oklch(84.5% 0.143 165);
-  --color-primary-400: oklch(76.5% 0.177 163.2);
-  --color-primary-500: oklch(69.6% 0.17 162.5);
-  --color-primary-600: oklch(55% 0.13 166);
-  --color-primary-700: oklch(48% 0.12 166);
-  --color-primary-800: oklch(43.2% 0.095 166.9);
-  --color-primary-900: oklch(37.8% 0.077 168.9);
-  --color-primary-950: oklch(26.2% 0.051 172.6);
+  /* Signal lime → olive. 300 is the signal itself (#D2F36B). */
+  --color-primary-50: #f7fce6;
+  --color-primary-100: #eef9c9;
+  --color-primary-200: #e2f59e;
+  --color-primary-300: #d2f36b;
+  --color-primary-400: #bfe145;
+  --color-primary-500: #a2c42a;
+  --color-primary-600: #5a7a10;
+  --color-primary-700: #4a6509;
+  --color-primary-800: #3b5108;
+  --color-primary-900: #2e3f08;
+  --color-primary-950: #1a2406;
 
-  /* Fuchsia — the rules accent (#D946EF), a categorical colour, not the brand. */
-  --color-secondary-50: oklch(97.7% 0.017 320.1);
-  --color-secondary-100: oklch(95.2% 0.037 318.9);
-  --color-secondary-200: oklch(90.3% 0.076 319.6);
-  --color-secondary-300: oklch(83.3% 0.145 321.4);
-  --color-secondary-400: oklch(74% 0.238 322.2);
-  --color-secondary-500: oklch(64.9% 0.295 328.4);
-  --color-secondary-600: oklch(59.1% 0.293 328.4);
-  --color-secondary-700: oklch(51.8% 0.253 323.9);
-  --color-secondary-800: oklch(45.2% 0.211 324.6);
-  --color-secondary-900: oklch(40.1% 0.17 325.6);
-  --color-secondary-950: oklch(29.3% 0.136 325.7);
+  /* Engine lavender — simulation, the rule engine, insights. */
+  --color-secondary-50: #f6f3ff;
+  --color-secondary-100: #ece7ff;
+  --color-secondary-200: #dcd3ff;
+  --color-secondary-300: #c3b3ff;
+  --color-secondary-400: #a893f5;
+  --color-secondary-500: #8a72e6;
+  --color-secondary-600: #6b55c9;
+  --color-secondary-700: #5642a8;
+  --color-secondary-800: #43329a;
+  --color-secondary-900: #2d2940;
+  --color-secondary-950: #1d1b26;
 
-  /* Cool gray — rules neutrals: border is gray-200, foreground gray-900. */
-  --color-gray-50: oklch(98.5% 0.002 247.8);
-  --color-gray-100: oklch(96.8% 0.003 264.5);
-  --color-gray-200: oklch(92.8% 0.006 264.5);
-  --color-gray-300: oklch(87.2% 0.01 258.3);
-  --color-gray-400: oklch(70.7% 0.022 261.3);
-  --color-gray-500: oklch(55.1% 0.027 264.4);
-  --color-gray-600: oklch(44.6% 0.014 256.8);
-  --color-gray-700: oklch(37.2% 0.013 257.3);
-  --color-gray-800: oklch(27.8% 0.033 256.8);
-  --color-gray-900: oklch(20.8% 0.013 255.9);
-  --color-gray-950: oklch(13% 0.028 261.7);
+  /* Olive neutrals: the ground, panels and hairlines of both schemes. */
+  --color-gray-50: #f7f7f3;
+  --color-gray-100: #efeee8;
+  --color-gray-200: #e2e1d8;
+  --color-gray-300: #cbcbc1;
+  --color-gray-400: #a4a69c;
+  --color-gray-500: #8c8e85;
+  --color-gray-600: #6b6d64;
+  --color-gray-700: #4f5148;
+  --color-gray-800: #2a2b26;
+  --color-gray-900: #181916;
+  --color-gray-950: #0f100e;
 
-  /* Type: Geist, self-hosted (see the @font-face rules below). */
+  /* Type (self-hosted, see the @font-face rules below). */
   --font-sans:
-    "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Schibsted Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  --font-display: "Bricolage Grotesque", "Schibsted Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
 
   /* Semantic single-tone aliases, flipped per scheme by the vars below. */
   --color-base-100: var(--tone-base-100);
@@ -84,7 +92,7 @@
   --color-primary: var(--tone-primary);
   --color-primary-content: var(--tone-primary-content);
   --color-secondary: var(--tone-secondary);
-  --color-secondary-content: var(--tone-primary-content);
+  --color-secondary-content: var(--tone-base-content);
   --color-accent: var(--tone-accent);
   --color-accent-content: var(--tone-primary-content);
   --color-neutral: var(--tone-neutral);
@@ -98,18 +106,35 @@
   --color-error: var(--tone-error);
   --color-error-content: var(--tone-primary-content);
 
-  /* rules --muted-foreground: the one secondary-text colour. */
+  /* The game: team colours and the engine. */
+  --color-allies: var(--tone-allies);
+  --color-axis: var(--tone-axis);
+  --color-engine: var(--tone-engine);
+
   --color-muted: var(--text-tertiary-tone);
   --color-subtle: var(--text-secondary-tone);
 
-  /* Radius — the rules scale. box = radius-lg (6px) is the card corner,
-     field = radius-md (4px) controls, selector = radius-sm (2px). */
-  --radius-box: 0.875rem;
-  --radius-field: 0.5rem;
-  --radius-selector: 0.375rem;
+  /* The shell's own tones (Tokens board): the inverse chip, the finer
+     hairlines, the rail's idle text, the avatar and the warn fill. */
+  --color-inverse: var(--tone-inverse);
+  --color-on-inverse: var(--tone-on-inverse);
+  --color-line-soft: var(--tone-line-soft);
+  --color-line-raised: var(--tone-line-raised);
+  --color-line-strong: var(--tone-line-strong);
+  --color-warn-fill: var(--tone-warn-fill);
+  --color-on-warn: #231a02;
+  --color-rail: var(--tone-rail);
+  --color-avatar: var(--tone-avatar);
+  --color-overlay: var(--tone-overlay);
+
+  /* Radius: panels are soft and large, controls follow. */
+  --radius-panel: 1.75rem;
+  --radius-box: 1.5rem;
+  --radius-field: 0.75rem;
+  --radius-selector: 0.625rem;
   --radius-pill: 20rem;
 
-  /* Typography scale (rules) */
+  /* Typography scale */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -119,144 +144,253 @@
   --text-3xl: 2.75rem;
 }
 
-/* Geist, self-hosted to avoid a CDN request (the same reason rules uses
-   @fontsource). 400/500/600 are the only weights the system uses. */
+/* Variable fonts from Google Fonts (OFL), self-hosted: latin, then latin-ext
+   for players named in Polish, Czech or Turkish. */
 @font-face {
-  font-family: "Geist";
+  font-family: "Schibsted Grotesk";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
   font-display: swap;
-  src: url("/fonts/geist-400.woff2") format("woff2");
+  src: url("/fonts/schibsted-grotesk-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: "Geist";
+  font-family: "Schibsted Grotesk";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400 700;
   font-display: swap;
-  src: url("/fonts/geist-500.woff2") format("woff2");
+  src: url("/fonts/schibsted-grotesk-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
-  font-family: "Geist";
+  font-family: "Bricolage Grotesque";
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500 700;
   font-display: swap;
-  src: url("/fonts/geist-600.woff2") format("woff2");
+  src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
 }
 
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Light: a warm paper ground, white panels, olive for anything primary. */
 :root {
   /* Tells the browser which way to paint what the page cannot: the open list
      of a <select>, scrollbars, date pickers, spinners. Left unset it assumes
      light and renders them unreadable over the dark theme. */
   color-scheme: light;
 
-  /* Petal control radius follows the field radius */
-  --pc-radius: 0.25rem;
+  --pc-radius: 0.75rem;
+  /* Text on a solid primary button: white on the olives of light mode. */
+  --pc-button-solid-fg: #ffffff;
 
-  --tone-base-100: oklch(1 0 0);
-  --tone-base-200: var(--color-gray-100);
-  --tone-base-300: var(--color-gray-200);
-  --tone-base-content: oklch(20.8% 0.013 255.9);
-  --tone-primary: oklch(55% 0.13 166);
-  --tone-primary-content: oklch(1 0 0);
-  --tone-primary-dark: oklch(48% 0.12 166);
-  --tone-secondary: var(--color-gray-100);
-  --tone-accent: oklch(64.9% 0.295 328.4);
-  --tone-neutral: var(--color-gray-700);
-  --tone-neutral-content: var(--color-gray-50);
-  --tone-info: oklch(55% 0.2 264);
-  --tone-success: oklch(69.6% 0.17 162.5);
-  --tone-warning: oklch(79.5% 0.184 86);
-  --tone-error: oklch(62.8% 0.258 29.2);
+  --tone-base-100: #fbfaf6;
+  --tone-base-200: #efeee8;
+  --tone-base-300: #e2e1d8;
+  --tone-base-content: #16170f;
+  --tone-primary: #3f5c00;
+  --tone-primary-content: #ffffff;
+  --tone-primary-dark: #2b4000;
+  --tone-secondary: #f2f1eb;
+  --tone-accent: #6b55c9;
+  --tone-neutral: #4f5148;
+  --tone-neutral-content: #f7f7f3;
+  --tone-info: #1f66b8;
+  --tone-success: #3f7a12;
+  --tone-warning: #8a6100;
+  --tone-error: #c23b32;
 
-  /* Text levels (rules) */
-  --text-secondary-tone: oklch(37.2% 0.013 257.3);
-  --text-tertiary-tone: oklch(44.6% 0.014 256.8);
+  --tone-allies: #1f66b8;
+  --tone-axis: #b8561a;
+  --tone-engine: #6b55c9;
 
-  /* Elevation (rules) */
+  --text-secondary-tone: #4f5148;
+  --text-tertiary-tone: #6b6d64;
+
+  --tone-inverse: #16170f;
+  --tone-on-inverse: #f3f2ec;
+  --tone-line-soft: #e7e6de;
+  --tone-line-raised: #d8d7cd;
+  --tone-line-strong: #c9c8be;
+  --tone-warn-fill: #e0a81e;
+  --tone-rail: #5b5d54;
+  --tone-rail-active: #ffffff;
+  --tone-avatar: #d9dcc8;
+  --tone-avatar-ring: #ffffff;
+  --tone-overlay: #ffffff;
+  --tone-logo: #16170f;
+  --tone-on-logo: #d2f36b;
+  --tone-cta: #16170f;
+  --tone-on-cta: #f3f2ec;
+  --tone-scrim: rgba(22, 23, 15, 0.35);
+  --shadow-popover: 0 18px 50px rgba(22, 23, 15, 0.16);
+  --shadow-dialog: 0 30px 80px rgba(22, 23, 15, 0.2);
+  --shadow-toast: 0 12px 30px rgba(22, 23, 15, 0.12);
+  --shadow-rail-active: 0 1px 2px rgba(22, 23, 15, 0.08);
+
+  /* Elevation: panels sit on the ground with a whisper of shadow. */
   --shadow-elevation-1:
-    0px 1px 4px rgba(0, 0, 0, 0.12), 0px 0px 24px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+    0px 1px 4px rgba(22, 23, 15, 0.1), 0px 0px 24px rgba(22, 23, 15, 0.08);
+  --shadow-card: 0 1px 2px rgba(22, 23, 15, 0.05);
   --shadow-card-medium:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    0 4px 6px -1px rgba(22, 23, 15, 0.08), 0 2px 4px -1px rgba(22, 23, 15, 0.05);
   --shadow-card-large:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    0 10px 30px -6px rgba(22, 23, 15, 0.14), 0 4px 6px -2px rgba(22, 23, 15, 0.05);
 
-  /* Motion (rules) */
   --motion-instantly: 0.05s;
   --motion-quickly: 0.1s;
   --motion-promptly: 0.3s;
   --motion-slowly: 0.5s;
 
-  /* Icon-box gradients (rules) */
-  --gradient-primary: linear-gradient(
-    135deg,
-    oklch(0.55 0.13 166 / 0.15),
-    oklch(0.55 0.13 166 / 0.05)
-  );
-  --gradient-success: linear-gradient(
-    135deg,
-    oklch(0.696 0.17 162.5 / 0.15),
-    oklch(0.696 0.17 162.5 / 0.05)
-  );
-  --gradient-warning: linear-gradient(
-    135deg,
-    oklch(0.795 0.184 86 / 0.15),
-    oklch(0.795 0.184 86 / 0.05)
-  );
-  --gradient-destructive: linear-gradient(
-    135deg,
-    oklch(0.628 0.258 29.2 / 0.15),
-    oklch(0.628 0.258 29.2 / 0.05)
-  );
-  --gradient-accent: linear-gradient(
-    135deg,
-    oklch(0.649 0.295 328.4 / 0.15),
-    oklch(0.649 0.295 328.4 / 0.05)
-  );
-  --gradient-info: linear-gradient(
-    135deg,
-    oklch(0.55 0.2 264 / 0.15),
-    oklch(0.55 0.2 264 / 0.05)
-  );
-  --gradient-sidebar: linear-gradient(
-    to right,
-    var(--tone-primary),
-    var(--tone-primary-dark)
-  );
+  /* Icon tiles: flat tints of each tone. */
+  --gradient-primary: color-mix(in oklab, var(--tone-primary) 12%, transparent);
+  --gradient-success: color-mix(in oklab, var(--tone-success) 12%, transparent);
+  --gradient-warning: color-mix(in oklab, var(--tone-warning) 14%, transparent);
+  --gradient-destructive: color-mix(in oklab, var(--tone-error) 12%, transparent);
+  --gradient-accent: color-mix(in oklab, var(--tone-accent) 13%, transparent);
+  --gradient-info: color-mix(in oklab, var(--tone-info) 12%, transparent);
+  --gradient-sidebar: linear-gradient(to right, var(--tone-primary), var(--tone-primary-dark));
 }
 
-/* rules ships light only; this is the same identity after dark, so the
-   scheme switch keeps working: emerald lifted to stay legible on ink. */
+/* Dark, the home scheme: near-black olive ground, lime signal. */
 .dark {
   color-scheme: dark;
 
-  --tone-base-100: oklch(23% 0.014 258);
-  --tone-base-200: oklch(17.5% 0.013 258);
-  --tone-base-300: oklch(32% 0.016 258);
-  --tone-base-content: oklch(96% 0.003 264.5);
-  --tone-primary: oklch(69.6% 0.17 162.5);
-  --tone-primary-content: oklch(16% 0.02 166);
-  --tone-primary-dark: oklch(59.6% 0.145 163.2);
-  --tone-secondary: oklch(28% 0.015 258);
-  --tone-accent: oklch(74% 0.238 322.2);
-  --tone-neutral: var(--color-gray-600);
-  --tone-neutral-content: var(--color-gray-50);
-  --tone-info: oklch(70% 0.16 264);
-  --tone-success: oklch(76.5% 0.177 163.2);
-  --tone-warning: oklch(85% 0.16 86);
-  --tone-error: oklch(70.4% 0.19 27.3);
+  /* Lime is light: the text on it is dark. */
+  --pc-button-solid-fg: #1a2006;
 
-  --text-secondary-tone: oklch(87.2% 0.01 258.3);
-  --text-tertiary-tone: oklch(70.7% 0.022 261.3);
+  --tone-base-100: #181916;
+  --tone-base-200: #0f100e;
+  --tone-base-300: #2a2b26;
+  --tone-base-content: #f3f2ec;
+  --tone-primary: #d2f36b;
+  --tone-primary-content: #1a2006;
+  --tone-primary-dark: #bfe145;
+  --tone-secondary: #20211d;
+  --tone-accent: #c3b3ff;
+  --tone-neutral: #4f5148;
+  --tone-neutral-content: #f3f2ec;
+  --tone-info: #8cc4ff;
+  --tone-success: #b5e36a;
+  --tone-warning: #f4c95d;
+  --tone-error: #ff7b72;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --tone-allies: #8cc4ff;
+  --tone-axis: #ff9f5a;
+  --tone-engine: #c3b3ff;
+
+  --text-secondary-tone: #b3b4ab;
+  --text-tertiary-tone: #8c8e85;
+
+  --tone-inverse: #f3f2ec;
+  --tone-on-inverse: #141512;
+  --tone-line-soft: #22241f;
+  --tone-line-raised: #2e3029;
+  --tone-line-strong: #3a3d30;
+  --tone-warn-fill: #f4c95d;
+  --tone-rail: #a4a69c;
+  --tone-rail-active: #20211d;
+  --tone-avatar: #3a3d2e;
+  --tone-avatar-ring: #2a2b26;
+  --tone-overlay: #1b1c19;
+  --tone-logo: #d2f36b;
+  --tone-on-logo: #1a2006;
+  --tone-cta: #d2f36b;
+  --tone-on-cta: #1a2006;
+  --tone-scrim: rgba(9, 10, 8, 0.74);
+  --shadow-popover: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --shadow-dialog: 0 30px 80px rgba(0, 0, 0, 0.6);
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.35);
+  --shadow-rail-active: none;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-card-medium:
     0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
   --shadow-card-large:
-    0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.35);
+    0 10px 30px -6px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.35);
 }
+
+/* Solid primary buttons: near-black on the light paper, the signal itself
+   in the dark (Tokens board, --pc-primary). */
+:root:not(.dark) .pc-button--primary,
+:root:not(.dark) .pc-button--primary-shadow {
+  background-color: var(--tone-cta);
+  color: var(--tone-on-cta);
+}
+
+:root:not(.dark) .pc-button--primary:hover,
+:root:not(.dark) .pc-button--primary-shadow:hover {
+  background-color: #2a2b26;
+}
+
+/* Solid primary buttons in dark mode use the signal itself. */
+.dark .pc-button--primary,
+.dark .pc-button--primary-shadow {
+  background-color: var(--color-primary-300);
+  color: var(--pc-button-solid-fg);
+}
+
+.dark .pc-button--primary:hover,
+.dark .pc-button--primary-shadow:hover {
+  background-color: var(--color-primary-400);
+}
+
+.dark .pc-button--primary:active,
+.dark .pc-button--primary-shadow:active {
+  background-color: var(--color-primary-500);
+}
+
+/* One file per area of the overhaul (docs/design/overhaul.md). */
+@import "./areas/briefing.css";
+@import "./areas/live.css";
+@import "./areas/rules.css";
+@import "./areas/builder.css";
+@import "./areas/inbox.css";
+@import "./areas/community.css";
+@import "./areas/players.css";
+@import "./areas/settings.css";
+@import "./areas/shop.css";
+@import "./areas/vip.css";
+@import "./areas/auth.css";
 
 /* Add variants based on LiveView classes */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
@@ -273,6 +407,12 @@
    Application styles
    ───────────────────────────────────────────────────────────────────────── */
 
+/* A fieldset sizes to its widest child by default, so a row of chips in one
+   pushed the whole phone layout wider than the screen. */
+fieldset {
+  min-width: 0;
+}
+
 html,
 body {
   background-color: var(--color-base-200);
@@ -285,55 +425,10 @@ body {
    The named roles from design-system-overview.md. Use these instead of
    ad-hoc size/weight pairs. */
 @layer utilities {
-  .text-headline-large {
-    font-size: var(--text-2xl);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 2.5rem;
-  }
-
-  .text-headline-medium {
-    font-size: var(--text-xl);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.875rem;
-  }
-
-  .text-title-large {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.5rem;
-  }
-
-  .text-title-medium {
-    font-size: var(--text-base);
-    font-weight: 500;
-    line-height: 1.5rem;
-  }
-
-  .text-body-large {
-    font-size: var(--text-lg);
-    font-weight: 400;
-    line-height: 1.5rem;
-  }
-
-  .text-body-medium {
-    font-size: var(--text-base);
-    font-weight: 400;
-    line-height: 1.5rem;
-  }
 
   .text-body-small {
     font-size: var(--text-sm);
     font-weight: 400;
-    line-height: 1.5rem;
-  }
-
-  .text-label-large {
-    font-size: var(--text-base);
-    font-weight: 500;
-    letter-spacing: 0.01em;
     line-height: 1.5rem;
   }
 
@@ -354,10 +449,9 @@ body {
   /* Elevation utilities (rules shadow-figma-*) */
   /* Surfaces are drawn by a hairline ring rather than a drop shadow, the
      look of the workbench and the overview; the ring follows the scheme. */
+  /* Panels stand on the ground by tone, not by an outline. */
   .shadow-figma-card {
-    box-shadow:
-      0 0 0 1px var(--color-base-300),
-      0 1px 2px rgb(0 0 0 / 0.03);
+    box-shadow: var(--shadow-card);
   }
 
   .shadow-figma-card-medium {
@@ -375,7 +469,6 @@ body {
   .bg-gradient-success { background: var(--gradient-success); }
   .bg-gradient-warning { background: var(--gradient-warning); }
   .bg-gradient-destructive { background: var(--gradient-destructive); }
-  .bg-gradient-accent { background: var(--gradient-accent); }
   .bg-gradient-info { background: var(--gradient-info); }
 
   .rounded-pill {
@@ -392,6 +485,7 @@ body {
 
 /* Section and page titles. */
 .heading {
+  font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -419,10 +513,19 @@ body {
     border-radius: var(--radius-field);
     border-width: 1px;
     border-style: solid;
-    padding: 0.5rem 0.75rem;
+    border-color: var(--color-base-300);
+    background-color: var(--color-secondary);
+    padding: 0.5rem 0.875rem;
     font-size: var(--text-sm);
     line-height: 1.25rem;
-    min-height: 2.5rem;
+    min-height: 2.75rem;
+  }
+
+  .pc-text-input:focus,
+  .pc-select:focus {
+    border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 12%, transparent);
+    outline: none;
   }
 
   .pc-checkbox,
@@ -463,180 +566,6 @@ optgroup {
   font-weight: 600;
 }
 
-/* A hairline of emerald down the left of the active sidebar entry. */
-.nav-item {
-  position: relative;
-}
-
-.nav-item::before {
-  content: "";
-  position: absolute;
-  inset-block: 0.375rem;
-  left: -0.75rem;
-  width: 3px;
-  border-radius: 9999px;
-  background: var(--color-primary);
-  opacity: 0;
-  transform: scaleY(0.3);
-  transition:
-    opacity var(--motion-quickly) ease,
-    transform var(--motion-quickly) ease;
-}
-
-.nav-item[data-active="true"]::before {
-  opacity: 1;
-  transform: scaleY(1);
-}
-
-/* Login artwork. The image is dimmed from the form side outwards so the
-   headline stays readable over the brightest part of the key art. */
-.hll-art {
-  background-image: url("/images/hll/login-art.webp");
-  background-size: cover;
-  /* The illustration puts its subject on the right and empty ground on the
-     left, so the panel is anchored right: on a narrow column that keeps the
-     map table in frame instead of cropping to bare floor. */
-  background-position: 100% 50%;
-}
-
-/* The panel carries no text any more, so the scrim only has to settle the
-   illustration into the page — enough to keep it from glowing next to the
-   form, not so much that it goes muddy. */
-.hll-art-scrim {
-  background: linear-gradient(
-    to top,
-    oklch(20% 0.03 166 / 0.55),
-    oklch(20% 0.03 166 / 0.15) 55%,
-    oklch(20% 0.03 166 / 0.35)
-  );
-}
-
-/* The card the sign in form sits in, over the artwork on small screens. */
-.hll-art-mobile {
-  background-image:
-    linear-gradient(to bottom, oklch(20% 0.03 166 / 0.6), oklch(20% 0.03 166 / 0.95)),
-    url("/images/hll/banner.webp");
-  background-size: cover;
-  background-position: center;
-}
-
-/* ── Rule flow ───────────────────────────────────────────────────────────
-   The visual builder draws the rule as a vertical pipeline: node cards on
-   a spine, the way an admin thinks about it — this happens, then this is
-   checked, then this runs. */
-.flow-spine {
-  position: relative;
-}
-
-.flow-spine::before {
-  content: "";
-  position: absolute;
-  left: 1.25rem;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(
-    to bottom,
-    var(--color-primary),
-    var(--color-base-300) 30%,
-    var(--color-base-300)
-  );
-}
-
-.flow-node {
-  position: relative;
-}
-
-/* The connector dot where a node meets the spine. */
-.flow-node::before {
-  content: "";
-  position: absolute;
-  left: -1.61rem;
-  top: 1.4rem;
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 9999px;
-  border: 2px solid var(--color-base-300);
-  background: var(--color-base-100);
-}
-
-.flow-node[data-tone="primary"]::before {
-  border-color: var(--color-primary);
-}
-
-.flow-node[data-tone="info"]::before {
-  border-color: var(--color-info);
-}
-
-.flow-node[data-tone="warning"]::before {
-  border-color: var(--color-warning);
-}
-
-.flow-node[data-tone="error"]::before {
-  border-color: var(--color-error);
-}
-
-/* Rows reorganise themselves into a sentence on wide screens and stack into
-   a card on narrow ones. */
-.condition-grid {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 64rem) {
-  .condition-grid {
-    grid-template-columns: minmax(11rem, 1.1fr) minmax(9rem, 0.9fr) minmax(9rem, 1fr) auto;
-    align-items: end;
-  }
-}
-
-/* The builder's summary + try-it panel: a sticky sidebar on xl and a bottom
-   sheet below it, toggled by Alpine through data-preview-open on the
-   wrapper. Plain CSS owns the two layouts so there is no first-paint flash
-   and no utility-order fight. */
-.rule-aside-backdrop {
-  display: none;
-}
-
-@media (max-width: 79.9375rem) {
-  .rule-aside {
-    display: none;
-  }
-
-  [data-preview-open="true"] .rule-aside {
-    display: block;
-    position: fixed;
-    inset-inline: 0;
-    bottom: 0;
-    z-index: 40;
-    max-height: 80vh;
-    overflow-y: auto;
-    border-top: 1px solid var(--color-base-300);
-    border-radius: 0.75rem 0.75rem 0 0;
-    background: var(--color-base-100);
-    padding: 1rem;
-    box-shadow: var(--shadow-card-large);
-  }
-
-  [data-preview-open="true"] .rule-aside-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 39;
-    background: color-mix(in oklab, var(--color-gray-950) 45%, transparent);
-  }
-}
-
-/* Cards, rows and panels that appear as you build a rule ease in rather than
-   snapping, which makes "add condition" feel like it did something. */
-@media (prefers-reduced-motion: no-preference) {
-  .rise-in {
-    animation: rise-in var(--motion-promptly) ease-out;
-  }
-}
-
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -646,6 +575,48 @@ optgroup {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ── Posto de Comando pieces ──────────────────────────────────────────── */
+
+/* Badges are pills, a notch larger than Petal's micro badges. */
+.pc-badge {
+  border-radius: var(--radius-pill);
+}
+
+.pc-badge--sm {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.5rem;
+}
+
+.pc-badge--xs {
+  font-size: 0.625rem;
+  padding: 0 0.375rem;
+}
+
+/* Medals: a hexagon in the tier's colour. */
+.medal {
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+
+.medal--bronze {
+  background: #d08c5b;
+  color: #2a1405;
+}
+
+.medal--silver {
+  background: #c9cdd3;
+  color: #1b1d20;
+}
+
+.medal--gold {
+  background: #f4c95d;
+  color: #2a1e02;
+}
+
+.medal--legendary {
+  background: #c3b3ff;
+  color: #1e1535;
 }
 
 /* ── App tables ──────────────────────────────────────────────────────────
@@ -662,6 +633,7 @@ optgroup {
   font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--text-tertiary-tone);
+  white-space: nowrap;
 }
 
 .app-table td {
@@ -671,14 +643,6 @@ optgroup {
 
 .app-table thead {
   border-bottom: 1px solid var(--color-base-300);
-}
-
-/* Sticky header for scrolling logs (the live feed). */
-.app-table-pin thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--color-base-100);
 }
 /* ── Native dialogs ──────────────────────────────────────────────────────
    The app's modals and the mobile navigation drawer are <dialog> elements:
@@ -746,7 +710,6 @@ optgroup {
 }
 
 .app-modal::backdrop,
-.app-drawer::backdrop,
 .app-dialog::backdrop {
   background: color-mix(in oklab, var(--color-gray-950) 45%, transparent);
 }
@@ -785,21 +748,6 @@ optgroup {
   }
 }
 
-.app-drawer {
-  position: fixed;
-  inset: 0 auto 0 0;
-  margin: 0;
-  height: 100dvh;
-  max-height: 100dvh;
-  width: 18rem;
-  max-width: 85vw;
-  border: 0;
-  border-right: 1px solid var(--color-base-300);
-  padding: 0;
-  background: var(--color-base-100);
-  color: inherit;
-}
-
 /* ── App tables ──────────────────────────────────────────────────────────
    The one table style the app uses (daisyUI's table component is gone). */
 .app-table {
@@ -824,14 +772,6 @@ optgroup {
 
 .app-table thead {
   border-bottom: 1px solid var(--color-base-300);
-}
-
-/* Sticky header for scrolling logs (the live feed). */
-.app-table-pin thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--color-base-100);
 }
 
 /* ── Responsive tables ───────────────────────────────────────────────────
@@ -945,300 +885,6 @@ optgroup {
   }
 }
 
-.workbench-palette {
-  grid-area: palette;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
-  overflow-y: auto;
-  border: 1px solid var(--color-base-300);
-  border-radius: 0.75rem;
-  background: var(--color-base-100);
-}
-
-.workbench-canvas {
-  grid-area: canvas;
-  position: relative;
-  min-width: 0;
-  overflow: auto;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-base-300);
-  background-color: color-mix(in oklab, var(--color-base-200) 55%, var(--color-base-100));
-  background-image: radial-gradient(
-    color-mix(in oklab, var(--color-base-content) 16%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 22px 22px;
-}
-
-.workbench-tabs {
-  grid-area: tabs;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 0.75rem;
-  background: var(--color-base-200);
-}
-
-.workbench-panel {
-  grid-area: panel;
-  min-width: 0;
-  overflow-y: auto;
-}
-
-.workbench-save {
-  grid-area: save;
-}
-
-@media (min-width: 80rem) {
-  .workbench-palette,
-  .workbench-canvas {
-    border: 0;
-    border-radius: 0;
-  }
-
-  .workbench-palette {
-    border-right: 1px solid var(--color-base-300);
-  }
-
-  .workbench-canvas {
-    padding: 1.5rem;
-    border-right: 1px solid var(--color-base-300);
-  }
-
-  .workbench-tabs {
-    margin: 1rem 1.25rem 0;
-  }
-
-  .workbench-panel {
-    padding: 0 1.25rem;
-  }
-
-  .workbench-save {
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--color-base-300);
-    background: var(--color-base-100);
-  }
-}
-
-.workbench-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  cursor: pointer;
-  border-radius: 0.5rem;
-  padding: 0.4rem 0.5rem;
-  font-size: var(--text-sm);
-  color: var(--color-subtle);
-  transition: background-color 150ms, color 150ms;
-}
-
-.workbench-tab:hover {
-  color: var(--color-base-content);
-}
-
-.palette-item {
-  display: flex;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: 0.625rem;
-  background: var(--color-base-100);
-  transition: border-color 150ms, box-shadow 150ms, transform 150ms;
-}
-
-.palette-item:hover {
-  border-color: color-mix(in oklab, var(--color-primary) 45%, var(--color-base-300));
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.05);
-}
-
-.palette-item:active {
-  transform: scale(0.99);
-}
-
-.palette-icon {
-  display: flex;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-}
-
-/* The flow itself: a centred column of cards joined by thin edges. */
-.canvas-stats {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.375rem 0.875rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-pill);
-  background: var(--color-base-100);
-  font-size: var(--text-sm);
-  color: var(--color-subtle);
-}
-
-.canvas-flow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 26rem;
-  margin: 1.5rem auto 2rem;
-}
-
-.canvas-start {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.4rem 1rem;
-  border-radius: var(--radius-pill);
-  background: var(--color-base-content);
-  color: var(--color-base-100);
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
-.canvas-edge {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 2.25rem;
-}
-
-.canvas-edge::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  left: 50%;
-  width: 1.5px;
-  background: color-mix(in oklab, var(--color-base-content) 22%, transparent);
-}
-
-.canvas-edge-short {
-  height: 1.25rem;
-}
-
-.canvas-tag {
-  position: relative;
-  padding: 0 0.5rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-pill);
-  background: var(--color-base-100);
-  font-size: var(--text-xs);
-  color: var(--color-subtle);
-}
-
-.canvas-node {
-  display: block;
-  width: 100%;
-  cursor: pointer;
-  padding: 0.875rem 1rem;
-  text-align: left;
-  border: 1px solid var(--color-base-300);
-  border-radius: 0.875rem;
-  background: var(--color-base-100);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
-  transition: border-color 150ms, box-shadow 150ms;
-}
-
-.canvas-node:hover {
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.07);
-}
-
-.canvas-node[data-invalid="true"] {
-  border-color: var(--color-error);
-}
-
-.canvas-decision {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.canvas-pill {
-  display: inline-flex;
-  max-width: 70%;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 1rem;
-  border: 1px solid color-mix(in oklab, var(--color-warning) 55%, transparent);
-  border-radius: var(--radius-pill);
-  background: color-mix(in oklab, var(--color-warning) 12%, var(--color-base-100));
-  color: color-mix(in oklab, var(--color-warning) 70%, var(--color-base-content));
-  font-weight: 500;
-  transition: box-shadow 150ms;
-}
-
-.canvas-branch-no {
-  position: absolute;
-  left: calc(50% + 35% / 2 + 1.5rem);
-  top: 50%;
-  display: none;
-  align-items: center;
-  gap: 0.375rem;
-  transform: translateY(-50%);
-  white-space: nowrap;
-}
-
-@media (min-width: 40rem) {
-  .canvas-branch-no {
-    display: flex;
-    left: auto;
-    right: -7.5rem;
-  }
-}
-
-.canvas-edge-h {
-  width: 1.5rem;
-  height: 1.5px;
-  background: color-mix(in oklab, var(--color-base-content) 22%, transparent);
-}
-
-.canvas-conditions {
-  margin-top: 0.5rem;
-  max-width: 100%;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
-  background: color-mix(in oklab, var(--color-base-100) 80%, transparent);
-  font-size: var(--text-xs);
-  color: var(--color-subtle);
-  text-align: center;
-}
-
-.canvas-empty {
-  padding: 1rem;
-  border: 1px dashed var(--color-base-300);
-  border-radius: 0.875rem;
-  background: var(--color-base-100);
-  text-align: center;
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-}
-
-.canvas-end {
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.875rem;
-  border: 1px dashed var(--color-base-300);
-  border-radius: var(--radius-pill);
-  background: var(--color-base-100);
-  font-size: var(--text-xs);
-  color: var(--color-subtle);
-}
-
 /* Which inspector pane, which section of it, and which canvas node is lit,
    all follow data-sel / data-tab on the workbench (set by Alpine, kept
    across LiveView patches by data-keep-attrs). */
@@ -1260,101 +906,8 @@ optgroup {
   font-weight: 500;
 }
 
-.workbench[data-sel="trigger"] .canvas-node[data-node="trigger"],
-.workbench[data-sel="actions"] .canvas-node[data-node="actions"] {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary), 0 4px 14px rgb(0 0 0 / 0.06);
-}
-
-.workbench[data-sel="conditions"] .canvas-pill[data-node="conditions"] {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-warning) 60%, transparent);
-}
-
-.workbench[data-sel="limits"] .canvas-end[data-node="limits"] {
-  border-style: solid;
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-/* The inspector is narrow at every width, so condition rows stay stacked
-   there instead of switching to the sentence layout at lg. */
-@media (min-width: 64rem) {
-  .workbench .condition-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .workbench .condition-grid > :first-child {
-    grid-column: 1 / -1;
-  }
-
-  .workbench .condition-grid > :last-child {
-    grid-column: 1 / -1;
-  }
-}
-
-/* ── Execution trace ─────────────────────────────────────────────────────
-   The history's detail row: one execution drawn as the steps it went
-   through, a status dot per step on a thin rail. */
-.execution-trace {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.execution-trace-step {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.375rem 0;
-}
-
-.execution-trace-step:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  left: 0.6875rem;
-  top: 2rem;
-  bottom: -0.625rem;
-  width: 1.5px;
-  background: var(--color-base-300);
-}
-
-.execution-trace-dot {
-  display: flex;
-  width: 1.375rem;
-  height: 1.375rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background: var(--color-base-300);
-  color: var(--color-subtle);
-}
-
-.execution-trace-step[data-state="ok"] .execution-trace-dot {
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-}
-
-.execution-trace-step[data-state="simulated"] .execution-trace-dot {
-  background: var(--color-info);
-  color: var(--color-info-content);
-}
-
-.execution-trace-step[data-state="error"] .execution-trace-dot {
-  background: var(--color-error);
-  color: var(--color-error-content);
-}
-
-.execution-trace-step[data-state="no"],
-.execution-trace-step[data-state="skipped"] {
-  opacity: 0.7;
-}
-
 /* ── Overview ────────────────────────────────────────────────────────────
-   Soft cards with an uppercase caption, a line chart drawn server side as
-   SVG, and the onboarding checklist on top until the install is trusted. */
+   Soft cards with an uppercase caption. */
 .overview-card {
   padding: 1rem;
   border: 1px solid var(--color-base-300);
@@ -1368,263 +921,21 @@ optgroup {
   }
 }
 
-.overview-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-base-300);
-}
-
+/* Panel titles: the display face, sentence case, full contrast. */
 .overview-card-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.overview-chart {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.overview-chart-grid {
-  stroke: var(--color-base-300);
-  stroke-dasharray: 3 4;
-}
-
-.overview-chart-axis {
-  fill: var(--color-muted);
-  font-size: 11px;
-}
-
-.overview-chart-line {
-  fill: none;
-  stroke: var(--color-primary);
-  stroke-width: 2.25;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.overview-chart-line-failed {
-  stroke: var(--color-error);
-  stroke-width: 1.75;
-}
-
-.overview-chart-area {
-  fill: color-mix(in oklab, var(--color-primary) 10%, transparent);
-}
-
-.overview-chart-hit {
-  fill: transparent;
-  cursor: default;
-}
-
-.overview-chart-hit:hover {
-  fill: color-mix(in oklab, var(--color-primary) 25%, transparent);
-}
-
-.onboarding {
-  overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--color-primary) 25%, var(--color-base-300));
-  border-radius: 0.875rem;
-  background:
-    radial-gradient(circle at 100% 0%, color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 45%),
-    var(--color-base-100);
-}
-
-.onboarding-hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem;
-}
-
-.onboarding-toggle {
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-pill);
-  background: var(--color-base-100);
-  font-size: var(--text-xs);
-  color: var(--color-subtle);
-}
-
-.onboarding-when-collapsed,
-.onboarding[data-collapsed="true"] .onboarding-when-open,
-.onboarding[data-collapsed="true"] .onboarding-steps {
-  display: none;
-}
-
-.onboarding[data-collapsed="true"] .onboarding-when-collapsed {
-  display: inline;
-}
-
-.onboarding[data-collapsed="true"] .onboarding-chevron {
-  transform: rotate(180deg);
-}
-
-.onboarding-steps {
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem 1.25rem 1rem;
-  border-top: 1px solid var(--color-base-300);
-}
-
-/* One row per step, the marker on a rail that runs down to the next. */
-.onboarding-step {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.875rem;
-  padding: 0.75rem 0;
-}
-
-.onboarding-step:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  left: 0.875rem;
-  top: 2.5rem;
-  bottom: -0.5rem;
-  width: 1.5px;
-  background: var(--color-base-300);
-}
-
-.onboarding-step[data-state="done"]:not(:last-child)::after {
-  background: var(--color-primary);
-}
-
-.onboarding-marker {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid var(--color-base-300);
-  border-radius: 9999px;
-  background: var(--color-base-100);
-  font-size: var(--text-xs);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
   font-weight: 600;
-  color: var(--color-subtle);
+  letter-spacing: -0.01em;
+  color: var(--color-base-content);
 }
 
-.onboarding-state {
-  padding: 0.0625rem 0.5rem;
-  border-radius: var(--radius-pill);
-  background: var(--color-base-200);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--color-subtle);
-}
-
-.onboarding-step[data-state="done"] .onboarding-marker {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-}
-
-.onboarding-step[data-state="done"] .onboarding-state {
-  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
-}
-
-.onboarding-step[data-state="done"] > div > div > p {
-  color: var(--color-subtle);
-}
-
-.onboarding-step[data-state="current"] .onboarding-marker,
-.onboarding-step[data-state="waiting"] .onboarding-marker {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 15%, transparent);
-}
-
-.onboarding-step[data-state="current"] .onboarding-state {
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-}
-
-.onboarding-step[data-state="waiting"] .onboarding-state {
-  background: color-mix(in oklab, var(--color-info) 15%, transparent);
-  color: var(--color-info);
-}
-
-.onboarding-step[data-state="blocked"] .onboarding-marker {
-  border-color: var(--color-error);
-  background: color-mix(in oklab, var(--color-error) 12%, var(--color-base-100));
-  color: var(--color-error);
-}
-
-.onboarding-step[data-state="blocked"] .onboarding-state {
-  background: color-mix(in oklab, var(--color-error) 12%, transparent);
-  color: var(--color-error);
-}
-
-.onboarding-step[data-state="locked"] {
-  opacity: 0.55;
-}
-
-.onboarding-step[data-state="locked"] .onboarding-marker {
-  border-style: dashed;
-}
-
-.onboarding-pulse {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-  background: var(--color-primary);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .onboarding-pulse {
-    animation: onboarding-pulse 1.4s ease-in-out infinite;
-  }
-}
-
-@keyframes onboarding-pulse {
-  0%,
-  100% {
-    transform: scale(0.7);
-    opacity: 0.5;
-  }
-
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-.onboarding-recipe {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field);
-  background: var(--color-base-100);
-  font-size: var(--text-sm);
-  transition: border-color 150ms, box-shadow 150ms;
-}
-
-.onboarding-recipe:hover {
-  border-color: color-mix(in oklab, var(--color-primary) 45%, var(--color-base-300));
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.05);
+.overview-card-title .hero-icon,
+.overview-card-title > [class*="hero-"] {
+  color: var(--color-muted);
 }
 
 /* ── Leaderboard ─────────────────────────────────────────────────────────
@@ -1659,25 +970,6 @@ optgroup {
   color: oklch(30% 0.06 50);
 }
 
-/* ── Match report ────────────────────────────────────────────────────────
-   The header card: the map on the left, the score on the right, over a
-   soft wash of the brand colour. */
-.match-hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem;
-  border-radius: var(--radius-box);
-  background:
-    radial-gradient(circle at 100% 0%, color-mix(in oklab, var(--color-primary) 14%, transparent), transparent 55%),
-    var(--color-base-100);
-  box-shadow:
-    0 0 0 1px var(--color-base-300),
-    0 1px 2px rgb(0 0 0 / 0.03);
-}
-
 /* ── Attention inbox ─────────────────────────────────────────────────────
    One row per item, its severity carried by the icon chip and a rail on
    the left edge. */
@@ -1695,69 +987,16 @@ optgroup {
     0 1px 2px rgb(0 0 0 / 0.03);
 }
 
-.attention-icon {
-  display: flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-field);
-  background: var(--color-base-200);
-  color: var(--color-subtle);
-}
-
 .attention-item[data-severity="error"] {
   border-left-color: var(--color-error);
-}
-
-.attention-item[data-severity="error"] .attention-icon {
-  background: color-mix(in oklab, var(--color-error) 12%, transparent);
-  color: var(--color-error);
 }
 
 .attention-item[data-severity="warning"] {
   border-left-color: var(--color-warning);
 }
 
-.attention-item[data-severity="warning"] .attention-icon {
-  background: color-mix(in oklab, var(--color-warning) 15%, transparent);
-  color: var(--color-warning);
-}
-
 .attention-item[data-severity="info"] {
   border-left-color: var(--color-info);
-}
-
-.attention-item[data-severity="info"] .attention-icon {
-  background: color-mix(in oklab, var(--color-info) 12%, transparent);
-  color: var(--color-info);
-}
-
-/* ── Achievements ────────────────────────────────────────────────────────
-   A card per achievement, its medal coloured by tier. */
-.achievement-card {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.875rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-}
-
-.achievement-medal {
-  display: flex;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background: var(--medal-bg, var(--color-base-200));
-  color: var(--medal-fg, var(--color-subtle));
-  box-shadow: inset 0 0 0 2px var(--medal-ring, transparent);
 }
 
 .achievement-tier {
@@ -1771,232 +1010,6 @@ optgroup {
   text-transform: uppercase;
 }
 
-.achievement-card[data-tier="bronze"] {
-  --medal-bg: oklch(85% 0.06 55);
-  --medal-fg: oklch(38% 0.07 50);
-  --medal-ring: oklch(72% 0.1 55);
-}
-
-.achievement-card[data-tier="silver"] {
-  --medal-bg: oklch(90% 0.01 260);
-  --medal-fg: oklch(38% 0.02 260);
-  --medal-ring: oklch(78% 0.02 260);
-}
-
-.achievement-card[data-tier="gold"] {
-  --medal-bg: oklch(90% 0.12 90);
-  --medal-fg: oklch(40% 0.08 75);
-  --medal-ring: oklch(80% 0.15 85);
-}
-
-.achievement-card[data-tier="legendary"] {
-  --medal-bg: oklch(88% 0.07 300);
-  --medal-fg: oklch(40% 0.14 300);
-  --medal-ring: oklch(70% 0.17 300);
-}
-
-/* ── Scope switcher ──────────────────────────────────────────────────────
-   The sidebar's top card: which server the pages below are about. */
-.scope-switcher {
-  display: flex;
-  width: 100%;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  transition: border-color 150ms, background-color 150ms;
-}
-
-.scope-switcher:hover,
-.scope-switcher[aria-expanded="true"] {
-  border-color: color-mix(in oklab, var(--color-primary) 40%, var(--color-base-300));
-  background: var(--color-base-200);
-}
-
-.scope-menu {
-  position: absolute;
-  inset-inline: 0.75rem;
-  top: calc(100% - 0.5rem);
-  z-index: 50;
-  max-height: 22rem;
-  overflow-y: auto;
-  padding: 0.375rem;
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  box-shadow:
-    0 0 0 1px var(--color-base-300),
-    0 12px 28px rgb(0 0 0 / 0.14);
-}
-
-.scope-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: var(--radius-field);
-  transition: background-color 150ms;
-}
-
-.scope-menu-item:hover {
-  background: var(--color-base-200);
-}
-
-.scope-menu-item.is-current {
-  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-}
-
-/* ── Server cockpit ──────────────────────────────────────────────────────
-   The live match as a scoreboard over the map's key art: a dark scrim for
-   legibility, the score in the middle, the five sectors drawn under it. */
-.cockpit-hero {
-  position: relative;
-  overflow: hidden;
-  padding: 1.25rem;
-  border-radius: var(--radius-box);
-  background-color: oklch(22% 0.02 250);
-  background-image: var(--hero-art);
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
-}
-
-@media (min-width: 40rem) {
-  .cockpit-hero {
-    padding: 1.75rem;
-  }
-}
-
-.cockpit-hero-scrim {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, oklch(18% 0.03 250 / 0.92), oklch(18% 0.03 250 / 0.55) 50%, oklch(18% 0.03 250 / 0.9)),
-    linear-gradient(0deg, oklch(15% 0.02 250 / 0.6), transparent 60%);
-}
-
-.cockpit-sectors {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.25rem;
-  width: 12rem;
-}
-
-.cockpit-sector {
-  height: 0.5rem;
-  border-radius: 9999px;
-}
-
-.cockpit-sector.is-allies {
-  background: var(--color-info);
-}
-
-.cockpit-sector.is-axis {
-  background: var(--color-error);
-}
-
-.cockpit-timeline {
-  display: flex;
-  flex-direction: column;
-}
-
-.cockpit-timeline-item {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--color-base-300);
-}
-
-.cockpit-timeline-item:last-child {
-  border-bottom: 0;
-}
-
-/* ── Sign in ─────────────────────────────────────────────────────────────
-   A map of the game full bleed, a scrim heavier where the card sits, and
-   the form on a frosted card. */
-.auth-shell {
-  position: relative;
-  display: flex;
-  min-height: 100dvh;
-  flex-direction: column;
-  background-color: oklch(18% 0.03 250);
-  background-image: var(--auth-art);
-  background-size: cover;
-  background-position: center;
-}
-
-.auth-scrim {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, oklch(15% 0.03 200 / 0.35), oklch(15% 0.03 200 / 0.8) 70%),
-    linear-gradient(0deg, oklch(12% 0.02 250 / 0.7), transparent 45%);
-}
-
-@media (max-width: 39.9375rem) {
-  .auth-scrim {
-    background: oklch(15% 0.03 200 / 0.7);
-  }
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 24rem;
-  padding: 1.75rem;
-  border-radius: 1.25rem;
-  background: color-mix(in oklab, var(--color-base-100) 88%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, white 12%, transparent),
-    0 24px 60px rgb(0 0 0 / 0.35);
-  backdrop-filter: blur(18px) saturate(1.2);
-}
-
-@media (min-width: 40rem) {
-  .auth-card {
-    padding: 2.25rem;
-  }
-}
-
-.auth-shell .flash-group,
-.auth-shell [id="flash-group"] {
-  z-index: 60;
-}
-
-/* ── Season form ─────────────────────────────────────────────────────────
-   The ranking methods as cards to pick from, the duration shortcuts as
-   chips, and the whole season summed up in one sentence. */
-.scoring-option {
-  display: block;
-  cursor: pointer;
-}
-
-.scoring-card {
-  display: block;
-  height: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field);
-  transition: border-color 150ms, background-color 150ms;
-}
-
-.scoring-option:hover .scoring-card {
-  border-color: color-mix(in oklab, var(--color-primary) 40%, var(--color-base-300));
-}
-
-.scoring-option input:checked + .scoring-card {
-  border-color: var(--color-primary);
-  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  box-shadow: 0 0 0 1px var(--color-primary);
-}
-
-.scoring-option input:focus-visible + .scoring-card {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
 .weight-field {
   display: flex;
   align-items: center;
@@ -2005,37 +1018,6 @@ optgroup {
   padding: 0.375rem 0.5rem 0.375rem 0.75rem;
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-field);
-}
-
-.duration-chip {
-  cursor: pointer;
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-sm);
-  transition: border-color 150ms, background-color 150ms, color 150ms;
-}
-
-.duration-chip:hover {
-  border-color: color-mix(in oklab, var(--color-primary) 40%, var(--color-base-300));
-}
-
-.duration-chip.is-active {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-  font-weight: 500;
-}
-
-.season-summary {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  margin-top: 1rem;
-  padding: 0.875rem;
-  border-radius: var(--radius-field);
-  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  font-size: var(--text-sm);
 }
 
 /* A value of a group, picked or not: "is one of" on a field with options. */
@@ -2084,95 +1066,6 @@ optgroup {
 
 .weapon-group-chevron {
   transition: transform 150ms;
-}
-
-/* Form sections: a title, then the fields, a hairline between sections and
-   the same rhythm above and below every one of them. */
-.form-section {
-  padding-block: 1.25rem;
-  border-bottom: 1px solid var(--color-base-300);
-}
-
-.form-section:first-of-type {
-  padding-top: 0.25rem;
-}
-
-.form-section-title {
-  margin-bottom: 0.75rem;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-/* The custom duration, shaped like the chips beside it. */
-.duration-custom {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  height: 2.125rem;
-  padding: 0 0.375rem 0 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-sm);
-  transition: border-color 150ms;
-}
-
-.duration-custom:focus-within,
-.duration-custom.is-active {
-  border-color: var(--color-primary);
-}
-
-.duration-custom input {
-  width: 3.25rem;
-  height: 1.5rem;
-  padding: 0 0.25rem;
-  border: 0;
-  border-radius: var(--radius-selector);
-  background: var(--color-base-200);
-  color: inherit;
-  text-align: center;
-  font-size: var(--text-sm);
-  -moz-appearance: textfield;
-}
-
-.duration-custom input:focus {
-  outline: none;
-}
-
-.duration-custom input::-webkit-outer-spin-button,
-.duration-custom input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.duration-chip {
-  height: 2.125rem;
-  padding-block: 0;
-}
-
-/* ── Rating builder ──────────────────────────────────────────────────────
-   The formula of a rating season, one numbered block per piece, presets
-   first, and what the numbers do right below. */
-.rating-preset {
-  display: block;
-  padding: 0.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 150ms, background-color 150ms;
-}
-
-.rating-preset:hover {
-  border-color: color-mix(in oklab, var(--color-primary) 40%, var(--color-base-300));
-}
-
-.rating-preset.is-active {
-  border-color: var(--color-primary);
-  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  box-shadow: 0 0 0 1px var(--color-primary);
 }
 
 .rating-block {
@@ -2324,11 +1217,6 @@ optgroup {
   .rating-builder {
     grid-template-columns: minmax(0, 1fr) 17rem;
   }
-
-  .rating-aside {
-    position: sticky;
-    top: 0;
-  }
 }
 
 /* A number with its unit inside the box, so every field lines up. */
@@ -2418,47 +1306,11 @@ optgroup {
 .delta-bar-win { background: var(--color-success); }
 .delta-bar-loss { background: var(--color-error); }
 
-/* ── Live previews ───────────────────────────────────────────────────────
-   Forms that change the game keep what they would do in a column beside
-   the settings, in view while anything moves. */
-.form-with-preview {
-  display: grid;
-  gap: 1.25rem;
-  align-items: start;
-}
-
-@media (min-width: 64rem) {
-  .form-with-preview {
-    grid-template-columns: minmax(0, 1fr) 18rem;
-  }
-
-  .form-preview-aside {
-    position: sticky;
-    top: 0;
-  }
-}
-
-.form-preview-aside {
-  display: grid;
-  gap: 0.75rem;
-}
-
 .preview-panel {
   padding: 0.875rem;
   border: 1px solid color-mix(in oklab, var(--color-primary) 25%, var(--color-base-300));
   border-radius: var(--radius-field);
   background: color-mix(in oklab, var(--color-primary) 5%, var(--color-base-100));
-}
-
-.preview-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
 }
 
 .live-dot {
@@ -2477,34 +1329,6 @@ optgroup {
 
 @media (prefers-reduced-motion: reduce) {
   .live-dot { animation: none; }
-}
-
-.preview-rank {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.375rem;
-  border-radius: var(--radius-field);
-  font-size: var(--text-sm);
-}
-
-.preview-rank.is-winner {
-  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-}
-
-.preview-meter {
-  height: 0.5rem;
-  border-radius: 9999px;
-  background: var(--color-base-200);
-  overflow: hidden;
-}
-
-.preview-meter > span {
-  display: block;
-  height: 100%;
-  border-radius: 9999px;
-  background: var(--color-primary);
-  transition: width 200ms ease-out;
 }
 
 /* A message as it lands in the game: the chat bubble of the preview. */
@@ -2540,53 +1364,1179 @@ optgroup {
   color: var(--color-muted, currentColor);
 }
 
-.message-preview {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-left: 2px solid var(--color-primary);
-  border-radius: 0 var(--radius-field) var(--radius-field) 0;
-  background: var(--color-base-200);
-  font-size: var(--text-sm);
-  white-space: pre-line;
-  overflow-wrap: anywhere;
+/* ═════════════════════════════════════════════════════════════════════════
+   Shell — the "Posto de Comando" frame (Main, Briefing, CommandPalette,
+   Notifications, MobileMore, TabletBriefing boards). Rail 104 · header 92 ·
+   gap 20 · margin 0 28 28 8 on desktop; header 64 and a floating tab bar
+   on tablets and phones.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* In the components layer, so a utility on the element (hidden, max-md:hidden,
+   border-0...) still wins over these defaults. */
+@layer components {
+  .shell-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in oklab, var(--color-base-200) 88%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  /* The page's own buttons in the header are the boards' 48 px pills. */
+  .shell-header .pc-button {
+    min-height: 2.75rem;
+    border-radius: 9999px;
+    padding-inline: 1.125rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  @media (min-width: 48rem) {
+    .shell-header .pc-button {
+      min-height: 3rem;
+    }
+  }
+
+  .logo-tile {
+    align-items: center;
+    justify-content: center;
+    background: var(--tone-logo);
+    color: var(--tone-on-logo);
+    transition: transform var(--motion-quickly) ease;
+  }
+
+  .logo-tile:hover {
+    transform: translateY(-1px);
+  }
+
+  /* A round, bordered button: back arrows, search on small screens. */
+  .icon-round {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid var(--color-base-300);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    transition: background-color 150ms, border-color 150ms;
+  }
+
+  .icon-round:hover {
+    border-color: var(--color-line-strong);
+  }
+
+  .icon-round:focus-visible,
+  .bell-button:focus-visible,
+  .scope-pill:focus-visible,
+  .search-trigger:focus-visible,
+  .rail-item:focus-visible,
+  .tab-bar-item:focus-visible,
+  .header-tab:focus-visible,
+  .avatar-button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0.3125rem 0.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-secondary);
+    color: var(--color-subtle);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+  }
+
+  .kbd--sm {
+    padding: 0.1875rem 0.4375rem;
+    border-radius: 0.375rem;
+  }
+
+  /* ── Global search trigger ──────────────────────────────────────────────── */
+  .search-trigger {
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-base-300);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    transition: border-color 150ms;
+  }
+
+  .search-trigger:hover {
+    border-color: var(--color-line-strong);
+  }
+
+  .search-trigger-text,
+  .search-trigger-kbd {
+    display: none;
+  }
+
+  @media (min-width: 48rem) {
+    .search-trigger {
+      width: 3rem;
+      height: 3rem;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .search-trigger {
+      width: 21.25rem;
+      justify-content: flex-start;
+      gap: 0.625rem;
+      padding: 0 0.5rem 0 1.125rem;
+      color: var(--color-muted);
+      text-align: left;
+    }
+
+    .search-trigger-text {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 0.875rem;
+    }
+
+    .search-trigger-kbd {
+      display: inline-flex;
+      padding: 0.3125rem 0.5rem;
+      border-radius: 0.5rem;
+      background: var(--color-secondary);
+      color: var(--color-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+    }
+  }
+
+  /* ── Header tabs ────────────────────────────────────────────────────────── */
+  .header-tabs {
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 9999px;
+    background: var(--color-base-100);
+    scrollbar-width: none;
+  }
+
+  .header-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-tab {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2.25rem;
+    padding: 0 1rem;
+    border-radius: 9999px;
+    color: var(--color-subtle);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    transition: color 150ms, background-color 150ms;
+  }
+
+  .header-tab:hover {
+    color: var(--color-base-content);
+  }
+
+  .header-tab[aria-current="page"] {
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+    font-weight: 600;
+  }
+
+  .header-tab-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .header-tabs-section {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0 0.375rem 0 0;
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .header-tabs-rule {
+    width: 1px;
+    height: 1.25rem;
+    margin: 0 0.375rem;
+    background: var(--color-line-raised);
+  }
+
+  /* ── Rail ───────────────────────────────────────────────────────────────── */
+  .rail-item {
+    position: relative;
+    display: flex;
+    width: 5.25rem;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.75rem 0 0.625rem;
+    border-radius: 1.125rem;
+    color: var(--color-rail);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+    transition: background-color 150ms, color 150ms;
+  }
+
+  .rail-item:hover {
+    color: var(--color-base-content);
+    background: color-mix(in oklab, var(--tone-rail-active) 55%, transparent);
+  }
+
+  .rail-item[aria-current="page"] {
+    background: var(--tone-rail-active);
+    box-shadow: var(--shadow-rail-active);
+    color: var(--color-base-content);
+  }
+
+  :root:not(.dark) .rail-item[aria-current="page"] {
+    font-weight: 600;
+  }
+
+  .rail-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 1.25rem;
+    min-width: 1.125rem;
+    height: 1.125rem;
+    padding: 0 0.25rem;
+    border-radius: 9999px;
+    background: var(--color-warn-fill);
+    color: var(--color-on-warn);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.125rem;
+    text-align: center;
+  }
+
+  .avatar-button {
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 2px solid var(--tone-avatar-ring);
+    background: var(--color-avatar);
+    color: var(--color-base-content);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* The account menu opens to the right of the avatar, at the rail's foot. */
+  .account-menu {
+    position: fixed;
+    left: 6.75rem;
+    bottom: 1rem;
+    z-index: 60;
+    width: 16.5rem;
+    padding: 0.5rem;
+    border-radius: 1.25rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-overlay);
+    box-shadow: var(--shadow-popover);
+  }
+
+  .account-menu-item {
+    display: flex;
+    width: 100%;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    transition: background-color 150ms;
+  }
+
+  .account-menu-item:hover,
+  .account-menu-item:focus-visible {
+    background: var(--color-secondary);
+    outline: none;
+  }
+
+  .account-menu-rule {
+    height: 1px;
+    margin: 0.375rem 0.25rem;
+    background: var(--color-line-soft);
+  }
+
+  .account-menu-label {
+    padding: 0.375rem 0.625rem 0.25rem;
+    color: var(--color-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .account-menu-chip {
+    display: flex;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    color: var(--color-subtle);
+    font-size: 0.75rem;
+    transition: background-color 150ms;
+  }
+
+  .account-menu-chip:hover {
+    background: var(--color-secondary);
+  }
+
+  .account-menu-chip.is-current {
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+    font-weight: 600;
+  }
+
+  /* Dark · Light · System, the choice of this browser. */
+  .scheme-choice {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin: 0 0.25rem 0.25rem;
+    padding: 0.25rem;
+    border-radius: 9999px;
+    background: var(--color-secondary);
+  }
+
+  .scheme-choice-option {
+    display: flex;
+    height: 2rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    color: var(--color-subtle);
+    font-size: 0.75rem;
+  }
+
+  .scheme-choice--lg {
+    margin: 0;
+  }
+
+  .scheme-choice--lg .scheme-choice-option {
+    height: 2.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .scheme-choice-option[aria-checked="true"] {
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+    font-weight: 600;
+  }
+
+  /* ── Scope pill ─────────────────────────────────────────────────────────── */
+  .scope-pill {
+    display: flex;
+    height: 3rem;
+    max-width: 20rem;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0 1rem 0 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-base-300);
+    background: var(--color-base-100);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: border-color 150ms;
+  }
+
+  .scope-pill:hover,
+  .scope-pill[aria-expanded="true"] {
+    border-color: var(--color-line-strong);
+  }
+
+  .scope-count {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: var(--tone-logo);
+    color: var(--tone-on-logo);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .scope-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 50;
+    width: 17rem;
+    max-height: 24rem;
+    overflow-y: auto;
+    padding: 0.375rem;
+    border-radius: 1.25rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-overlay);
+    box-shadow: var(--shadow-popover);
+  }
+
+  .scope-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.875rem;
+    transition: background-color 150ms;
+  }
+
+  .scope-menu-item:hover {
+    background: var(--color-secondary);
+  }
+
+  .scope-menu-item.is-current {
+    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
+  }
+
+  /* ── Bell ───────────────────────────────────────────────────────────────── */
+  .bell-button {
+    position: relative;
+    display: flex;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-base-300);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    transition: background-color 150ms, color 150ms, border-color 150ms;
+  }
+
+  @media (min-width: 48rem) {
+    .bell-button {
+      width: 3rem;
+      height: 3rem;
+    }
+  }
+
+  .bell-button:hover {
+    border-color: var(--color-line-strong);
+  }
+
+  .bell-button[aria-expanded="true"] {
+    border-color: var(--color-inverse);
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+  }
+
+  .bell-dot {
+    position: absolute;
+    top: 0.6875rem;
+    right: 0.75rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    border: 2px solid var(--color-base-100);
+    background: var(--color-warn-fill);
+    box-sizing: content-box;
+  }
+
+  .bell-count {
+    position: absolute;
+    top: -0.1875rem;
+    right: -0.1875rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.25rem;
+    border-radius: 9999px;
+    border: 2px solid var(--color-base-200);
+    background: var(--color-warn-fill);
+    color: var(--color-on-warn);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+  }
+
+  /* ── Notifications panel ────────────────────────────────────────────────── */
+  .notif-panel {
+    position: fixed;
+    top: 4.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    z-index: 60;
+    display: flex;
+    max-height: calc(100dvh - 6rem);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1.625rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-overlay);
+    box-shadow:
+      var(--shadow-popover),
+      inset 0 2px 0 rgb(255 255 255 / 0.03);
+  }
+
+  @media (min-width: 48rem) {
+    .notif-panel {
+      top: 5.125rem;
+      left: auto;
+      right: 1.5rem;
+      width: 26.5rem;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .notif-panel {
+      right: 1.75rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .notif-panel {
+      animation: rise-in 0.16s ease-out;
+    }
+  }
+
+  .notif-tabs {
+    display: flex;
+    align-self: flex-start;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 9999px;
+    background: var(--color-secondary);
+  }
+
+  .notif-tabs button {
+    height: 2rem;
+    cursor: pointer;
+    padding: 0 0.875rem;
+    border-radius: 9999px;
+    color: var(--color-subtle);
+    font-size: 0.8125rem;
+  }
+
+  .notif-tabs button[aria-selected="true"] {
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+    font-weight: 600;
+  }
+
+  .notif-list {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0 0.5rem;
+  }
+
+  .notif-heading {
+    padding: 0.375rem 0.75rem;
+    color: var(--color-muted);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .notif-item {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 1.125rem;
+    transition: background-color 150ms;
+  }
+
+  .notif-item:hover {
+    background: var(--color-secondary);
+  }
+
+  .notif-item.is-error {
+    background: color-mix(in oklab, var(--color-error) 6%, transparent);
+  }
+
+  .notif-icon {
+    display: flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+  }
+
+  .notif-icon--error {
+    background: color-mix(in oklab, var(--color-error) 14%, transparent);
+    color: var(--color-error);
+  }
+
+  .notif-icon--warning {
+    background: color-mix(in oklab, var(--color-warning) 13%, transparent);
+    color: var(--color-warning);
+  }
+
+  .notif-icon--engine {
+    background: color-mix(in oklab, var(--color-accent) 13%, transparent);
+    color: var(--color-accent);
+  }
+
+  .notif-icon--axis {
+    background: color-mix(in oklab, var(--color-axis) 14%, transparent);
+    color: var(--color-axis);
+  }
+
+  .notif-icon.is-read {
+    background: var(--color-secondary);
+  }
+
+  .notif-unread {
+    position: absolute;
+    top: 1.125rem;
+    left: 0.25rem;
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: var(--color-warn-fill);
+  }
+
+  /* ── Command palette ────────────────────────────────────────────────────── */
+  .palette {
+    margin: 7rem auto auto;
+    width: min(42.5rem, calc(100vw - 1.5rem));
+    max-width: none;
+    max-height: calc(100dvh - 8rem);
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    overflow: visible;
+  }
+
+  @media (max-width: 47.9375rem) {
+    .palette {
+      margin-top: 0.75rem;
+      max-height: calc(100dvh - 1.5rem);
+    }
+  }
+
+  .palette::backdrop {
+    background: var(--tone-scrim);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .palette[open] {
+      animation: rise-in 0.14s ease-out;
+    }
+  }
+
+  .palette-panel {
+    display: flex;
+    max-height: inherit;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1.625rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-base-100);
+    box-shadow: var(--shadow-dialog);
+  }
+
+  .palette-input-row {
+    display: flex;
+    height: 4.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0 1.125rem 0 1.375rem;
+    border-bottom: 1px solid var(--color-line-soft);
+  }
+
+  .palette-input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-base-content);
+    caret-color: var(--color-primary);
+    font-size: 1.25rem;
+  }
+
+  .palette-input::placeholder {
+    color: var(--color-muted);
+  }
+
+  .palette-filter {
+    height: 1.875rem;
+    cursor: pointer;
+    padding: 0 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-base-300);
+    color: var(--color-subtle);
+    font-size: 0.75rem;
+  }
+
+  .palette-filter[aria-selected="true"] {
+    border-color: var(--color-inverse);
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+    font-weight: 600;
+  }
+
+  .palette-results {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0.25rem 0.625rem 0.625rem;
+  }
+
+  .palette-heading {
+    padding: 0.75rem 0.75rem 0.375rem;
+    color: var(--color-muted);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .palette-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5625rem 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid transparent;
+    color: var(--color-base-content);
+    font-size: 0.875rem;
+  }
+
+  .palette-option[aria-selected="true"] {
+    border-color: var(--color-line-strong);
+    background: var(--color-secondary);
+  }
+
+  .palette-enter {
+    visibility: hidden;
+  }
+
+  .palette-option[aria-selected="true"] .palette-enter {
+    visibility: visible;
+    background: var(--color-base-300);
+  }
+
+  .palette-tile {
+    display: flex;
+    width: 2.125rem;
+    height: 2.125rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6875rem;
+    background: var(--color-secondary);
+    color: var(--color-subtle);
+  }
+
+  .palette-tile--axis {
+    background: color-mix(in oklab, var(--color-axis) 16%, transparent);
+    color: var(--color-axis);
+  }
+
+  .palette-tile--engine {
+    background: color-mix(in oklab, var(--color-accent) 13%, transparent);
+    color: var(--color-accent);
+  }
+
+  .palette-text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .palette-title {
+    overflow: hidden;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .palette-sub {
+    overflow: hidden;
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .palette-footer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 1.125rem;
+    padding: 0.75rem 1.375rem;
+    border-top: 1px solid var(--color-line-soft);
+    background: color-mix(in oklab, var(--color-base-100) 60%, var(--color-base-200));
+    color: var(--color-muted);
+    font-size: 0.75rem;
+  }
+
+  /* ── Tab bar (phone and tablet) ─────────────────────────────────────────── */
+  .tab-bar {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    display: grid;
+    height: 4.25rem;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    align-items: center;
+    border-radius: 1.625rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-secondary);
+    box-shadow: 0 -12px 30px color-mix(in oklab, var(--color-base-200) 80%, transparent);
+  }
+
+  @media (min-width: 48rem) {
+    .tab-bar {
+      left: 1.5rem;
+      right: 1.5rem;
+      bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+      height: 4.5rem;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .tab-bar {
+      display: none;
+    }
+  }
+
+  :root:not(.dark) .tab-bar {
+    background: var(--color-base-100);
+    box-shadow: 0 -8px 24px rgba(22, 23, 15, 0.08);
+  }
+
+  .tab-bar-item {
+    display: flex;
+    min-width: 0;
+    cursor: pointer;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--color-rail);
+    font-size: 0.6875rem;
+    font-weight: 500;
+  }
+
+  .tab-bar-item[aria-current="page"] {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .tab-bar-badge {
+    position: absolute;
+    top: -0.375rem;
+    left: calc(50% + 0.375rem);
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.1875rem;
+    border-radius: 9999px;
+    background: var(--color-warn-fill);
+    color: var(--color-on-warn);
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+  }
+
+  /* ── "Mais" sheet ───────────────────────────────────────────────────────── */
+  .more-sheet {
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    overflow-y: auto;
+    border: 0;
+    padding: 0;
+    background: var(--color-base-200);
+    color: inherit;
+  }
+
+  .more-sheet::backdrop {
+    background: var(--color-base-200);
+  }
+
+  .more-card {
+    border-radius: 1.5rem;
+    background: var(--color-base-100);
+  }
+
+  .more-row {
+    display: flex;
+    min-height: 3.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--color-line-soft);
+  }
+
+  .more-card > .more-row:last-child,
+  .more-card > .more-row-details:last-child > .more-row {
+    border-bottom: 0;
+  }
+
+  .more-row-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .more-tile {
+    display: flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    background: var(--color-secondary);
+  }
+
+  /* ── Toasts ─────────────────────────────────────────────────────────────── */
+  .toast-stack {
+    pointer-events: none;
+    position: fixed;
+    right: 1rem;
+    bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 48rem) {
+    .toast-stack {
+      left: auto;
+      width: 25rem;
+      bottom: 7rem;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .toast-stack {
+      right: 1.75rem;
+      bottom: 1.75rem;
+    }
+  }
+
+  .toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 1.125rem;
+    border: 1px solid var(--color-line-raised);
+    background: var(--color-secondary);
+    box-shadow: var(--shadow-toast);
+    color: var(--color-base-content);
+  }
+
+  :root:not(.dark) .toast {
+    background: var(--color-overlay);
+  }
+
+  .toast[hidden] {
+    display: none;
+  }
+
+  .toast--error {
+    border-color: color-mix(in oklab, var(--color-error) 40%, transparent);
+  }
+
+  .toast-mark {
+    display: flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+  }
+
+  .toast--error .toast-mark {
+    background: var(--color-error);
+    color: var(--color-error-content);
+    font-weight: 700;
+  }
+
+  /* A plain pill link, the secondary button of dialogs and states. */
+  .chip-button {
+    display: inline-flex;
+    height: 2.5rem;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1.125rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-base-300);
+    background: var(--color-secondary);
+    color: var(--color-base-content);
+    font-size: 0.8125rem;
+    transition: border-color 150ms;
+  }
+
+  .chip-button:hover {
+    border-color: var(--color-line-strong);
+  }
+
+  .chip-button--inverse {
+    border-color: var(--color-inverse);
+    background: var(--color-inverse);
+    color: var(--color-on-inverse);
+    font-weight: 600;
+  }
+
+  .chip-button--signal {
+    border-color: var(--tone-cta);
+    background: var(--tone-cta);
+    color: var(--tone-on-cta);
+    font-weight: 600;
+  }
+
+  .chip-button--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-subtle);
+  }
+
+  /* ── States (States board) ──────────────────────────────────────────────── */
+  .state-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius-panel);
+    background: var(--color-base-100);
+  }
+
+  .state-panel--error {
+    border: 1px solid color-mix(in oklab, var(--color-error) 30%, transparent);
+  }
+
+  .state-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 1.25rem;
+    border: 1px solid;
+  }
+
+  .state-banner--error {
+    border-color: color-mix(in oklab, var(--color-error) 35%, transparent);
+    background: color-mix(in oklab, var(--color-error) 10%, transparent);
+  }
+
+  .state-banner--warning {
+    border-color: color-mix(in oklab, var(--color-warning) 35%, transparent);
+    background: color-mix(in oklab, var(--color-warning) 10%, transparent);
+  }
+
+  .skeleton-bar {
+    display: block;
+    border-radius: 0.3125rem;
+    background: var(--color-base-300);
+  }
+
+  .skeleton-bar--strong {
+    background: var(--color-line-raised);
+  }
+
+  .skeleton-bar--soft {
+    background: var(--color-line-soft);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    [aria-busy="true"] .skeleton-bar {
+      animation: skeleton-pulse 1.6s ease-in-out infinite;
+    }
+  }
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.55;
+    }
+  }
 }
 
-/* The header's bell: the Attention inbox, with its unread count. */
-.attention-bell {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-field);
-  color: var(--color-subtle);
-  transition: background-color 150ms, color 150ms;
+.state-banner-dot {
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-error) 20%, transparent);
 }
 
-.attention-bell:hover {
-  background: var(--color-base-200);
-  color: var(--color-base-content);
+.chip-button--danger {
+  border-color: var(--color-axis);
+  background: var(--color-axis);
+  color: #2a1405;
+  font-weight: 600;
 }
 
-.attention-bell:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+/* The confirmation dialog: centred instead of the modal's side sheet. */
+.app-modal.app-modal--center {
+  inset: 0;
+  margin: auto;
+  height: auto;
+  max-height: calc(100dvh - 2rem);
+  width: min(37.5rem, calc(100vw - 1.5rem));
+  max-width: none;
+  overflow: visible;
 }
 
-.attention-bell-badge {
-  position: absolute;
-  top: 0.125rem;
-  right: 0.125rem;
-  min-width: 1.125rem;
-  height: 1.125rem;
-  padding: 0 0.3rem;
-  border-radius: 9999px;
-  background: var(--color-error);
-  box-shadow: 0 0 0 2px var(--color-base-100);
-  color: white;
-  font-size: 0.625rem;
-  font-weight: 700;
-  line-height: 1.125rem;
-  text-align: center;
+.app-modal--center::backdrop {
+  background: var(--tone-scrim);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-modal.app-modal--center,
+  .app-modal.app-modal--center[open] {
+    transform: none;
+  }
+
+  .app-modal--center[open] {
+    animation: rise-in 0.16s ease-out;
+  }
 }

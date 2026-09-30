@@ -3,7 +3,11 @@ defmodule HllConditionalActionsWeb.Router do
 
   import HllConditionalActionsWeb.UserAuth
 
+  import HllConditionalActionsWeb.ShopAuth,
+    only: [fetch_current_customer: 2, require_open_shop: 2]
+
   alias HllConditionalActionsWeb.Plugs
+  alias HllConditionalActionsWeb.ShopAuth
   alias HllConditionalActionsWeb.UserAuth
 
   pipeline :browser do
@@ -26,11 +30,58 @@ defmodule HllConditionalActionsWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # The public VIP shop: its own root layout and its own customer session,
+  # and only while at least one server installed the module.
+  pipeline :shop do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {HllConditionalActionsWeb.Layouts, :shop_root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug Plugs.SecurityHeaders, framed: :self
+    plug Plugs.Locale
+    plug :fetch_current_customer
+    plug :require_open_shop
+  end
+
   # Password guessing is the only attack this app exposes to the open internet,
   # so the sign in form gets a counter of its own. Caddy limits by address in
   # front; this one also limits by account.
   pipeline :throttle_login do
     plug Plugs.LoginRateLimit
+  end
+
+  # Payment providers call these server to server. There is no session and no
+  # CSRF token; each provider module verifies the request itself.
+  scope "/webhooks", HllConditionalActionsWeb do
+    post "/:provider", ShopPaymentController, :webhook
+  end
+
+  scope "/shop", HllConditionalActionsWeb do
+    pipe_through :shop
+
+    get "/assets/:id", ShopAssetController, :show
+    post "/login", ShopSessionController, :create
+    delete "/logout", ShopSessionController, :delete
+    get "/auth/discord", ShopDiscordController, :request
+    get "/auth/discord/callback", ShopDiscordController, :callback
+    get "/return/:provider", ShopPaymentController, :return
+
+    live_session :shop, on_mount: [{Plugs.Locale, :default}, {ShopAuth, :mount_customer}] do
+      live "/", ShopLive.Index, :index
+      live "/login", ShopLive.Login, :new
+      live "/register", ShopLive.Register, :new
+      live "/reset", ShopLive.ForgotPassword, :new
+      live "/reset/:token", ShopLive.ResetPassword, :edit
+    end
+
+    live_session :shop_customer,
+      on_mount: [{Plugs.Locale, :default}, {ShopAuth, :require_customer}] do
+      live "/account", ShopLive.Account, :show
+      live "/buy/:id", ShopLive.Checkout, :new
+      live "/orders/:id", ShopLive.Order, :show
+    end
   end
 
   # Probes are unauthenticated on purpose: they run before anyone can sign in.
@@ -136,6 +187,17 @@ defmodule HllConditionalActionsWeb.Router do
       live "/rules/:id", RuleLive.Show, :show
       live "/rules/:id/edit", RuleLive.Form, :edit
 
+      live "/vip-shop", VipShopLive.Packages, :index
+      live "/vip-shop/packages/new", VipShopLive.Packages, :new
+      live "/vip-shop/packages/:id/edit", VipShopLive.Packages, :edit
+      live "/vip-shop/purchases", VipShopLive.Purchases, :index
+      live "/vip-shop/purchases/grant", VipShopLive.Purchases, :grant
+      live "/vip-shop/coupons", VipShopLive.Coupons, :index
+      live "/vip-shop/coupons/new", VipShopLive.Coupons, :new
+      live "/vip-shop/coupons/:id/edit", VipShopLive.Coupons, :edit
+      live "/vip-shop/settings", VipShopLive.Settings, :page
+      live "/vip-shop/settings/:section", VipShopLive.Settings, :section
+
       live "/discord", DiscordLive.Index, :index
       live "/discord/new", DiscordLive.Index, :new
       live "/discord/:id/edit", DiscordLive.Index, :edit
@@ -152,9 +214,13 @@ defmodule HllConditionalActionsWeb.Router do
       live "/seasons", SeasonLive.Index, :index
       live "/seasons/new", SeasonLive.Index, :new
       live "/seasons/:id", SeasonLive.Show, :show
+      live "/seasons/:id/edit", SeasonLive.Show, :edit
       live "/matches", MatchLive.Index, :index
       live "/executions", ExecutionLive.Index, :index
+      live "/inbox", InboxLive, :index
+      live "/players", PlayerLive.Index, :index
       live "/players/:player_id", PlayerLive.Show, :show
+      live "/settings", SettingsLive, :index
       live "/metrics", MetricsLive, :index
 
       live "/users", UserLive.Index, :index

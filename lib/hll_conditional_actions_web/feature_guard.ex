@@ -66,7 +66,8 @@ defmodule HllConditionalActionsWeb.FeatureGuard do
     "AchievementLive" => :progression,
     "LeaderboardLive" => :stats,
     "MatchLive" => :stats,
-    "FeedLive" => :live_feed
+    "FeedLive" => :live_feed,
+    "VipShopLive" => :vip_shop
   }
 
   @doc """

@@ -30,14 +30,16 @@ config :hll_conditional_actions, :execution_retention_days, 30
 # punish a situation that has already passed, so those run inline.
 config :hll_conditional_actions, Oban,
   repo: HllConditionalActions.Repo,
-  queues: [actions: 10, discord: 1, maintenance: 1],
+  queues: [actions: 10, discord: 1, maintenance: 1, shop: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
        {"0 4 * * *", HllConditionalActions.Workers.PruneExecutions},
+       {"17 * * * *", HllConditionalActions.Workers.PruneSavedEvents},
        {"*/5 * * * *", HllConditionalActions.Workers.FinalizeSeasons},
-       {"*/10 * * * *", HllConditionalActions.Workers.CloseStaleTickets}
+       {"*/10 * * * *", HllConditionalActions.Workers.CloseStaleTickets},
+       {"0 12 * * *", HllConditionalActions.Workers.VipExpiryReminders}
      ]}
   ]
 
@@ -59,6 +61,9 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
 # Encryption of CRCON API keys at rest. The dev and test keys are overridden
 # from ENCRYPTION_KEY in config/runtime.exs for every other environment.
+# SendGrid and Brevo are reached over HTTP with Req, already a dependency.
+config :swoosh, :api_client, Swoosh.ApiClient.Req
+
 config :hll_conditional_actions, HllConditionalActions.Vault,
   ciphers: [
     default:

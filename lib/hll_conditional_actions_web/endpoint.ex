@@ -59,6 +59,7 @@ defmodule HllConditionalActionsWeb.Endpoint do
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
+    body_reader: {HllConditionalActionsWeb.Plugs.RawBody, :read_body, []},
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 

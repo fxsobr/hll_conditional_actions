@@ -12,6 +12,7 @@ import PetalHooks from "../../deps/petal_components/assets/js/petal_components.j
 import Alpine from "../vendor/alpine"
 import topbar from "../vendor/topbar"
 import registerRuleBuilder from "./rule_builder"
+import {CommandPalette} from "./shell"
 
 // Alpine.js is the "A" of the PETAL stack. It owns small, purely client-side
 // interactions (menus, disclosure, copy-to-clipboard) so they never require a
@@ -24,7 +25,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ...PetalHooks},
+  hooks: {...colocatedHooks, ...PetalHooks, CommandPalette},
   dom: {
     // Preserve Alpine's component state across LiveView DOM patches, and let
     // Alpine initialize nodes LiveView adds after the initial render.

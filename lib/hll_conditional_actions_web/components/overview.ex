@@ -298,8 +298,8 @@ defmodule HllConditionalActionsWeb.Overview do
     """
   end
 
-  defp team_dot("allies"), do: "bg-info"
-  defp team_dot("axis"), do: "bg-error"
+  defp team_dot("allies"), do: "bg-allies"
+  defp team_dot("axis"), do: "bg-axis"
   defp team_dot(_team), do: "bg-base-300"
 
   # ── Activity timeline ──────────────────────────────────────────────────────

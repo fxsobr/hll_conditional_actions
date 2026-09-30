@@ -1,7 +1,8 @@
 defmodule HllConditionalActionsWeb.ServerScopeNavTest do
   @moduledoc """
-  The sidebar follows the URL: under /servers/:id it is that server's, with
-  the switcher on it; elsewhere it is the organisation's.
+  Navigation follows the URL: under /servers/:id it is that server's, with
+  the switcher in the header showing it; elsewhere it is the organisation's.
+  The rail groups the pages into areas, whose pages are the header's tabs.
   """
 
   use HllConditionalActionsWeb.ConnCase, async: true
@@ -23,24 +24,35 @@ defmodule HllConditionalActionsWeb.ServerScopeNavTest do
     %{conn: conn, one: server_fixture(%{name: "EU #1"}), two: server_fixture(%{name: "US #2"})}
   end
 
-  test "a server's pages list that server's sections", %{conn: conn, one: one, two: two} do
+  test "a server's pages open that server's areas", %{conn: conn, one: one, two: two} do
     {:ok, view, _html} = live(conn, ~p"/servers/#{one}/rules")
 
-    assert has_element?(view, "#sidebar-scope-button", "EU #1")
-    assert has_element?(view, ~s{#sidebar-nav a[href="/servers/#{one.id}/leaderboard"]})
-    assert has_element?(view, ~s{#sidebar-nav a[href="/servers/#{one.id}/history"]})
-    assert has_element?(view, ~s{#sidebar-nav a[href="/servers/#{one.id}/achievements"]})
+    assert has_element?(view, "#header-scope-button", "EU #1")
+
+    # The rail's areas open this server's pages; Rules is the active one, and
+    # its pages are the tabs beside the title.
+    assert has_element?(view, ~s{#rail-live[href="/servers/#{one.id}"]})
+    assert has_element?(view, ~s{#rail-rules[aria-current="page"]})
+    assert has_element?(view, ~s{#section-tabs a[href="/servers/#{one.id}/history"]})
+    assert has_element?(view, ~s{#rail-modules[href="/servers/#{one.id}/marketplace"]})
+
+    # The phone's tab bar follows the same areas.
+    assert has_element?(view, ~s{#tab-bar-rules[aria-current="page"]})
 
     # Switching keeps the page.
-    assert has_element?(view, ~s{#sidebar-scope-menu a[href="/servers/#{two.id}/rules"]})
+    assert has_element?(view, ~s{#header-scope-menu a[href="/servers/#{two.id}/rules"]})
   end
 
-  test "outside a server the sidebar is the organisation's", %{conn: conn, one: one} do
+  test "outside a server the areas are the organisation's", %{conn: conn, one: one} do
     {:ok, view, _html} = live(conn, ~p"/rules")
 
-    assert has_element?(view, "#sidebar-scope-button", "All servers")
-    assert has_element?(view, ~s{#sidebar-nav a[href="/seasons"]})
-    refute has_element?(view, ~s{#sidebar-nav a[href="/servers/#{one.id}/leaderboard"]})
+    assert has_element?(view, "#header-scope-button", "All servers")
+    assert has_element?(view, ~s{#section-tabs a[href="/executions"]})
+    assert has_element?(view, ~s{#section-tabs a[href="/rules/simulate"]})
+
+    # "Ao vivo" is always there: the first server's cockpit.
+    assert has_element?(view, ~s{#rail-live[href="/servers/#{one.id}"]})
+    refute has_element?(view, ~s{#section-tabs a[href="/servers/#{one.id}/history"]})
   end
 
   test "a server's rules are its own and the fleet wide ones of its game", %{

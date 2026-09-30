@@ -33,11 +33,9 @@ defmodule HllConditionalActionsWeb.Plugs.SecurityHeaders do
 
   @behaviour Plug
 
-  # Phoenix's live reloader watches for changes through a same-origin iframe,
-  # which `frame-src 'none'` blocks. It only exists where dev routes do.
-  @frame_src if Application.compile_env(:hll_conditional_actions, :dev_routes, false),
-               do: "frame-src 'self'",
-               else: "frame-src 'none'"
+  # Same-origin frames only: the VIP shop's settings preview the public page
+  # in one, and in development Phoenix's live reloader uses one too.
+  @frame_src "frame-src 'self'"
 
   @csp [
          # Anything not named below may only come from this origin.
@@ -51,8 +49,6 @@ defmodule HllConditionalActionsWeb.Plugs.SecurityHeaders do
          "font-src 'self'",
          # The LiveView socket. `'self'` covers ws/wss on the same origin.
          "connect-src 'self'",
-         # This app has no reason to be inside anybody's frame.
-         "frame-ancestors 'none'",
          @frame_src,
          "base-uri 'self'",
          "form-action 'self'",
@@ -67,10 +63,17 @@ defmodule HllConditionalActionsWeb.Plugs.SecurityHeaders do
   @impl Plug
   def init(opts), do: opts
 
+  # Nothing may frame the app, except the public shop, which its own admin
+  # previews from the same origin (`framed: :self`).
   @impl Plug
-  def call(conn, _opts) do
+  def call(conn, opts) do
+    ancestors =
+      if Keyword.get(opts, :framed) == :self,
+        do: "frame-ancestors 'self'",
+        else: "frame-ancestors 'none'"
+
     conn
-    |> put_resp_header("content-security-policy", @csp)
+    |> put_resp_header("content-security-policy", @csp <> "; " <> ancestors)
     |> put_resp_header("permissions-policy", @permissions_policy)
   end
 end
