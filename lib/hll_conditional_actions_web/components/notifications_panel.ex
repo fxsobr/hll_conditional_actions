@@ -562,7 +562,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
   defp body(%{kind: :failures, subject: %{error: error}}), do: error || gettext("unknown error")
 
   defp body(%{kind: kind, subject: %{issue: issue}}) when kind in [:rule_broken, :rule_quiet],
-    do: Labels.health_explanation(issue.id)
+    do: Labels.health_explanation(issue)
 
   defp body(%{kind: :review, subject: %{execution: execution, reason: reason}}),
     do: Enum.join(Enum.reject([execution.rule && execution.rule.name, reason], &is_nil/1), " · ")

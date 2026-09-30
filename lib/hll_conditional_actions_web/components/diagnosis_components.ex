@@ -7,6 +7,8 @@ defmodule HllConditionalActionsWeb.DiagnosisComponents do
 
   use HllConditionalActionsWeb, :html
 
+  alias HllConditionalActions.Engine.Evaluator
+  alias HllConditionalActionsWeb.ConditionGroupsView
   alias HllConditionalActionsWeb.EventEditor
 
   @doc """
@@ -208,8 +210,10 @@ defmodule HllConditionalActionsWeb.DiagnosisComponents do
             class="rounded-[1.125rem] bg-secondary px-4 py-3.5"
           >
             <HllConditionalActionsWeb.RuleComponents.condition_group
-              conditions={Enum.reject(@diagnosis.conditions, &(&1.field == :always_true))}
+              id={"#{@id}-conditions"}
+              conditions={read_conditions(@diagnosis, @rule)}
               operator={@rule.logical_operator}
+              game={@rule.game}
               columns
             />
           </div>
@@ -255,6 +259,24 @@ defmodule HllConditionalActionsWeb.DiagnosisComponents do
       </li>
     </ol>
     """
+  end
+
+  # What the engine read for each condition, with the group the rule puts it
+  # in, so conditions folded into one list stay within their group. The
+  # diagnosis lists the rule's conditions in order.
+  defp read_conditions(diagnosis, rule) do
+    diagnosis.conditions
+    |> Enum.with_index()
+    |> Enum.map(fn {condition, index} ->
+      case Enum.at(rule.conditions, index) do
+        %{group: group, group_operator: group_operator} ->
+          Map.merge(condition, %{group: group, group_operator: group_operator})
+
+        _other ->
+          condition
+      end
+    end)
+    |> Enum.reject(&(&1.field == :always_true))
   end
 
   defp path_node(:passed), do: "bg-primary text-primary-content"
@@ -449,18 +471,15 @@ defmodule HllConditionalActionsWeb.DiagnosisComponents do
   defp stop_title(%{outcome: :paused}, _sample), do: gettext("Stopped here: the rule is paused")
   defp stop_title(_diagnosis, _sample), do: gettext("Stopped here")
 
-  defp stop_text(%{outcome: :conditions_not_met} = diagnosis, _rule) do
+  defp stop_text(%{outcome: :conditions_not_met} = diagnosis, rule) do
     failed =
-      diagnosis.conditions
-      |> Enum.reject(&(&1.result or &1.field == :always_true))
-      |> Enum.map(fn condition ->
-        gettext("%{field} needed %{operator} %{expected} and read %{actual}",
-          field: Labels.field(condition.field),
-          operator: Labels.operator(condition.operator),
-          expected: format_value(condition.expected),
-          actual: format_value(condition.actual)
-        )
+      diagnosis
+      |> read_conditions(rule)
+      |> ConditionGroupsView.entries(rule.logical_operator, rule.game)
+      |> Enum.reject(fn entry ->
+        Evaluator.combine(entry.joiner, Enum.map(entry.members, &elem(&1, 0).result))
       end)
+      |> Enum.map(&failed_text/1)
 
     Enum.join(failed ++ [gettext("No action ran, not even in simulation.")], ". ")
   end
@@ -473,6 +492,23 @@ defmodule HllConditionalActionsWeb.DiagnosisComponents do
   end
 
   defp stop_text(_diagnosis, _rule), do: gettext("No action ran, not even in simulation.")
+
+  # A list reads as one line however many of its members failed.
+  defp failed_text(%{list?: true, members: [{condition, _index} | _rest]} = entry) do
+    gettext("%{condition}, and read %{actual}",
+      condition: entry.text,
+      actual: format_value(condition.actual)
+    )
+  end
+
+  defp failed_text(%{members: [{condition, _index} | _rest]}) do
+    gettext("%{field} needed %{operator} %{expected} and read %{actual}",
+      field: Labels.field(condition.field),
+      operator: Labels.operator(condition.operator),
+      expected: format_value(condition.expected),
+      actual: format_value(condition.actual)
+    )
+  end
 
   @doc "A one line pill for an outcome."
   attr :outcome, :atom, required: true

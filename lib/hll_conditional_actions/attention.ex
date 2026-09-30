@@ -156,10 +156,12 @@ defmodule HllConditionalActions.Attention do
   defp rule_items(rules, servers) do
     health = Health.for_rules(rules, servers)
 
-    for rule <- rules, issue <- Map.get(health, rule.id, []) do
+    # A switched-off rule is only told on its own page and in the list.
+    for rule <- rules, rule.enabled, issue <- Map.get(health, rule.id, []) do
       {kind, severity} =
         case issue.id do
           id when id in [:missing_permission, :always_failing] -> {:rule_broken, :error}
+          :contradiction -> {:rule_broken, :warning}
           _quiet -> {:rule_quiet, :info}
         end
 

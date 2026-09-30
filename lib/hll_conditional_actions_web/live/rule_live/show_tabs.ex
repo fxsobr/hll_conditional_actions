@@ -13,6 +13,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
   alias HllConditionalActions.Rules.Catalog
   alias HllConditionalActions.Rules.Expression
   alias HllConditionalActions.Rules.Snapshot
+  alias HllConditionalActionsWeb.ConditionGroupsView
   alias HllConditionalActionsWeb.RuleDiff
 
   # ── Definition ─────────────────────────────────────────────────────────────
@@ -203,7 +204,11 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
           </div>
 
           <div :if={@mode == "visual"} class="flex flex-col gap-5 px-5 py-6 sm:px-7">
-            <.rule_sentence_chips rule={@shown} class="text-lg leading-[1.8]" />
+            <.rule_sentence_chips
+              id="rule-definition-sentence"
+              rule={@shown}
+              class="text-lg leading-[1.8]"
+            />
             <dl class="flex flex-col divide-y divide-base-300 text-[0.8125rem]">
               <div
                 :for={{label, value} <- settings_rows(@shown)}
@@ -981,28 +986,88 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
   attr :side, :atom, required: true
 
   defp diff_sentence(assigns) do
-    other_chips =
-      for {:chip, text} <- sentence_parts(assigns.other), into: MapSet.new(), do: text
+    other_parts = sentence_parts(assigns.other)
+    other_chips = for {:chip, text} <- other_parts, into: MapSet.new(), do: text
+    other_lists = for {:list, entry} <- other_parts, into: %{}, do: {entry.key, entry}
+    parts = sentence_parts(assigns.rule)
+
+    # A folded list is compared by its values; its popover shows what the
+    # newer version added (tinted) and dropped (struck).
+    lists =
+      for {:list, entry} <- parts do
+        other = Map.get(other_lists, entry.key)
+        {before, now} = if assigns.side == :after, do: {other, entry}, else: {entry, other}
+
+        %{
+          entry: entry,
+          # The popover reads as the newer version's list.
+          title_entry: now || before,
+          id: "version-#{assigns.side}-list-#{entry.number}",
+          same?: other != nil and other.values == entry.values and other.counts == entry.counts,
+          delta: ConditionGroupsView.delta_text(before, now),
+          items: ConditionGroupsView.diff_items(before, now)
+        }
+      end
 
     assigns =
-      assign(assigns, :parts, sentence_parts(assigns.rule)) |> assign(:other_chips, other_chips)
+      assigns
+      |> assign(:parts, parts)
+      |> assign(:other_chips, other_chips)
+      |> assign(:lists, Map.new(lists, &{&1.entry.key, &1}))
 
     ~H"""
-    <%!-- No whitespace between the pieces: the sentence carries its own. --%>
-    <p class="rounded-2xl bg-secondary px-4 py-3.5 text-[0.9375rem] leading-[1.75] text-subtle [text-wrap:pretty]">
-      <.sentence_bit
-        :for={{kind, text} <- @parts}
-        kind={kind}
-        text={text}
-        mark={
-          cond do
-            kind != :chip -> nil
-            MapSet.member?(@other_chips, text) -> :same
-            true -> @side
-          end
-        }
+    <div class="min-w-0">
+      <%!-- No whitespace between the pieces: the sentence carries its own. --%>
+      <p class="rounded-2xl bg-secondary px-4 py-3.5 text-[0.9375rem] leading-[1.75] text-subtle [text-wrap:pretty]">
+        <.diff_piece
+          :for={part <- @parts}
+          part={part}
+          lists={@lists}
+          other_chips={@other_chips}
+          side={@side}
+        />
+      </p>
+      <ConditionGroupsView.value_list
+        :for={list <- Map.values(@lists)}
+        id={list.id}
+        entry={list.title_entry}
+        items={list.items}
+        note={list.delta}
       />
-    </p>
+    </div>
+    """
+  end
+
+  attr :part, :any, required: true
+  attr :lists, :map, required: true
+  attr :other_chips, :any, required: true
+  attr :side, :atom, required: true
+
+  defp diff_piece(%{part: {:list, entry}} = assigns) do
+    assigns = assign(assigns, :list, assigns.lists[entry.key])
+
+    ~H"""
+    <ConditionGroupsView.list_chip
+      entry={@list.entry}
+      popover={@list.id}
+      mark={if @list.same?, do: nil, else: @side}
+      badge={if @side == :after, do: @list.delta}
+    />
+    """
+  end
+
+  defp diff_piece(%{part: {kind, text}} = assigns) do
+    mark =
+      cond do
+        kind != :chip -> nil
+        MapSet.member?(assigns.other_chips, text) -> :same
+        true -> assigns.side
+      end
+
+    assigns = assign(assigns, kind: kind, text: text, mark: mark)
+
+    ~H"""
+    <.sentence_bit kind={@kind} text={@text} mark={@mark} />
     """
   end
 
@@ -1042,7 +1107,7 @@ defmodule HllConditionalActionsWeb.RuleLive.ShowTabs do
         <span>{if @changed, do: if(@side == :before, do: "−", else: "+")}</span>
         <span class="truncate pr-3">
           <span class={if(@changed, do: "opacity-80", else: "text-muted")}>{elem(@line, 1)}:</span>
-          {elem(@line, 2)}
+          {RuleDiff.line_text(elem(@line, 2))}
         </span>
       <% else %>
         <span class="col-span-3"></span>

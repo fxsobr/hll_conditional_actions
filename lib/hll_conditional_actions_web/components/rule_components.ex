@@ -13,9 +13,12 @@ defmodule HllConditionalActionsWeb.RuleComponents do
 
   use HllConditionalActionsWeb, :html
 
-  import HllConditionalActionsWeb.RuleBuilder, only: [condition_sentence: 2, exemptions_text: 1]
+  import HllConditionalActionsWeb.RuleBuilder, only: [exemptions_text: 1]
 
   alias HllConditionalActions.Crcon.Events.Event
+  alias HllConditionalActions.Engine.Evaluator
+  alias HllConditionalActions.Rules.Catalog
+  alias HllConditionalActionsWeb.ConditionGroupsView
 
   # ── Page frame ─────────────────────────────────────────────────────────────
 
@@ -543,34 +546,96 @@ defmodule HllConditionalActionsWeb.RuleComponents do
   lands on them.
   """
   attr :rule, :map, required: true
-  attr :id, :string, default: nil
+  attr :id, :string, default: "rule-sentence-text", doc: "prefixes the ids of its lists"
   attr :class, :any, default: "text-lg leading-[1.7] sm:text-xl"
+  attr :cap, :integer, default: 8, doc: "conditions shown before \"+ N conditions\""
 
   def rule_sentence_chips(assigns) do
-    assigns = assign(assigns, :parts, sentence_parts(assigns.rule))
+    parts = sentence_parts(assigns.rule, cap: assigns.cap)
+    assigns = assigns |> assign(:parts, parts) |> assign(:lists, part_lists(parts))
 
     ~H"""
-    <p id={@id} class={["text-subtle [text-wrap:pretty]", @class]}>
-      <span
-        :for={{kind, text} <- @parts}
-        class={
-          kind == :chip &&
-            "rounded-[0.625rem] bg-secondary px-2.5 py-[3px] font-medium text-base-content [box-decoration-break:clone]"
-        }
-      >{text}</span>
-    </p>
+    <div id={@id} class={@class}>
+      <p class="text-subtle [text-wrap:pretty]">
+        <.sentence_piece :for={part <- @parts} part={part} id={@id} />
+      </p>
+      <ConditionGroupsView.value_list
+        :for={entry <- @lists}
+        id={"#{@id}-list-#{entry.number}"}
+        entry={entry}
+      />
+    </div>
     """
   end
 
+  attr :part, :any, required: true
+  attr :id, :string, required: true
+
+  defp sentence_piece(%{part: {:list, entry}} = assigns) do
+    assigns = assign(assigns, :entry, entry)
+
+    ~H"""
+    <ConditionGroupsView.list_chip entry={@entry} popover={"#{@id}-list-#{@entry.number}"} />
+    """
+  end
+
+  defp sentence_piece(%{part: {:more, count, hidden}} = assigns) do
+    assigns = assign(assigns, count: count, hidden: hidden)
+
+    ~H"""
+    <button
+      id={"#{@id}-more-toggle"}
+      type="button"
+      phx-click={
+        JS.show(to: "##{@id}-more", display: "inline")
+        |> JS.hide(to: "##{@id}-more-toggle")
+      }
+      class="cursor-pointer rounded-[0.625rem] border border-dashed border-base-300 px-2 py-px text-[0.85em] font-medium text-subtle transition-colors hover:border-primary/40 hover:text-base-content"
+    >
+      {ngettext("+ 1 condition", "+ %{count} conditions", @count)}
+    </button><span id={"#{@id}-more"} class="hidden"><.sentence_piece
+      :for={part <- @hidden}
+      part={part}
+      id={@id}
+    /></span>
+    """
+  end
+
+  defp sentence_piece(%{part: {kind, text}} = assigns) do
+    assigns = assign(assigns, kind: kind, text: text)
+
+    ~H"""
+    <span class={
+      @kind == :chip &&
+        "rounded-[0.625rem] bg-secondary px-2.5 py-[3px] font-medium text-base-content [box-decoration-break:clone]"
+    }>{@text}</span>
+    """
+  end
+
+  # Every folded list of a sentence, the hidden ones included, so each
+  # chip's popover is on the page.
+  defp part_lists(parts) do
+    Enum.flat_map(parts, fn
+      {:list, entry} -> [entry]
+      {:more, _count, hidden} -> part_lists(hidden)
+      _other -> []
+    end)
+  end
+
   @doc """
-  The sentence of a rule as `{:text | :chip, text}` parts: "When [trigger],
-  if [a] and [b], then [x], [y]." An escalating rule reads as a ladder:
-  "…, count the offence and go up one step of the ladder. The ladder resets
-  after [30 minutes] without offences."
+  The sentence of a rule as parts: `{:text, text}`, `{:chip, text}` and
+  `{:list, entry}` for conditions folded into one list (see
+  `HllConditionalActionsWeb.ConditionGroupsView`): "When [trigger], if [a]
+  and [Weapon is none of 86 weapons], then [x], [y]." An escalating rule
+  reads as a ladder: "…, count the offence and go up one step of the ladder.
+  The ladder resets after [30 minutes] without offences."
+
+  With `cap: n`, conditions past the n-th are gathered in one
+  `{:more, count, parts}` the page opens on demand.
   """
-  @spec sentence_parts(map()) :: [{:text | :chip, String.t()}]
-  def sentence_parts(rule) do
-    conditions = Enum.reject(rule.conditions, &(&1.field == :always_true))
+  @spec sentence_parts(map(), keyword()) :: [tuple()]
+  def sentence_parts(rule, opts \\ []) do
+    entries = ConditionGroupsView.for_rule(rule)
     joiner = " " <> Labels.logical_joiner(rule.logical_operator) <> " "
 
     trigger = [
@@ -579,15 +644,16 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     ]
 
     ifs =
-      case conditions do
+      case entries do
         [] ->
           []
 
-        conditions ->
+        entries ->
           [{:text, ", " <> gettext("if") <> " "}] ++
-            (conditions
-             |> Enum.map(&{:chip, condition_sentence(&1, rule.game)})
-             |> Enum.intersperse({:text, joiner}))
+            (entries
+             |> Enum.map(&entry_part/1)
+             |> Enum.intersperse({:text, joiner})
+             |> cap_conditions(length(entries), opts[:cap]))
       end
 
     thens =
@@ -620,25 +686,35 @@ defmodule HllConditionalActionsWeb.RuleComponents do
     trigger ++ ifs ++ thens ++ exempt
   end
 
+  defp entry_part(%{list?: true} = entry), do: {:list, entry}
+  defp entry_part(entry), do: {:chip, entry.text}
+
+  # `parts` are the condition chips with their joiners between them; past
+  # `cap` conditions the rest (joiner first) waits behind "+ N conditions".
+  defp cap_conditions(parts, count, cap) when is_integer(cap) and count > cap do
+    {shown, hidden} = Enum.split(parts, cap * 2 - 1)
+    shown ++ [{:more, count - cap, hidden}]
+  end
+
+  defp cap_conditions(parts, _count, _cap), do: parts
+
   @doc """
   A rule in one short line for the list: when, what it checks, what it
   does - "When the player connects · 1 condition · message the player".
+  Conditions folded into a list count once and, when there are only two
+  entries, both are named: "K/D is greater than 3 · weapon is none of 86
+  weapons".
   """
   @spec short_sentence(map()) :: String.t()
   def short_sentence(rule) do
-    conditions = Enum.reject(rule.conditions, &(&1.field == :always_true))
+    entries = ConditionGroupsView.for_rule(rule)
 
     when_text =
       if rule.trigger_event == :periodic,
         do: gettext("Periodically"),
         else: gettext("When") <> " " <> lower_first(Labels.trigger(rule.trigger_event))
 
-    checks =
-      case conditions do
-        [] -> nil
-        [single] -> condition_sentence(single, rule.game)
-        many -> ngettext("1 condition", "%{count} conditions", length(many))
-      end
+    checks = checks_text(entries)
 
     does =
       cond do
@@ -654,6 +730,19 @@ defmodule HllConditionalActionsWeb.RuleComponents do
 
     [when_text, checks, does] |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
   end
+
+  # What the short line says of the conditions: the one there is, both when
+  # one of two is a folded list, their count otherwise.
+  defp checks_text([]), do: nil
+  defp checks_text([single]), do: ConditionGroupsView.short_text(single)
+
+  defp checks_text([%{list?: one} = first, %{list?: other} = second]) when one or other do
+    ConditionGroupsView.short_text(first) <>
+      " · " <> lower_first(ConditionGroupsView.short_text(second))
+  end
+
+  defp checks_text(entries),
+    do: ngettext("1 condition", "%{count} conditions", length(entries))
 
   @doc """
   An action with the parameter that tells it apart: "Ban for 2 hours".
@@ -968,18 +1057,27 @@ defmodule HllConditionalActionsWeb.RuleComponents do
   The conditions a run read, as the boards draw them: a group header (the
   way the conditions combine and whether it matched), then each condition
   with the value it needed and the value it read.
+
+  Consecutive conditions on one field folded into a list (see
+  `HllConditionalActionsWeb.ConditionGroupsView`) read as one row: "Weapon ·
+  needed is none of 86 weapons · ✗ read PANZER IV, on the list", the verdict
+  being the members' combined. The list opens in a popover with the value
+  read marked.
   """
   attr :conditions, :list, required: true, doc: "trace maps (string keys) or diagnosis maps"
   attr :operator, :any, default: nil
   attr :columns, :boolean, default: false, doc: "the wider three-column rows"
+  attr :id, :string, default: "condition-group", doc: "prefixes the ids of its list popovers"
+  attr :game, :atom, default: nil
 
   def condition_group(assigns) do
+    conditions = Enum.map(assigns.conditions, &trace_condition/1)
+    operator = trace_operator(assigns.operator)
+
     assigns =
       assigns
-      |> assign(:rows, Enum.map(assigns.conditions, &condition_row/1))
-      |> then(fn assigns ->
-        assign(assigns, :held?, group_held?(assigns.operator, Enum.map(assigns.rows, & &1.pass)))
-      end)
+      |> assign(:rows, condition_rows(conditions, operator, assigns.game))
+      |> assign(:held?, group_held?(assigns.operator, Enum.map(conditions, & &1.result)))
 
     ~H"""
     <div class="flex flex-col gap-2">
@@ -1007,43 +1105,162 @@ defmodule HllConditionalActionsWeb.RuleComponents do
       >
         <span :if={!@columns} class="min-w-0 text-subtle">
           {row.label} <span class="text-muted">{row.operator}</span>
-          <span class="font-mono text-xs text-base-content">{row.expected}</span>
+          <.row_expected row={row} id={@id} />
         </span>
         <span :if={@columns} class="min-w-0">{row.label}</span>
         <span :if={@columns} class="text-muted">
           {gettext("needed")}
-          <span class="font-mono text-xs text-base-content">{row.operator} {row.expected}</span>
+          <span :if={is_nil(row.entry)} class="font-mono text-xs text-base-content">
+            {row.operator} {row.expected}
+          </span>
+          <.row_expected :if={row.entry} row={row} id={@id} />
         </span>
         <span class={[
-          "w-fit justify-self-start rounded-full px-2.5 py-[3px] font-mono text-xs",
-          !@columns && "justify-self-end",
-          if(row.pass, do: "bg-primary/12 text-primary", else: "bg-error/14 text-error")
+          "flex flex-col gap-0.5",
+          if(@columns,
+            do: "items-start justify-self-start",
+            else: "items-end justify-self-end"
+          )
         ]}>
-          {if row.pass, do: "✓", else: "✗"} {gettext("read %{value}", value: row.actual)}
+          <span class={[
+            "w-fit rounded-[0.875rem] px-2.5 py-[3px] font-mono text-xs",
+            if(row.pass, do: "bg-primary/12 text-primary", else: "bg-error/14 text-error")
+          ]}>
+            {if row.pass, do: "✓", else: "✗"} {gettext("read %{value}", value: row.actual)}
+          </span>
+          <span :if={row.note} class="px-2.5 text-[0.6875rem] font-medium text-error">
+            {row.note}
+          </span>
         </span>
       </div>
+      <ConditionGroupsView.value_list
+        :for={row <- @rows}
+        :if={row.entry}
+        id={"#{@id}-list-#{row.entry.number}"}
+        entry={row.entry}
+        items={row.items}
+      />
     </div>
     """
   end
 
-  defp condition_row(%{"field" => field} = condition) do
+  attr :row, :map, required: true
+  attr :id, :string, required: true
+
+  defp row_expected(%{row: %{entry: nil}} = assigns) do
+    ~H"""
+    <span class="font-mono text-xs text-base-content">{@row.expected}</span>
+    """
+  end
+
+  defp row_expected(assigns) do
+    ~H"""
+    <button
+      type="button"
+      popovertarget={"#{@id}-list-#{@row.entry.number}"}
+      aria-haspopup="dialog"
+      class="cursor-pointer text-left text-xs font-medium text-base-content underline decoration-base-300 decoration-dotted underline-offset-4 transition-colors hover:decoration-base-content"
+    >
+      {@row.expected}
+      <.icon name="hero-list-bullet" class="size-3.5 align-[-0.2em] text-muted" />
+    </button>
+    """
+  end
+
+  # A trace condition with atom keys wherever the vocabulary is known, so
+  # traces (string keys) and diagnoses (atoms) fold the same way.
+  defp trace_condition(%{"field" => field} = condition) do
     %{
-      label: condition_field_label(field),
-      operator: operator_label(condition["operator"]),
-      expected: read_value(condition["expected"]),
-      actual: read_value(condition["actual"]),
-      pass: condition["result"] == true
+      field: known(field, Catalog.fields()),
+      operator: known(condition["operator"], Catalog.operators()),
+      value: condition["expected"],
+      expected: condition["expected"],
+      actual: condition["actual"],
+      result: condition["result"] == true
     }
   end
 
-  defp condition_row(%{field: field} = condition) do
+  defp trace_condition(%{field: _field} = condition) do
+    condition
+    |> Map.put_new(:value, Map.get(condition, :expected))
+    |> Map.update(:result, false, &(&1 == true))
+  end
+
+  defp known(value, vocabulary) when is_binary(value),
+    do: Enum.find(vocabulary, value, &(to_string(&1) == value))
+
+  defp known(value, _vocabulary), do: value
+
+  defp trace_operator(operator) when operator in [:and, :or, :nand, :nor], do: operator
+  defp trace_operator(operator), do: known(to_string(operator || "and"), [:and, :or, :nand, :nor])
+
+  defp condition_rows(conditions, operator, game) do
+    conditions
+    |> ConditionGroupsView.entries(operator, game)
+    |> Enum.map(fn
+      %{list?: true} = entry -> folded_row(entry)
+      entry -> single_row(entry)
+    end)
+  end
+
+  defp single_row(%{members: [{condition, _index}]} = entry) do
     %{
-      label: Labels.field(field),
-      operator: Labels.operator(condition.operator),
+      entry: nil,
+      label: condition_field_label(condition.field),
+      operator: operator_label(condition.operator),
       expected: read_value(condition.expected),
       actual: read_value(condition.actual),
-      pass: condition.result == true
+      pass: condition.result,
+      note: nil,
+      items: nil
     }
+    |> Map.put(:number, entry.number)
+  end
+
+  # A repeated single value (`mono` twice) folds into one run of one value.
+  defp single_row(%{members: [{condition, _index} | _rest]} = entry) do
+    %{single_row(%{entry | members: [{condition, 0}]}) | pass: members_pass?(entry)}
+  end
+
+  defp folded_row(entry) do
+    [{first, _index} | _rest] = entry.members
+    pass = members_pass?(entry)
+    field = condition_field_label(entry.field)
+
+    %{
+      entry: entry,
+      label: field,
+      operator: nil,
+      expected: without_field(entry.text, field),
+      actual: first.actual |> read_value() |> ConditionGroupsView.short_label(entry.field),
+      pass: pass,
+      note: if(!pass, do: list_note(entry.reading)),
+      items: hit_items(entry, first.actual)
+    }
+  end
+
+  defp members_pass?(entry) do
+    Evaluator.combine(entry.joiner, Enum.map(entry.members, fn {c, _index} -> c.result end))
+  end
+
+  # "Weapon is none of 86 weapons" under the "Weapon" column reads "is none
+  # of 86 weapons".
+  defp without_field(text, field) do
+    case String.split(text, field <> " ", parts: 2) do
+      ["", rest] -> rest
+      _other -> text
+    end
+  end
+
+  defp list_note(:none_of), do: gettext("on the list")
+  defp list_note(:one_of), do: gettext("not on the list")
+  defp list_note(:all_at_once), do: gettext("cannot be all of them")
+  defp list_note(_reading), do: nil
+
+  # The value the event read, marked in the list when it is on it.
+  defp hit_items(entry, actual) do
+    read = to_string(actual)
+    Enum.map(entry.items, &Map.put(&1, :mark, if(&1.value == read, do: :hit)))
   end
 
   defp group_held?(operator, results) do
@@ -1143,6 +1360,7 @@ defmodule HllConditionalActionsWeb.RuleComponents do
 
         <.condition_group
           :if={@recorded? and @variant == :rule}
+          id={"#{@id}-conditions"}
           conditions={@conditions}
           operator={@logical_operator}
         />

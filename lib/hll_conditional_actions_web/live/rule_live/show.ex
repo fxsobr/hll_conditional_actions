@@ -43,6 +43,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
   alias HllConditionalActions.Rules.Snapshot
   alias HllConditionalActions.Rules.Transfer
   alias HllConditionalActions.Servers
+  alias HllConditionalActionsWeb.ConditionGroupsView
   alias HllConditionalActionsWeb.RuleDiff
   alias HllConditionalActionsWeb.RuleLive.ShowTabs
   alias HllConditionalActionsWeb.RulePause
@@ -1092,7 +1093,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
         <.icon name="hero-exclamation-triangle" class="mt-0.5 size-5 shrink-0" />
         <div class="min-w-0">
           <p class="text-sm font-semibold">{Labels.health_issue(issue.id)}</p>
-          <p class="text-[0.8125rem] text-base-content">{Labels.health_explanation(issue.id)}</p>
+          <p class="text-[0.8125rem] text-base-content">{Labels.health_explanation(issue)}</p>
         </div>
       </div>
 
@@ -1372,10 +1373,10 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
                   {gettext("Before · v%{number}", number: @latest_change.number - 1)}
                 </span>
                 <span
-                  :for={{label, before, _after} <- Enum.take(change_lines(@latest_change), 4)}
+                  :for={change <- Enum.take(change_lines(@latest_change), 4)}
                   class="break-words text-error"
                 >
-                  {label}: {before || "—"}
+                  {elem(change, 0)}: {RuleDiff.change_text(change, :before) || "—"}
                 </span>
               </div>
               <span class="flex items-center justify-center">
@@ -1386,13 +1387,41 @@ defmodule HllConditionalActionsWeb.RuleLive.Show do
                   {gettext("Now · v%{number}", number: @latest_change.number)}
                 </span>
                 <span
-                  :for={{label, _before, after_value} <- Enum.take(change_lines(@latest_change), 4)}
+                  :for={
+                    {change, index} <- Enum.with_index(Enum.take(change_lines(@latest_change), 4))
+                  }
                   class="break-words text-primary"
                 >
-                  {label}: {after_value || "—"}
+                  {elem(change, 0)}: {RuleDiff.change_text(change, :after) || "—"}
+                  <button
+                    :if={RuleDiff.list_change?(change)}
+                    id={"rule-latest-change-open-#{index}"}
+                    type="button"
+                    popovertarget={"rule-latest-change-list-#{index}"}
+                    aria-haspopup="dialog"
+                    class="mt-1.5 flex w-fit cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-primary/14 px-2.5 py-0.5 font-sans text-[0.6875rem] font-semibold transition-colors hover:bg-primary/22"
+                  >
+                    {RuleDiff.change_delta(change) || gettext("see the list")}
+                    <span :if={RuleDiff.change_delta(change)} class="font-normal opacity-80">
+                      · {gettext("see the list")}
+                    </span>
+                  </button>
                 </span>
               </div>
             </div>
+            <ConditionGroupsView.value_list
+              :for={{change, index} <- Enum.with_index(Enum.take(change_lines(@latest_change), 4))}
+              :if={RuleDiff.list_change?(change)}
+              id={"rule-latest-change-list-#{index}"}
+              entry={RuleDiff.line_entry(elem(change, 2)) || RuleDiff.line_entry(elem(change, 1))}
+              items={
+                ConditionGroupsView.diff_items(
+                  RuleDiff.line_entry(elem(change, 1)),
+                  RuleDiff.line_entry(elem(change, 2))
+                )
+              }
+              note={RuleDiff.change_delta(change)}
+            />
             <div class="flex flex-wrap gap-2.5 pt-2">
               <button
                 :if={@can_edit? and previous_version_id(@version_rows, @latest_change)}

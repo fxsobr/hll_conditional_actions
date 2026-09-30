@@ -596,7 +596,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Index do
         icon: "hero-heart",
         tone: "error",
         title: "#{rule.name}: #{Labels.health_issue(issue.id)}",
-        meta: Labels.health_explanation(issue.id),
+        meta: Labels.health_explanation(issue),
         to: ~p"/rules/#{rule}"
       }
     end
@@ -1651,7 +1651,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Index do
     <span
       :for={issue <- @health}
       :if={issue.tone == "error" and issue.id != :always_failing}
-      title={Labels.health_explanation(issue.id)}
+      title={Labels.health_explanation(issue)}
       class={[
         "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold",
         if(issue.tone == "error", do: "bg-error/14 text-error", else: "bg-warning/13 text-warning")
