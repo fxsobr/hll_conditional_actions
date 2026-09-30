@@ -129,7 +129,7 @@ msgstr "só pode ser contada na carreira"
 msgid "does not match"
 msgstr "não confere com a confirmação"
 
-#: lib/hll_conditional_actions/progression/season.ex:131
+#: lib/hll_conditional_actions/progression/season.ex:133
 #: lib/hll_conditional_actions_web/error_messages.ex:44
 #, elixir-autogen, elixir-format
 msgid "give at least one stat a weight"
@@ -230,33 +230,33 @@ msgstr "precisa ser uma URL de webhook do Discord"
 msgid "must be an https:// address"
 msgstr "precisa ser um endereço https://"
 
-#: lib/hll_conditional_actions/tickets/settings.ex:209
+#: lib/hll_conditional_actions/tickets/settings.ex:541
 #, elixir-autogen, elixir-format
 msgid "a command cannot contain spaces"
 msgstr "um comando não pode conter espaços"
 
-#: lib/hll_conditional_actions/tickets/settings.ex:216
+#: lib/hll_conditional_actions/tickets/settings.ex:548
 #, elixir-autogen, elixir-format
 msgid "a command is at most 30 characters"
 msgstr "um comando tem no máximo 30 caracteres"
 
-#: lib/hll_conditional_actions/tickets/settings.ex:200
+#: lib/hll_conditional_actions/tickets/settings.ex:532
 #, elixir-autogen, elixir-format
 msgid "add at least one command"
 msgstr "adicione pelo menos um comando"
 
-#: lib/hll_conditional_actions/tickets/settings.ex:203
+#: lib/hll_conditional_actions/tickets/settings.ex:535
 #, elixir-autogen, elixir-format
 msgid "at most 10 commands"
 msgstr "no máximo 10 comandos"
 
-#: lib/hll_conditional_actions/tickets/settings.ex:104
+#: lib/hll_conditional_actions/tickets/settings.ex:157
 #, elixir-autogen, elixir-format
 msgid "only role ids, separated by commas"
 msgstr "apenas IDs de cargo, separados por vírgulas"
 
-#: lib/hll_conditional_actions/progression/season.ex:91
-#: lib/hll_conditional_actions/progression/season.ex:95
+#: lib/hll_conditional_actions/progression/season.ex:93
+#: lib/hll_conditional_actions/progression/season.ex:97
 #, elixir-autogen, elixir-format
 msgid "pick at least one server"
 msgstr "escolha pelo menos um servidor"
@@ -271,17 +271,17 @@ msgstr "isso não é um JSON válido"
 msgid "the file has no \"rules\" list"
 msgstr "o arquivo não tem a lista \"rules\""
 
-#: lib/hll_conditional_actions/progression/season.ex:106
+#: lib/hll_conditional_actions/progression/season.ex:108
 #, elixir-autogen, elixir-format
 msgid "the servers of a season must all run the same game"
 msgstr "os servidores de uma temporada devem rodar o mesmo jogo"
 
-#: lib/hll_conditional_actions/rules/transfer.ex:265
+#: lib/hll_conditional_actions/rules/transfer.ex:279
 #, elixir-autogen, elixir-format
 msgid "this file was written by a newer version (format %{version}, this install reads %{supported})"
 msgstr "este arquivo foi gerado por uma versão mais nova (formato %{version}, esta instalação lê %{supported})"
 
-#: lib/hll_conditional_actions/rules/transfer.ex:257
+#: lib/hll_conditional_actions/rules/transfer.ex:271
 #, elixir-autogen, elixir-format
 msgid "unknown export format %{format}"
 msgstr "formato de exportação desconhecido %{format}"
