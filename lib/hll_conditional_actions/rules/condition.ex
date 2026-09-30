@@ -21,6 +21,11 @@ defmodule HllConditionalActions.Rules.Condition do
     field :field, Ecto.Enum, values: Catalog.fields(), default: :always_true
     field :operator, Ecto.Enum, values: Catalog.operators(), default: :equal
     field :value, :string, default: ""
+    # Which group of the rule this condition belongs to, and that group's
+    # "all / any / none". A rule with a single group ignores the operator;
+    # see `HllConditionalActions.Rules.ConditionGroups`.
+    field :group, :integer, default: 0
+    field :group_operator, Ecto.Enum, values: Catalog.logical_operators()
     # Text the builder's regex tester runs the pattern against; never stored.
     field :sample, :string, virtual: true
   end
@@ -31,8 +36,9 @@ defmodule HllConditionalActions.Rules.Condition do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(condition, attrs) do
     condition
-    |> cast(attrs, [:field, :operator, :value, :sample])
+    |> cast(attrs, [:field, :operator, :value, :sample, :group, :group_operator])
     |> validate_required([:field, :operator])
+    |> validate_number(:group, greater_than_or_equal_to: 0)
     |> validate_operator_matches_field()
     |> validate_value()
   end

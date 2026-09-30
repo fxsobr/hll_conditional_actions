@@ -31,14 +31,15 @@ defmodule HllConditionalActionsWeb.RuleBuilderUxTest do
            )
   end
 
-  test "yes/no fields get a switch, lists get chips", %{conn: conn} do
+  test "yes/no fields get a yes/no pick, lists get chips", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/rules/new")
 
     view
     |> form("#rule-form", rule: %{conditions: %{"0" => %{field: "is_vip"}}})
     |> render_change()
 
-    assert has_element?(view, ".pc-switch input#rule_conditions_0_value[type=checkbox]")
+    assert has_element?(view, "select#rule_conditions_0_value option[value=true]")
+    assert has_element?(view, "select#rule_conditions_0_value option[value=false]")
 
     view
     |> form("#rule-form", rule: %{conditions: %{"0" => %{field: "player_name"}}})

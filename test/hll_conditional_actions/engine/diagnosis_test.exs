@@ -37,12 +37,14 @@ defmodule HllConditionalActions.Engine.DiagnosisTest do
   end
 
   describe "saved events" do
-    test "keeps only the latest per server and trigger, and filters by player" do
+    # Retention (the count cap and the age limit) is covered in
+    # HllConditionalActions.Engine.SavedEventsTest.
+    test "lists the newest first per trigger, and filters by player" do
       server = server_fixture()
-      base = ~U[2026-09-01 10:00:00.000000Z]
+      base = DateTime.add(DateTime.utc_now(), -1, :hour)
 
       samples =
-        for n <- 1..(SavedEvents.keep() + 5) do
+        for n <- 1..5 do
           sample(server, :player_kill, %{"name" => "P#{n}", at: DateTime.add(base, n)})
         end
 
@@ -50,8 +52,8 @@ defmodule HllConditionalActions.Engine.DiagnosisTest do
       SavedEvents.store([sample(server, :player_death, %{"name" => "Other"})])
 
       kept = SavedEvents.list([server.id], trigger: :player_kill, limit: 500)
-      assert length(kept) == SavedEvents.keep()
-      assert hd(kept).sample.player_name == "P#{SavedEvents.keep() + 5}"
+      assert length(kept) == 5
+      assert hd(kept).sample.player_name == "P5"
       assert hd(kept).sample.trigger == :player_kill
 
       assert [event] = SavedEvents.list([server.id], player: "other")

@@ -46,13 +46,25 @@ defmodule HllConditionalActions.Rules.Snapshot do
     if changeset.valid?, do: Ecto.Changeset.apply_changes(changeset), else: nil
   end
 
+  # Group keys only when the condition is in a group of its own, so a flat
+  # rule's snapshot reads exactly as it did before groups existed.
   defp condition(condition) do
     %{
       "field" => to_string(condition.field),
       "operator" => to_string(condition.operator),
       "value" => condition.value
     }
+    |> put_group(condition)
   end
+
+  defp put_group(map, %{group: group, group_operator: operator})
+       when (is_integer(group) and group > 0) or not is_nil(operator) do
+    map
+    |> Map.put("group", group || 0)
+    |> Map.put("group_operator", operator && to_string(operator))
+  end
+
+  defp put_group(map, _condition), do: map
 
   defp action(action), do: %{"type" => to_string(action.type), "parameters" => action.parameters}
 

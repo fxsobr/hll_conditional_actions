@@ -1,0 +1,586 @@
+/* ── Construtor: the rule builder as a test bench ("bancada de testes") ──────
+   The Bench / BenchLight boards. Colours the shared tokens do not carry
+   (the per-group hues, the run strip states, the trace chips) live here as
+   variables, once per theme; the markup uses them through the classes
+   below. Sizes follow the boards 1:1 (px / 16 = rem). */
+
+:root {
+  --bench-tile: #ffffff;
+  --bench-tile-line: #e2e1d8;
+  --bench-dash: #c9c8be;
+  --bench-track: #ecebe4;
+  --bench-miss: #e2e1d8;
+  --bench-exempt: #9a9c92;
+  --bench-engine: #8b78e6;
+  --bench-engine-strong: #43329a;
+  --bench-engine-on: #ffffff;
+  --bench-engine-tint: #f1edfd;
+  --bench-engine-line: #cfc4f2;
+  --bench-engine-ink: #2e2270;
+  --bench-engine-soft: #5e5596;
+  --bench-ok-tint: #e4f3b5;
+  --bench-ok-ink: #3f5c00;
+  --bench-bad-tint: #fbe0dd;
+  --bench-bad-ink: #a8281f;
+  --bench-hold: #e0a81e;
+  --bench-hold-ink: #6a4b00;
+  --bench-signal-line: #9cc23a;
+  --bench-signal-tint: #f3f8df;
+  --bench-signal-mark: #6e9a00;
+  --bench-axis: #e0782f;
+  --bench-error: #c23b32;
+  --bench-discord: #1f66b8;
+  --bench-discord-tint: #e5eef9;
+  --bench-scrim: rgba(22, 23, 15, 0.45);
+  --bench-drawer-side: #f2f1eb;
+  --bench-embed: #ffffff;
+
+  /* Group hues: lavender, teal, amber, blue, orange. */
+  --bench-g0: #8b78e6;
+  --bench-g0-tint: #f1edfd;
+  --bench-g0-line: #cfc4f2;
+  --bench-g0-ink: #43329a;
+  --bench-g1: #2e9c84;
+  --bench-g1-tint: #e3f5f0;
+  --bench-g1-line: #a9ddd0;
+  --bench-g1-ink: #0f6b58;
+  --bench-g2: #e0a81e;
+  --bench-g2-tint: #fbf1d6;
+  --bench-g2-line: #efd594;
+  --bench-g2-ink: #6a4b00;
+  --bench-g3: #1f66b8;
+  --bench-g3-tint: #e5eef9;
+  --bench-g3-line: #b6cdea;
+  --bench-g3-ink: #174e8c;
+  --bench-g4: #e0782f;
+  --bench-g4-tint: #fbe9dc;
+  --bench-g4-line: #f0c3a2;
+  --bench-g4-ink: #8a3f0c;
+}
+
+.dark {
+  --bench-tile: #20211d;
+  --bench-tile-line: #2e3029;
+  --bench-dash: #3a3d30;
+  --bench-track: #20211d;
+  --bench-miss: #33352e;
+  --bench-exempt: #6d6f66;
+  --bench-engine: #c3b3ff;
+  --bench-engine-strong: #c3b3ff;
+  --bench-engine-on: #1e1535;
+  --bench-engine-tint: rgba(195, 179, 255, 0.1);
+  --bench-engine-line: rgba(195, 179, 255, 0.45);
+  --bench-engine-ink: #d9d2f5;
+  --bench-engine-soft: #a49cc4;
+  --bench-ok-tint: rgba(210, 243, 107, 0.12);
+  --bench-ok-ink: #d2f36b;
+  --bench-bad-tint: rgba(255, 123, 114, 0.13);
+  --bench-bad-ink: #ff9c95;
+  --bench-hold: #f4c95d;
+  --bench-hold-ink: #f4c95d;
+  --bench-signal-line: rgba(210, 243, 107, 0.5);
+  --bench-signal-tint: rgba(210, 243, 107, 0.08);
+  --bench-signal-mark: #d2f36b;
+  --bench-axis: #ff9f5a;
+  --bench-error: #ff7b72;
+  --bench-discord: #8cc4ff;
+  --bench-discord-tint: rgba(140, 196, 255, 0.14);
+  --bench-scrim: rgba(8, 9, 7, 0.72);
+  --bench-drawer-side: #141512;
+  --bench-embed: #1b1c19;
+
+  --bench-g0: #c3b3ff;
+  --bench-g0-tint: rgba(195, 179, 255, 0.1);
+  --bench-g0-line: rgba(195, 179, 255, 0.4);
+  --bench-g0-ink: #c3b3ff;
+  --bench-g1: #7fd6c2;
+  --bench-g1-tint: rgba(127, 214, 194, 0.1);
+  --bench-g1-line: rgba(127, 214, 194, 0.4);
+  --bench-g1-ink: #7fd6c2;
+  --bench-g2: #f4c95d;
+  --bench-g2-tint: rgba(244, 201, 93, 0.1);
+  --bench-g2-line: rgba(244, 201, 93, 0.4);
+  --bench-g2-ink: #f4c95d;
+  --bench-g3: #8cc4ff;
+  --bench-g3-tint: rgba(140, 196, 255, 0.1);
+  --bench-g3-line: rgba(140, 196, 255, 0.4);
+  --bench-g3-ink: #8cc4ff;
+  --bench-g4: #ff9f5a;
+  --bench-g4-tint: rgba(255, 159, 90, 0.1);
+  --bench-g4-line: rgba(255, 159, 90, 0.4);
+  --bench-g4-ink: #ff9f5a;
+}
+
+/* A group takes its hue from data-hue; everything inside reads --g-*. */
+.bench-group {
+  --g: var(--bench-g0);
+  --g-tint: var(--bench-g0-tint);
+  --g-line: var(--bench-g0-line);
+  --g-ink: var(--bench-g0-ink);
+}
+.bench-group[data-hue="1"] {
+  --g: var(--bench-g1);
+  --g-tint: var(--bench-g1-tint);
+  --g-line: var(--bench-g1-line);
+  --g-ink: var(--bench-g1-ink);
+}
+.bench-group[data-hue="2"] {
+  --g: var(--bench-g2);
+  --g-tint: var(--bench-g2-tint);
+  --g-line: var(--bench-g2-line);
+  --g-ink: var(--bench-g2-ink);
+}
+.bench-group[data-hue="3"] {
+  --g: var(--bench-g3);
+  --g-tint: var(--bench-g3-tint);
+  --g-line: var(--bench-g3-line);
+  --g-ink: var(--bench-g3-ink);
+}
+.bench-group[data-hue="4"] {
+  --g: var(--bench-g4);
+  --g-tint: var(--bench-g4-tint);
+  --g-line: var(--bench-g4-line);
+  --g-ink: var(--bench-g4-ink);
+}
+
+.bench-group-bar {
+  background: var(--g);
+}
+
+/* The group's "todas ▾": a select dressed as the board's pill. */
+.bench-group-pill {
+  height: 1.75rem;
+  padding: 0 1.5rem 0 0.625rem;
+  border-radius: 999px;
+  border: 1px solid var(--g-line);
+  background-color: var(--g-tint);
+  color: var(--g-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Tiles: the field / operator / value controls of a condition, the chips of
+   the sentence. Real controls, drawn as the board's buttons. */
+.bench-tile {
+  height: 2.5rem;
+  width: 100%;
+  min-width: 0;
+  border-radius: 0.75rem;
+  border: 1px solid var(--bench-tile-line);
+  background-color: var(--bench-tile);
+  color: var(--color-base-content);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.bench-tile:focus,
+.bench-tile:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+.bench-tile[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+.bench-tile--quiet {
+  color: var(--color-subtle);
+}
+
+select.bench-tile,
+select.bench-chip,
+select.bench-group-pill,
+select.bench-pill {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238c8e85' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 0.875rem;
+  background-position: right 0.625rem center;
+  padding-right: 1.875rem;
+}
+select.bench-group-pill {
+  background-position: right 0.4375rem center;
+  background-size: 0.75rem;
+}
+
+/* The sentence chips: "o jogador abate um aliado" em "todos os servidores". */
+.bench-chip {
+  height: 2.625rem;
+  max-width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--bench-tile-line);
+  background-color: var(--bench-tile);
+  color: var(--color-base-content);
+  padding: 0 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+.bench-chip--signal {
+  border-color: var(--bench-signal-line);
+  background-color: var(--bench-signal-tint);
+}
+:root:not(.dark) .bench-chip--signal {
+  border-width: 1.5px;
+}
+
+/* The "qualquer um ▾" pill over the groups. */
+.bench-pill {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--bench-tile-line);
+  background-color: var(--bench-tile);
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* Dashed "+ Condição", "+ Grupo", "+ proteção". */
+.bench-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.125rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  border: 1px dashed var(--bench-dash);
+  background: transparent;
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.bench-add:hover {
+  border-color: var(--color-primary);
+}
+
+/* A protection chip: "espera 120 s". */
+.bench-guard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.125rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--bench-tile-line);
+  background: var(--bench-tile);
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.bench-guard[aria-expanded="true"] {
+  border-color: var(--color-primary);
+}
+
+/* Trace chips: what a condition read, in the overlay. */
+.bench-trace {
+  display: flex;
+  height: 1.875rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  padding: 0 0.625rem;
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bench-trace[data-state="ok"] {
+  background: var(--bench-ok-tint);
+  color: var(--bench-ok-ink);
+}
+.bench-trace[data-state="fail"] {
+  background: var(--bench-bad-tint);
+  color: var(--bench-bad-ink);
+}
+.bench-trace[data-state="skip"] {
+  background: var(--bench-tile);
+  color: var(--color-muted);
+}
+.bench-ok {
+  color: var(--bench-ok-ink);
+}
+.bench-bad {
+  color: var(--bench-bad-ink);
+}
+.bench-hold {
+  color: var(--bench-hold-ink);
+}
+
+/* The run strip: one cell per recent evaluation of the saved rule. */
+.bench-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--cells, 48), minmax(0.4375rem, 1fr));
+  gap: 0.25rem;
+  align-items: center;
+}
+.bench-cell {
+  height: 1.375rem;
+  border-radius: 5px;
+  background: var(--bench-miss);
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  transition: transform 0.12s;
+}
+.bench-cell:hover {
+  transform: scaleY(1.12);
+}
+.bench-cell[data-outcome="simulated"] {
+  background: var(--bench-engine);
+}
+.bench-cell[data-outcome="fired"] {
+  background: var(--color-primary);
+}
+.bench-cell[data-outcome="held"] {
+  background: var(--bench-hold);
+}
+.bench-cell[data-outcome="error"] {
+  background: var(--bench-error);
+}
+.bench-cell[data-outcome="exempt"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--bench-exempt);
+}
+.bench-cell[data-outcome="idle"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--bench-miss);
+}
+.bench-cell[aria-pressed="true"] {
+  height: 1.875rem;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 2px var(--color-base-100),
+    0 0 0 4px var(--color-base-content);
+}
+.bench-cell[data-outcome="exempt"][aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1.5px var(--bench-exempt),
+    0 0 0 2px var(--color-base-100),
+    0 0 0 4px var(--color-base-content);
+}
+.bench-key {
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* The overlay banner and the ladder's current rung use the engine lavender. */
+.bench-overlay {
+  background: var(--bench-engine-tint);
+  border-bottom: 1px solid var(--bench-engine-line);
+  color: var(--bench-engine-ink);
+}
+:root:not(.dark) .bench-overlay {
+  border-bottom-color: #dcd3f7;
+}
+.dark .bench-overlay {
+  background: rgba(195, 179, 255, 0.08);
+  border-bottom-color: #2d2940;
+}
+.bench-overlay-button {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--bench-engine-line);
+  color: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+:root:not(.dark) .bench-overlay-button {
+  background: #ffffff;
+}
+.dark .bench-overlay-button {
+  border-color: #3a3552;
+  color: var(--color-base-content);
+}
+
+/* A rung of the ladder. */
+.bench-step {
+  display: grid;
+  grid-template-columns: 1.875rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.875rem;
+  background: var(--color-secondary);
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.bench-step:hover {
+  border-color: var(--bench-tile-line);
+}
+.bench-step[data-state="current"] {
+  background: var(--bench-engine-tint);
+  border-color: var(--bench-engine-line);
+}
+.bench-step-number {
+  display: flex;
+  width: 1.625rem;
+  height: 1.625rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--bench-miss);
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 0.75rem;
+}
+:root:not(.dark) .bench-step-number {
+  background: #e2e1d8;
+}
+.dark .bench-step-number {
+  background: #2a2b26;
+}
+.bench-step[data-state="current"] .bench-step-number {
+  background: var(--bench-engine-strong);
+  color: var(--bench-engine-on);
+  font-weight: 600;
+}
+.bench-edited {
+  text-decoration: underline;
+  text-decoration-color: var(--bench-signal-mark);
+  text-underline-offset: 3px;
+}
+:root:not(.dark) .bench-edited {
+  text-decoration-thickness: 2px;
+}
+
+/* The state switch in the header: Desligada · Simulando · Ao vivo. */
+.bench-state {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+}
+.bench-state button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  color: var(--color-subtle);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bench-state button[aria-checked="true"] {
+  font-weight: 600;
+  background: var(--color-base-content);
+  color: var(--color-base-100);
+}
+.bench-state button[data-state="simulating"][aria-checked="true"] {
+  background: var(--bench-engine-strong);
+  color: var(--bench-engine-on);
+}
+.bench-state button[data-state="live"][aria-checked="true"] {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+.bench-state button[aria-disabled="true"] {
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+.bench-dash-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  border: 1.5px dashed currentColor;
+}
+
+/* Replay bars. */
+.bench-bar {
+  height: 0.5rem;
+  border-radius: 4px;
+  background: var(--bench-track);
+  display: flex;
+}
+.bench-bar > span {
+  border-radius: 4px;
+  background: var(--bench-engine);
+}
+.bench-bar[data-tone="axis"] > span {
+  background: var(--bench-axis);
+}
+.bench-bar[data-tone="error"] > span {
+  background: var(--bench-error);
+}
+
+/* The action drawer (ActionDiscord board). */
+.bench-scrim {
+  background: var(--bench-scrim);
+}
+.bench-drawer-side {
+  background: var(--bench-drawer-side);
+}
+.bench-embed {
+  background: var(--bench-embed);
+}
+.bench-var {
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 0.75rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--bench-engine-tint);
+  color: var(--bench-engine-ink);
+}
+.bench-discord-tile {
+  background: var(--bench-discord-tint);
+  color: var(--bench-discord);
+}
+
+/* Recipe wizard (Recipes board): the preview column is the engine's tint. */
+.wizard-aside {
+  background: var(--bench-engine-tint);
+  border-color: var(--bench-engine-line);
+}
+.dark .wizard-aside {
+  background: #1d1b26;
+  border-color: #2d2940;
+}
+.wizard-chip {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: var(--color-base-content);
+  background: var(--bench-engine-line);
+}
+.dark .wizard-chip {
+  background: #2d2940;
+}
+.wizard-message {
+  background: var(--color-base-100);
+}
+.dark .wizard-message {
+  background: #15141c;
+}
+
+/* The header's publish button: ink on paper in light, the signal in dark. */
+.bench-publish {
+  background: var(--color-base-content);
+  color: var(--color-base-100);
+}
+.dark .bench-publish {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+@media (max-width: 40rem) {
+  .bench-strip {
+    gap: 2px;
+    grid-template-columns: repeat(var(--cells, 48), minmax(0.25rem, 1fr));
+  }
+}
