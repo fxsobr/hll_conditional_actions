@@ -123,8 +123,28 @@ defmodule HllConditionalActionsWeb.MatchLiveTest do
     {:ok, view, _html} = live(conn, ~p"/servers/#{server}/matches")
     render_async(view)
 
-    assert has_element?(view, "#match-77", "Carentan")
-    assert has_element?(view, "#match-77", "3 : 2")
+    assert has_element?(view, "#match-#{server.id}-77", "Carentan")
+    assert has_element?(view, "#match-#{server.id}-77", "Allies won")
+    assert has_element?(view, "#matches-summary", "1")
+    assert has_element?(view, "#matches-by-map", "Carentan")
+
+    # The players of the matches on screen come in afterwards.
+    render_async(view)
+    assert has_element?(view, "#match-#{server.id}-77", "2 players")
+  end
+
+  test "all servers at once, and exporting the list", %{conn: conn, server: server} do
+    other = server_fixture(%{name: "EU #2"})
+    {:ok, view, _html} = live(conn, ~p"/matches")
+    render_async(view)
+
+    assert has_element?(view, "#match-servers", "All servers")
+    assert has_element?(view, "#match-servers", other.name)
+    assert has_element?(view, "#match-servers", server.name)
+
+    view |> element("#matches-export") |> render_click()
+    assert_push_event(view, "download_csv", %{content: csv})
+    assert csv =~ "Carentan"
   end
 
   test "the report ranks the match and shows what the rules did", %{conn: conn, server: server} do
@@ -144,11 +164,18 @@ defmodule HllConditionalActionsWeb.MatchLiveTest do
     {:ok, view, _html} = live(conn, ~p"/servers/#{server}/matches/77")
     render_async(view)
 
-    assert has_element?(view, "#match-kpis", "Medic")
+    assert has_element?(view, "#match-mvp", "Medic")
+    assert has_element?(view, "#match-hero", "Carentan")
     assert has_element?(view, "#match-board-kills", "Sharpshooter")
-    assert has_element?(view, "#match-squads-infantry", "Baker")
+    assert has_element?(view, "#match-squads", "Baker")
     assert has_element?(view, "#match-rules", "Welcome")
-    assert has_element?(view, "#match-rules", "12'")
     assert has_element?(view, "#match-scoreboard", "Sharpshooter")
+
+    view |> element("#scoreboard-teams button", "Axis") |> render_click()
+    assert has_element?(view, "#match-scoreboard", "Medic")
+    refute has_element?(view, "#match-scoreboard a", "Sharpshooter")
+
+    view |> element("#match-export") |> render_click()
+    assert_push_event(view, "download_csv", %{filename: "match-77.csv"})
   end
 end

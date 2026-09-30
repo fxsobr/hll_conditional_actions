@@ -29,6 +29,8 @@ defmodule HllConditionalActionsWeb.Nav do
   alias HllConditionalActions.Attention
   alias HllConditionalActions.Crcon.LogStream
   alias HllConditionalActions.Features
+  alias HllConditionalActions.Notifications
+  alias HllConditionalActions.Repo
   alias HllConditionalActions.Servers
   alias HllConditionalActions.Tickets
 
@@ -47,20 +49,23 @@ defmodule HllConditionalActionsWeb.Nav do
     socket =
       socket
       |> assign_new(:current_path, fn -> "/" end)
-      |> assign(:nav, %{
-        servers: visible_servers(socket),
-        server: nil,
-        status: nil,
-        tickets: if(tickets?, do: Tickets.open_counts(user), else: %{}),
-        attention: attention_count(socket),
-        features: installed_features(user)
-      })
+      |> assign(
+        :nav,
+        Map.merge(
+          %{
+            servers: visible_servers(socket),
+            server: nil,
+            status: nil,
+            tickets: if(tickets?, do: Tickets.open_counts(user), else: %{}),
+            features: installed_features(user),
+            tab_counts: %{},
+            query: nil
+          },
+          shell_counts(socket)
+        )
+      )
       |> attach_hook(:current_path, :handle_params, &put_current_path/3)
-      |> then(fn socket ->
-        if attention?,
-          do: attach_hook(socket, :attention_bell, :handle_info, &refresh_attention/2),
-          else: socket
-      end)
+      |> attach_hook(:attention_bell, :handle_info, &refresh_attention/2)
 
     socket =
       if tickets?,
@@ -76,7 +81,8 @@ defmodule HllConditionalActionsWeb.Nav do
     HllConditionalActionsWeb.TicketLive.Index,
     HllConditionalActionsWeb.TicketLive.Show,
     HllConditionalActionsWeb.TicketLive.Metrics,
-    HllConditionalActionsWeb.AttentionLive
+    HllConditionalActionsWeb.AttentionLive,
+    HllConditionalActionsWeb.InboxLive
   ]
 
   defp refresh_ticket_counts({:ticket_changed, _ticket}, socket) do
@@ -132,15 +138,40 @@ defmodule HllConditionalActionsWeb.Nav do
   defp refresh_ticket_counts(_message, socket), do: {:cont, socket}
 
   defp put_current_path(_params, url, socket) do
-    path = URI.parse(url).path || "/"
+    uri = URI.parse(url)
+    path = uri.path || "/"
     nav = socket.assigns.nav
     server = scoped_server(nav.servers, path)
+
+    nav = %{
+      nav
+      | server: server,
+        status: server && LogStream.status(server.id),
+        tab_counts: tab_counts(path, socket.assigns[:current_user]),
+        # For the header tabs that differ only by their query (Squads).
+        query: uri.query
+    }
 
     {:cont,
      socket
      |> assign(:current_path, path)
-     |> assign(:nav, %{nav | server: server, status: server && LogStream.status(server.id)})}
+     |> assign(:nav, nav)}
   end
+
+  # "Usuários 6 · Papéis 4": the people tabs carry their counts, read only
+  # on those two pages.
+  defp tab_counts("/" <> rest, user) do
+    if String.starts_with?(rest, ["users", "roles"]) and Accounts.can?(user, :manage_users) do
+      %{
+        "/users" => Repo.aggregate(HllConditionalActions.Accounts.User, :count),
+        "/roles" => Repo.aggregate(HllConditionalActions.Accounts.Role, :count)
+      }
+    else
+      %{}
+    end
+  end
+
+  defp tab_counts(_path, _user), do: %{}
 
   # The bell keeps itself current without a reload: every signal that the
   # inbox may have changed (a ticket counts too) schedules one recount, a
@@ -156,8 +187,12 @@ defmodule HllConditionalActionsWeb.Nav do
 
   defp refresh_attention(:recount_attention, socket) do
     socket = assign(socket, :attention_recount_pending?, false)
-    {:halt, assign(socket, :nav, %{socket.assigns.nav | attention: attention_count(socket)})}
+    {:halt, assign(socket, :nav, Map.merge(socket.assigns.nav, shell_counts(socket)))}
   end
+
+  # The bell's panel marked something read.
+  defp refresh_attention(:refresh_shell, socket),
+    do: {:halt, assign(socket, :nav, Map.merge(socket.assigns.nav, shell_counts(socket)))}
 
   defp refresh_attention(_other, socket), do: {:cont, socket}
 
@@ -170,14 +205,40 @@ defmodule HllConditionalActionsWeb.Nav do
     end
   end
 
-  # The open items of the Attention inbox, for the bell in the header.
-  # Counted once the page is connected, never on the first static render.
-  defp attention_count(socket) do
+  # The counts the shell shows: the open Attention items, what waits in the
+  # Caixa (those items and the open tickets, a ticket that waited too long
+  # counted once) and the unread notifications of the bell. Read once the
+  # page is connected, never on the first static render.
+  defp shell_counts(socket) do
     user = socket.assigns[:current_user]
 
-    if connected?(socket) and Accounts.can?(user, :view_executions) do
+    if connected?(socket) and user do
       servers = Servers.list_servers_for(user)
-      Attention.count(user, servers, Map.new(servers, &{&1.id, LogStream.status(&1.id)}))
+
+      attention =
+        if Accounts.can?(user, :view_executions) do
+          status = Map.new(servers, &{&1.id, LogStream.status(&1.id)})
+          Attention.items(user, servers, status).open
+        else
+          []
+        end
+
+      open_tickets =
+        if Accounts.can?(user, :view_tickets),
+          do: user |> Tickets.open_counts() |> Map.values() |> Enum.sum(),
+          else: 0
+
+      %{
+        attention: length(attention),
+        inbox: Enum.count(attention, &(&1.kind != :ticket_waiting)) + open_tickets,
+        unread: Notifications.unread_count(user, servers, attention),
+        # The attention count the unread one was read with: a page that
+        # recounts `attention` itself (the Attention inbox, after handling
+        # an item) makes the two differ, and the bell asks for a recount.
+        unread_basis: length(attention)
+      }
+    else
+      %{attention: nil, inbox: nil, unread: nil, unread_basis: nil}
     end
   end
 

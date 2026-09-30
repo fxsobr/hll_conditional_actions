@@ -70,6 +70,7 @@ defmodule HllConditionalActions.Progression.Achievement do
     |> assoc_constraint(:server)
     |> validate_length(:name, max: 60)
     |> validate_length(:reward_flag, max: 8)
+    |> validate_length(:description, max: 140)
     |> validate_number(:threshold, greater_than: 0)
     |> validate_number(:reward_vip_hours, greater_than_or_equal_to: 0)
     |> validate_metric_scope()

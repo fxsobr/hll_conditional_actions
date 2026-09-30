@@ -2,10 +2,17 @@ defmodule HllConditionalActionsWeb.Layouts do
   @moduledoc """
   Application layouts and the chrome around every page.
 
-  `app/1` wraps authenticated pages: a sidebar whose entries are filtered by
-  the signed in user's permissions, a header with the page title, and the flash
-  group. The sidebar's mobile behaviour is pure Alpine.js, so opening and
-  closing the menu never touches the server.
+  `app/1` wraps authenticated pages in the "Posto de Comando" shell: the icon
+  rail on wide screens (one entry per area, Ajustes and the account at the
+  bottom), a header with the page title, the global search (Ctrl K), the
+  server scope, the notifications bell and the page's own actions, and on
+  tablets and phones a floating tab bar with a "Mais" sheet for the rest.
+
+  The pages of an area show as pill tabs beside the title. The command
+  palette (`HllConditionalActionsWeb.CommandPalette`), the notifications
+  panel (`HllConditionalActionsWeb.NotificationsPanel`) and the "Mais" sheet
+  (`HllConditionalActionsWeb.MoreSheet`) are live components, so typing a
+  search or opening the bell re-renders only them, never the page.
 
   `auth/1` wraps the pages an anonymous visitor can reach. It is a split
   screen: Hell Let Loose key art on one side, the form on the other, so the
@@ -21,20 +28,31 @@ defmodule HllConditionalActionsWeb.Layouts do
 
   embed_templates "layouts/*"
 
-  # Maps with a clear, recognisable daytime shot, for the sign in backdrop.
-  @auth_art ~w(
-    /images/maps/hll/carentan-day.webp
-    /images/maps/hll/stmereeglise-dawn.webp
-    /images/maps/hll/omahabeach-day.webp
-    /images/maps/hll/foy-day.webp
-    /images/maps/hll/purpleheartlane-dawn.webp
-    /images/maps/hll/elsenbornridge-dawn.webp
-    /images/maps/hll/driel-dawn.webp
-    /images/maps/hll/stalingrad-dusk.webp
-  )
-
   @doc """
   The shell for authenticated pages.
+
+  Only `flash` is required; everything else refines the header:
+
+    * `page_title`, with `crumb` above it ("Ajustes / Pessoas") - or
+      `eyebrow`, the same line when it is not a path ("Briefing de um
+      servidor novo") - `badges` beside it and `page_subtitle` under it;
+      `page_meta` sits inline after the title instead ("4.812 conhecidos ·
+      221 jogando agora").
+    * `greeting` and `greeting_eyebrow`: on phones and tablets the header
+      shows these instead of the title, beside the logo ("Terça, 29 de
+      setembro" over "Boa noite, Marcelo"); wide screens keep `page_title`.
+    * `back` puts a round back button before the title (detail pages); the
+      area's tabs are not shown on those.
+    * `tabs`: `:auto` (the default) shows the pages of the area as pill tabs
+      beside the title, when the page is one of them; `false` hides them; a
+      list of `%{label: .., path: .., count: .., active: .., patch: ..}`
+      shows those instead (a page's own filters).
+    * the header's right side: the global search field (`global_search={false}`
+      hides it, the `:search` slot replaces it with the page's own), the
+      server scope (`scope={false}`), the bell (`bell={false}`) and the
+      `:actions` slot, last.
+    * `tab_bar={false}` hides the phone/tablet tab bar, for a page with its
+      own bottom action bar.
 
   ## Examples
 
@@ -52,6 +70,17 @@ defmodule HllConditionalActionsWeb.Layouts do
 
   attr :page_title, :string, default: nil
   attr :page_subtitle, :string, default: nil, doc: "one line of context under the page title"
+  attr :page_meta, :string, default: nil, doc: "one line of context inline after the title"
+  attr :crumb, :string, default: nil, doc: "where the page sits, above the title"
+  attr :eyebrow, :string, default: nil, doc: "a line above the title, when it is not a crumb"
+
+  attr :greeting, :string,
+    default: nil,
+    doc: "phones and tablets: the header's title in place of `page_title`"
+
+  attr :greeting_eyebrow, :string,
+    default: nil,
+    doc: "phones and tablets: the line above `greeting`, e.g. the date"
 
   attr :back, :string,
     default: nil,
@@ -63,479 +92,715 @@ defmodule HllConditionalActionsWeb.Layouts do
     default: [],
     doc: "status pills beside the title: maps of %{id, label, tone, icon}"
 
+  attr :tabs, :any, default: :auto, doc: ":auto, false, or a list of tab maps"
+  attr :global_search, :boolean, default: true, doc: "the global search field in the header"
+  attr :scope, :boolean, default: true, doc: "the server scope pill in the header"
+  attr :bell, :boolean, default: true, doc: "the notifications bell in the header"
+  attr :tab_bar, :boolean, default: true, doc: "the phone and tablet tab bar"
+
+  attr :header, :boolean,
+    default: true,
+    doc: "the page header; off for pages whose content carries its own (the player 360)"
+
   slot :actions, doc: "buttons rendered on the right of the page header"
+  slot :search, doc: "the page's own search, in place of the global one"
   slot :inner_block, required: true
 
   def app(assigns) do
+    areas = areas(assigns.current_user, assigns.nav)
+    active = area_key(assigns.current_path)
+
+    assigns =
+      assigns
+      |> assign(:areas, areas)
+      |> assign(:active_area, active)
+      |> assign(:header_tabs, tabs_for(assigns, areas, active))
+
     ~H"""
     <div class="min-h-screen bg-base-200">
       <HllConditionalActionsWeb.TicketComponents.alert_listener :if={@current_user} />
-      <.sidebar current_user={@current_user} current_path={@current_path} nav={@nav} />
-      <div class="lg:pl-64">
-        <header class="sticky top-0 z-30 bg-base-100/85 backdrop-blur">
-          <%!-- The rail and the sidebar brand are both a 4rem box with the
-                hairline inside it, so the two borders land on the same row and
-                read as one line across the page. --%>
-          <div class="flex min-h-16 items-center gap-3 border-b border-base-300 px-4 py-2 sm:px-6">
-            <button
-              type="button"
-              class="flex size-9 cursor-pointer items-center justify-center rounded-field text-subtle transition-colors hover:bg-base-200 hover:text-base-content lg:hidden"
-              aria-label={gettext("Open the menu")}
-              aria-haspopup="dialog"
-              phx-click={show_dialog("mobile-sidebar")}
+      <.rail current_user={@current_user} areas={@areas} active={@active_area} nav={@nav} />
+
+      <div class="xl:pl-[6.5rem]">
+        <header :if={@header} id="app-header" class="shell-header">
+          <div class="flex min-h-[4.25rem] items-center gap-2.5 px-4 pt-4 md:min-h-[5.75rem] md:gap-3 md:px-6 md:pt-0 xl:pl-2 xl:pr-7">
+            <.link
+              navigate={~p"/"}
+              aria-label={gettext("Conditional Actions")}
+              class={[
+                "logo-tile shrink-0 xl:hidden",
+                if(@greeting,
+                  do: "flex size-11 rounded-[0.875rem] md:size-12 md:rounded-[0.9375rem]",
+                  else: "hidden size-12 rounded-[0.9375rem] md:flex"
+                )
+              ]}
             >
-              <.icon name="hero-bars-3" class="size-5" />
-            </button>
+              <.logo_chevrons class="size-6" />
+            </.link>
 
             <.link
               :if={@back}
               navigate={@back}
+              id="header-back"
               aria-label={@back_label || gettext("Back")}
-              class="flex size-9 shrink-0 items-center justify-center rounded-field text-muted transition-colors hover:bg-base-200 hover:text-base-content"
+              class="icon-round size-11 shrink-0"
             >
-              <.icon name="hero-chevron-left" class="size-4" />
+              <.icon name="hero-chevron-left" class="size-5" />
             </.link>
 
-            <%!-- A floor under the title: without it a page with many actions
-                  squeezes it to nothing on a phone, and nobody can tell which
-                  page they are on. --%>
-            <div class="min-w-28 flex-1">
-              <div class="flex min-w-0 flex-wrap items-center gap-2">
-                <h1 class="truncate text-headline-medium">{@page_title}</h1>
+            <%!-- Phone and tablet: the page's greeting in place of its title
+                  (MobileBriefing and TabletBriefing boards). --%>
+            <div
+              :if={@greeting}
+              id="page-greeting"
+              class="flex min-w-0 flex-1 flex-col gap-px md:ml-1.5 md:gap-0.5 xl:hidden"
+            >
+              <p
+                :if={@greeting_eyebrow}
+                class="flex items-center gap-1.5 truncate text-xs text-muted md:text-[0.8125rem] md:text-subtle"
+              >
+                <.icon name="hero-calendar" class="hidden size-4 shrink-0 md:inline-block" />
+                {@greeting_eyebrow}
+              </p>
+              <h1 class="truncate font-display text-[1.3125rem] font-semibold tracking-[-0.01em] md:text-[1.75rem] md:tracking-[-0.02em]">
+                {@greeting}
+              </h1>
+            </div>
 
-                <.tone_badge
+            <div class={[
+              "min-w-0 flex-1 md:max-w-[45%] md:flex-none",
+              @greeting && "hidden xl:block"
+            ]}>
+              <p :if={@crumb || @eyebrow} class="truncate text-[0.8125rem] text-muted">
+                {@crumb || @eyebrow}
+              </p>
+              <div class="flex min-w-0 items-center gap-3">
+                <h1
+                  id="page-title"
+                  class="truncate font-display text-[1.75rem] font-semibold leading-[1.1] tracking-[-0.02em] md:text-[1.875rem]"
+                >
+                  {@page_title}
+                </h1>
+                <.pill
                   :for={badge <- @badges}
-                  tone={badge.tone}
-                  size="xs"
-                  icon={Map.get(badge, :icon)}
+                  id={Map.get(badge, :id)}
+                  tone={badge_tone(badge.tone)}
+                  class="max-sm:hidden"
                 >
                   {badge.label}
-                </.tone_badge>
+                </.pill>
+                <span :if={@page_meta} class="hidden truncate text-sm text-muted lg:inline">
+                  {@page_meta}
+                </span>
               </div>
-
-              <p :if={@page_subtitle} class="truncate text-xs text-muted">
+              <p :if={@page_subtitle} class="line-clamp-2 text-[0.8125rem] text-muted md:truncate">
                 {@page_subtitle}
               </p>
             </div>
 
-            <%!-- Wrapping rather than shrinking: the children are all fixed
-                  size, so a `shrink` container narrower than its content just
-                  spills over the right edge of a phone. --%>
-            <div class="flex min-w-0 shrink flex-wrap items-center justify-end gap-2">
-              {render_slot(@actions)}
-              <div class="hidden h-6 w-px bg-base-300 sm:block"></div>
+            <.header_tabs
+              :if={@header_tabs != []}
+              id="section-tabs"
+              tabs={@header_tabs}
+              label={@page_title}
+              class="ml-1 hidden xl:flex"
+            />
 
-              <%!-- Below `sm` the switch lives in the navigation drawer
-                    instead, so the sticky header stays one row tall. --%>
-              <.attention_bell :if={@nav && Map.get(@nav, :attention)} nav={@nav} />
-              <.color_scheme_switch id="scheme-switch" variant="dropdown" class="hidden sm:flex" />
-              <.user_menu current_user={@current_user} />
+            <div class="hidden flex-1 md:block"></div>
+
+            <div class="flex shrink-0 items-center gap-2 md:gap-3">
+              <.scope_switcher
+                :if={@scope && @nav && @nav.servers != [] && scoped_area?(@current_path)}
+                id="header-scope"
+                nav={@nav}
+                current_user={@current_user}
+                current_path={@current_path}
+              />
+
+              <%!-- The search comes first on a wide screen, after the scope
+                    on a tablet (Briefing and TabletBriefing boards). --%>
+              <div class="flex items-center gap-3 xl:-order-1">
+                <%= if @search != [] do %>
+                  {render_slot(@search)}
+                <% else %>
+                  <%!-- Beside the area's tabs the boards leave the search and
+                        the bell out on a wide screen (Ctrl K still opens it). --%>
+                  <.search_trigger
+                    :if={@current_user && @global_search}
+                    class={@header_tabs != [] && "xl:hidden"}
+                  />
+                <% end %>
+              </div>
+
+              <%!-- On a phone the bell makes room for the page's buttons, except
+                    beside a greeting, whose page shows no buttons there
+                    (MobileBriefing board). --%>
+              <.live_component
+                :if={@bell && @current_user}
+                module={HllConditionalActionsWeb.NotificationsPanel}
+                id="notifications"
+                current_user={@current_user}
+                nav={@nav}
+                compact={@actions != [] and is_nil(@greeting)}
+                class={@header_tabs != [] && "xl:hidden"}
+              />
+
+              {render_slot(@actions)}
             </div>
           </div>
+
+          <.header_tabs
+            :if={@header_tabs != []}
+            id="section-tabs-mobile"
+            tabs={@header_tabs}
+            label={@page_title}
+            class="mx-4 mt-3 flex overflow-x-auto md:mx-6 xl:hidden"
+          />
         </header>
 
-        <main class="p-4 pb-24 sm:p-6 lg:pb-6">
-          <div class="mx-auto max-w-[120rem] space-y-6">
+        <%!-- Clipped sideways: a page that overflows a phone's width must
+              not widen the layout, or the fixed tab bar leaves the screen. --%>
+        <main class={[
+          "relative overflow-x-clip px-4 pt-3 md:px-6 xl:pb-7 xl:pl-2 xl:pr-7 xl:pt-5",
+          !@header && "md:pt-5",
+          if(@tab_bar, do: "pb-32 md:pb-36", else: "pb-8")
+        ]}>
+          <div class="mx-auto max-w-[120rem] space-y-5">
             {render_slot(@inner_block)}
           </div>
         </main>
       </div>
-      <.tab_bar current_user={@current_user} current_path={@current_path} nav={@nav} />
-      <.flash_group flash={@flash} />
-    </div>
-    """
-  end
 
-  # The thumb-reach navigation on phones: the four screens an admin lives in,
-  # plus the drawer for everything else. Hidden from lg up, where the
-  # sidebar owns navigation.
-  attr :current_user, :map, default: nil
-  attr :current_path, :string, required: true
-  attr :nav, :map, default: nil
+      <.tab_bar
+        :if={@tab_bar && @current_user}
+        id="tab-bar"
+        areas={@areas}
+        active={@active_area}
+        nav={@nav}
+      />
 
-  defp tab_bar(assigns) do
-    assigns = assign(assigns, :tabs, tab_items(assigns.current_user, assigns.nav))
-
-    ~H"""
-    <nav
-      class="fixed inset-x-0 bottom-0 z-30 border-t border-base-300 bg-base-100/95 backdrop-blur lg:hidden"
-      aria-label={gettext("Navigation")}
-    >
-      <ul class="mx-auto flex max-w-md items-stretch justify-around">
-        <li :for={tab <- @tabs} class="min-w-0 flex-1">
-          <.link
-            navigate={tab.path}
-            aria-current={active?(@current_path, tab.path) && "page"}
-            class={[
-              "flex flex-col items-center gap-0.5 px-1 pb-2 pt-2.5 text-[0.625rem] font-medium",
-              if(active?(@current_path, tab.path),
-                do: "text-primary",
-                else: "text-muted"
-              )
-            ]}
-          >
-            <.icon name={tab.icon} class="size-5" />
-            <span class="max-w-full truncate">{tab.label}</span>
-          </.link>
-        </li>
-
-        <li class="min-w-0 flex-1">
-          <button
-            type="button"
-            class="flex w-full cursor-pointer flex-col items-center gap-0.5 px-1 pb-2 pt-2.5 text-[0.625rem] font-medium text-muted"
-            aria-haspopup="dialog"
-            phx-click={show_dialog("mobile-sidebar")}
-          >
-            <.icon name="hero-bars-3" class="size-5" />
-            <span class="max-w-full truncate">{gettext("Menu")}</span>
-          </button>
-        </li>
-      </ul>
-    </nav>
-    """
-  end
-
-  # The four highest-traffic destinations the user can actually reach - of
-  # the server in scope when there is one.
-  defp tab_items(current_user, %{server: %{id: id}} = nav) do
-    [
-      %{
-        label: gettext("Overview"),
-        path: "/servers/#{id}",
-        icon: "hero-squares-2x2",
-        permission: nil
-      },
-      %{
-        label: gettext("Live"),
-        path: "/servers/#{id}/feed",
-        feature: :live_feed,
-        icon: "hero-signal",
-        permission: :view_live_feed
-      },
-      %{
-        label: gettext("Leaderboard"),
-        path: "/servers/#{id}/leaderboard",
-        feature: :stats,
-        icon: "hero-trophy",
-        permission: :view_stats
-      },
-      %{
-        label: gettext("Rules"),
-        path: "/servers/#{id}/rules",
-        feature: :rules,
-        icon: "hero-bolt",
-        permission: :view_rules
-      }
-    ]
-    |> Enum.filter(&(allowed?(current_user, &1.permission) and Nav.feature?(nav, &1[:feature])))
-  end
-
-  defp tab_items(current_user, nav) do
-    [
-      %{label: gettext("Overview"), path: "/", icon: "hero-squares-2x2", permission: nil},
-      %{
-        label: gettext("Servers"),
-        path: "/servers",
-        icon: "hero-server-stack",
-        permission: :view_servers
-      },
-      %{
-        label: gettext("Rules"),
-        path: "/rules",
-        feature: :rules,
-        icon: "hero-bolt",
-        permission: :view_rules
-      },
-      %{
-        label: gettext("Attention"),
-        path: "/attention",
-        icon: "hero-bell-alert",
-        permission: :view_executions
-      }
-    ]
-    |> Enum.filter(&(allowed?(current_user, &1.permission) and Nav.feature?(nav, &1[:feature])))
-  end
-
-  @doc """
-  The shell for pages shown to anonymous visitors, such as the login form.
-
-  The artwork panel is decorative and hidden from assistive technology; every
-  word that matters is repeated in the form panel.
-  """
-  attr :flash, :map, required: true
-  attr :locale, :string, default: nil, doc: "the locale currently being served"
-  attr :return_to, :string, default: "/login", doc: "where the language switch comes back to"
-  slot :inner_block, required: true
-
-  def auth(assigns) do
-    assigns = assign(assigns, :art, Enum.random(@auth_art))
-
-    ~H"""
-    <%!-- One of the game's maps, full bleed, under a scrim that settles it
-          into the page; the form floats on a frosted card over it. Everybody
-          who reaches this page already has an account, so it sells nothing:
-          it only has to look like the tool it opens. --%>
-    <div class="auth-shell" style={"--auth-art: url('#{@art}')"}>
-      <div class="auth-scrim" aria-hidden="true"></div>
-
-      <header class="relative flex items-center gap-3 p-6 text-white sm:p-8">
-        <.logo_mark class="size-10" />
-        <div>
-          <p class="font-semibold leading-tight">{gettext("Conditional Actions")}</p>
-
-          <p class="text-xs text-white/60">{gettext("Hell Let Loose")}</p>
-        </div>
-      </header>
-
-      <main class="relative flex flex-1 items-center justify-center px-4 py-6 sm:justify-end sm:px-12 lg:px-24">
-        <div class="auth-card">
-          {render_slot(@inner_block)}
-          <%!-- The language belongs to the form it changes, not to the
-                artwork: under the button, quiet, centred. --%>
-          <div class="mt-6 flex justify-center border-t border-base-300 pt-4">
-            <.locale_switch locale={@locale} return_to={@return_to} />
-          </div>
-        </div>
-      </main>
-
-      <footer class="relative flex flex-col items-center gap-3 p-6 text-white/70 sm:flex-row sm:justify-between sm:px-8">
-        <p class="text-center text-xs text-white/45">
-          {gettext("Hell Let Loose is a trademark of Team17. This is an unofficial admin tool.")}
-        </p>
-        <.crcon_credit />
-      </footer>
-      <.flash_group flash={@flash} />
-    </div>
-    """
-  end
-
-  # Credit to CRCON, on the sign in page.
-  #
-  # This app is a client: without a CRCON instance to talk to it does nothing
-  # at all, and every action it takes is a CRCON call. Saying so where
-  # everybody passes, with the way to reach that project, is the least it can
-  # do.
-  #
-  # In the main column rather than beside the artwork, because the artwork
-  # panel is hidden below `lg` and this should be there on a phone too.
-  defp crcon_credit(assigns) do
-    ~H"""
-    <p class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-white/60">
-      <span>{gettext("Powered by CRCON")}</span> <span aria-hidden="true">·</span>
-      <%!-- `noopener` because a page opened from here must not get a handle on
-            this one through `window.opener`. --%>
-      <.link
-        href="https://github.com/MarechJ/hll_rcon_tool"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="transition-colors hover:text-white hover:underline"
-      >
-        GitHub
-      </.link>
-      <span aria-hidden="true">·</span>
-      <.link
-        href="https://discord.com/invite/zpSQQef"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="transition-colors hover:text-white hover:underline"
-      >
-        Discord
-      </.link>
-    </p>
-    """
-  end
-
-  attr :locale, :string, default: nil
-  attr :return_to, :string, default: "/login"
-  attr :overlay, :boolean, default: false, doc: "drawn over artwork: light text on glass"
-
-  defp locale_switch(assigns) do
-    assigns = assign(assigns, :locales, Locale.supported())
-
-    ~H"""
-    <div
-      :if={length(@locales) > 1}
-      class={[
-        "flex items-center gap-0.5 rounded-pill p-0.5",
-        if(@overlay,
-          do: "bg-white/10 ring-1 ring-white/15 backdrop-blur",
-          else: "border border-base-300 bg-base-100"
-        )
-      ]}
-    >
-      <.link
-        :for={locale <- @locales}
-        href={~p"/locale/#{locale}?#{[return_to: @return_to]}"}
-        class={[
-          "rounded-pill px-3 py-1 text-xs transition-colors",
-          locale_tone(locale == @locale, @overlay)
-        ]}
-      >
-        {locale_label(locale)}
-      </.link>
-    </div>
-    """
-  end
-
-  defp locale_tone(true, true), do: "bg-white/90 font-medium text-gray-900"
-  defp locale_tone(false, true), do: "text-white/70 hover:text-white"
-  defp locale_tone(true, false), do: "bg-base-200 font-medium text-base-content"
-  defp locale_tone(false, false), do: "text-muted hover:text-base-content"
-
-  defp locale_label("pt_BR"), do: "Português"
-  defp locale_label("es"), do: "Español"
-  defp locale_label("en"), do: "English"
-  defp locale_label(locale), do: locale
-
-  attr :current_user, :map, default: nil
-  attr :current_path, :string, default: "/"
-  attr :nav, :map, default: nil
-
-  # The permanent rail on lg+, and a native <dialog> drawer below it: the
-  # dialog is what buys the mobile menu its focus trap, Escape handling and
-  # focus restoration without a line of custom trap code.
-  defp sidebar(assigns) do
-    ~H"""
-    <aside class="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-base-300 bg-base-100 lg:flex">
-      <.sidebar_content
-        id="sidebar"
+      <.live_component
+        :if={@current_user}
+        module={HllConditionalActionsWeb.MoreSheet}
+        id="more-sheet"
         current_user={@current_user}
         current_path={@current_path}
         nav={@nav}
+        areas={@areas}
+        active={@active_area}
       />
-    </aside>
 
-    <dialog
-      id="mobile-sidebar"
-      class="app-drawer lg:hidden"
-      aria-label={gettext("Navigation")}
-      x-data
-      x-on:click="if ($event.target === $el || $event.target.closest('a')) $el.close()"
-    >
-      <div class="flex h-full flex-col">
-        <.sidebar_content
-          id="mobile-sidebar-content"
-          current_user={@current_user}
-          current_path={@current_path}
-          nav={@nav}
-          closable
-        />
-      </div>
-    </dialog>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :current_user, :map, default: nil
-  attr :current_path, :string, required: true
-  attr :nav, :map, default: nil
-  attr :closable, :boolean, default: false
-
-  defp sidebar_content(assigns) do
-    ~H"""
-    <div class="flex h-16 shrink-0 items-center gap-2.5 border-b border-base-300 px-4">
-      <.logo_mark class="size-8 shrink-0" />
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-title-medium leading-tight">
-          {gettext("Conditional Actions")}
-        </p>
-
-        <p class="truncate text-label-small text-muted">{gettext("Hell Let Loose")}</p>
-      </div>
-
-      <form :if={@closable} method="dialog">
-        <button
-          class="flex size-8 cursor-pointer items-center justify-center rounded-field text-muted transition-colors hover:bg-base-200 hover:text-base-content"
-          aria-label={gettext("Close the menu")}
-        >
-          <.icon name="hero-x-mark" class="size-4" />
-        </button>
-      </form>
-    </div>
-
-    <.scope_switcher
-      :if={@nav && @nav.servers != []}
-      id={"#{@id}-scope"}
-      nav={@nav}
-      current_user={@current_user}
-      current_path={@current_path}
-    />
-    <nav id={"#{@id}-nav"} class="flex-1 space-y-6 overflow-y-auto p-3 pl-4">
-      <.nav_section
-        :for={section <- nav_sections(@current_user, @nav)}
-        title={section.title}
-        items={section.items}
-        current_path={@current_path}
+      <.live_component
+        :if={@current_user}
+        module={HllConditionalActionsWeb.CommandPalette}
+        id="command-palette"
+        current_user={@current_user}
+        nav={@nav}
       />
-    </nav>
-    <.version_line :if={Accounts.can?(@current_user, :manage_users)} id={@id} />
-    <div :if={@current_user} class="flex shrink-0 items-center gap-2 border-t border-base-300 p-3">
-      <.link
-        navigate={~p"/account"}
-        class="flex min-w-0 flex-1 items-center gap-2.5 rounded-box p-2 transition-colors hover:bg-base-200"
-      >
-        <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral text-xs font-semibold text-neutral-content">
-          {initials(@current_user)}
-        </div>
 
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium leading-tight">
-            {@current_user && (@current_user.name || @current_user.username)}
-          </p>
-
-          <p class="truncate text-xs text-muted">{role_name(@current_user)}</p>
-        </div>
-      </.link>
-
-      <.color_scheme_switch id={"scheme-switch-#{@id}"} variant="dropdown" class="shrink-0 sm:hidden" />
+      <.flash_group flash={@flash} />
     </div>
     """
   end
 
-  # Which version is running, and a dot when GitHub has a newer one. Only shown
-  # to whoever can manage users: it is the same audience that would act on it,
-  # and an operator has no use for a build stamp.
-  attr :id, :string, required: true
+  # The field that opens the command palette: a field on wide screens, a
+  # round button below. It only looks like an input; the palette is where
+  # the typing happens.
+  attr :class, :any, default: nil
 
-  defp version_line(assigns) do
-    assigns = assign(assigns, :status, Updates.status())
-
+  defp search_trigger(assigns) do
     ~H"""
     <button
       type="button"
-      class="flex w-full shrink-0 cursor-pointer items-center gap-2 border-t border-base-300 px-4 py-2 text-label-small text-muted transition-colors hover:bg-base-200 hover:text-base-content"
-      phx-click={show_dialog("about-#{@id}")}
+      id="global-search"
+      class={["search-trigger", @class]}
+      aria-label={gettext("Search players, rules, matches…")}
       aria-haspopup="dialog"
+      aria-controls="command-palette-dialog"
+      data-open-palette
     >
-      <span
-        :if={@status.update_available?}
-        class="size-1.5 shrink-0 rounded-full bg-warning"
-        aria-hidden="true"
-      />
-      <span class="truncate">
-        {gettext("Version:")} {Updates.current_version()}
-      </span>
-
-      <span :if={@status.update_available?} class="ml-auto shrink-0 text-warning">
-        {gettext("Update")}
-      </span>
+      <.icon name="hero-magnifying-glass" class="size-[1.125rem] shrink-0" />
+      <span class="search-trigger-text">{gettext("Search players, rules, matches…")}</span>
+      <kbd class="search-trigger-kbd">Ctrl K</kbd>
     </button>
-    <.about_dialog id={"about-#{@id}"} status={@status} />
     """
   end
 
+  attr :id, :string, required: true
+  attr :tabs, :list, required: true
+  attr :label, :string, default: nil
+  attr :class, :any, default: nil
+
+  # The pages of the area, as pill tabs beside the title. A tab can open a
+  # section ("Configurar tickets"), drawn as a hairline and a small label.
+  defp header_tabs(assigns) do
+    ~H"""
+    <nav id={@id} aria-label={@label} class={["header-tabs", @class]}>
+      <%= for tab <- @tabs do %>
+        <span :if={tab[:section]} class="header-tabs-section">
+          <span class="header-tabs-rule" aria-hidden="true"></span>
+          {tab.section}
+        </span>
+        <.link
+          navigate={if !tab[:patch], do: tab.path}
+          patch={if tab[:patch], do: tab.path}
+          aria-current={tab.active && "page"}
+          class="header-tab"
+        >
+          {tab.label}
+          <span :if={tab[:count]} class="header-tab-count">{tab.count}</span>
+        </.link>
+      <% end %>
+    </nav>
+    """
+  end
+
+  # ── Rail ───────────────────────────────────────────────────────────────────
+
+  attr :current_user, :map, default: nil
+  attr :areas, :list, required: true
+  attr :active, :atom, default: nil
+  attr :nav, :map, default: nil
+
+  # The permanent icon rail from xl up: one entry per area, Ajustes and the
+  # account at the bottom.
+  defp rail(assigns) do
+    {main, bottom} = Enum.split_with(assigns.areas, &(&1.key != :settings))
+    assigns = assign(assigns, main: main, bottom: bottom)
+
+    ~H"""
+    <aside
+      id="rail"
+      class="fixed inset-y-0 left-0 z-40 hidden w-[6.5rem] flex-col items-center gap-1 overflow-y-auto py-5 xl:flex"
+      aria-label={gettext("Navigation")}
+    >
+      <.link
+        navigate={~p"/"}
+        aria-label={gettext("Conditional Actions")}
+        class="logo-tile mb-5 flex size-13 shrink-0 items-center justify-center rounded-2xl"
+      >
+        <.logo_chevrons class="size-7" />
+      </.link>
+
+      <.rail_item :for={area <- @main} area={area} active={@active == area.key} />
+      <div class="flex-1"></div>
+      <.rail_item :for={area <- @bottom} area={area} active={@active == area.key} />
+
+      <.account_menu :if={@current_user} current_user={@current_user} nav={@nav} />
+    </aside>
+    """
+  end
+
+  attr :area, :map, required: true
+  attr :active, :boolean, default: false
+
+  defp rail_item(assigns) do
+    ~H"""
+    <.link
+      navigate={@area.path}
+      id={"rail-#{@area.key}"}
+      aria-current={@active && "page"}
+      class="rail-item"
+    >
+      <.icon name={@area.icon} class="size-[1.375rem]" />
+      <span class="max-w-full truncate px-1">{@area.label}</span>
+      <span :if={@area.badge > 0} class="rail-badge" data-nav-badge>
+        {badge_text(@area.badge)}
+      </span>
+    </.link>
+    """
+  end
+
+  attr :current_user, :map, required: true
+  attr :nav, :map, default: nil
+
+  # The avatar at the foot of the rail, and what it opens: the account, the
+  # theme and the language of this browser, the version and signing out.
+  defp account_menu(assigns) do
+    ~H"""
+    <div class="relative mt-2.5" x-data="{ menu: false }" id="account-menu">
+      <button
+        type="button"
+        id="account-menu-button"
+        class="avatar-button size-11"
+        aria-label={gettext("My account")}
+        aria-haspopup="menu"
+        aria-controls="account-menu-panel"
+        x-ref="trigger"
+        x-on:click.stop="menu = !menu"
+        x-bind:aria-expanded="menu"
+      >
+        {initials(@current_user)}
+      </button>
+
+      <div
+        id="account-menu-panel"
+        class="account-menu"
+        role="menu"
+        x-show="menu"
+        x-cloak
+        x-on:click.outside="menu = false"
+        x-on:keydown.escape.window="menu = false"
+        x-transition.opacity.duration.120ms
+      >
+        <div class="flex items-center gap-3 px-2 pb-3 pt-1">
+          <span class="avatar-button size-10 text-[0.8125rem]">{initials(@current_user)}</span>
+          <div class="min-w-0">
+            <p class="truncate text-sm font-semibold">
+              {@current_user.name || @current_user.username}
+            </p>
+            <p class="truncate text-xs text-muted">{role_name(@current_user)}</p>
+          </div>
+        </div>
+
+        <.link navigate={~p"/account"} role="menuitem" class="account-menu-item">
+          <.icon name="hero-user-circle" class="size-[1.125rem] text-muted" />
+          {gettext("My account")}
+        </.link>
+
+        <div class="account-menu-rule"></div>
+
+        <p class="account-menu-label">{gettext("Theme")}</p>
+        <.scheme_choice id="account-scheme" />
+
+        <p class="account-menu-label">{gettext("Language")}</p>
+        <div class="grid grid-cols-3 gap-1 px-1">
+          <.link
+            :for={locale <- Locale.supported()}
+            href={~p"/locale/#{locale}?#{[return_to: "/"]}"}
+            class={[
+              "account-menu-chip",
+              locale == Gettext.get_locale(HllConditionalActionsWeb.Gettext) && "is-current"
+            ]}
+          >
+            {locale_short(locale)}
+          </.link>
+        </div>
+
+        <div class="account-menu-rule"></div>
+
+        <button
+          :if={Accounts.can?(@current_user, :manage_users)}
+          type="button"
+          role="menuitem"
+          class="account-menu-item"
+          phx-click={show_dialog("about-rail")}
+        >
+          <.icon name="hero-information-circle" class="size-[1.125rem] text-muted" />
+          <span class="flex-1 text-left">{gettext("About")}</span>
+          <span class="font-mono text-[0.6875rem] text-muted">{Updates.current_version()}</span>
+        </button>
+
+        <.link
+          href={~p"/logout"}
+          method="delete"
+          role="menuitem"
+          id="account-menu-logout"
+          class="account-menu-item text-error"
+        >
+          <.icon name="hero-arrow-right-start-on-rectangle" class="size-[1.125rem]" />
+          {gettext("Sign out")}
+        </.link>
+      </div>
+
+      <.about_dialog
+        :if={Accounts.can?(@current_user, :manage_users)}
+        id="about-rail"
+        status={Updates.status()}
+      />
+    </div>
+    """
+  end
+
+  @doc """
+  The three-way theme choice (dark, light, system) of this browser, bound to
+  Petal's colour scheme contract. Used by the account menu and the "Mais"
+  sheet.
+  """
+  attr :id, :string, required: true
+  attr :size, :string, default: "sm", values: ~w(sm lg)
+
+  def scheme_choice(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      phx-hook="PetalColorScheme"
+      data-variant="menu"
+      role="radiogroup"
+      aria-label={gettext("Theme")}
+      class={["scheme-choice", @size == "lg" && "scheme-choice--lg"]}
+    >
+      <button type="button" role="radio" data-scheme="dark" class="scheme-choice-option">
+        <.icon name="hero-moon" class="size-[0.9375rem]" /> {gettext("Dark")}
+      </button>
+      <button type="button" role="radio" data-scheme="light" class="scheme-choice-option">
+        <.icon name="hero-sun" class="size-[0.9375rem]" /> {gettext("Light")}
+      </button>
+      <button type="button" role="radio" data-scheme="system" class="scheme-choice-option">
+        <.icon name="hero-computer-desktop" class="size-[0.9375rem]" /> {gettext("System")}
+      </button>
+    </div>
+    """
+  end
+
+  # ── Tab bar (phone and tablet) ─────────────────────────────────────────────
+
+  @doc false
+  attr :id, :string, required: true
+  attr :areas, :list, required: true
+  attr :active, :atom, default: nil
+  attr :nav, :map, default: nil
+  attr :more_active, :boolean, default: false
+  attr :in_sheet, :boolean, default: false
+
+  # The floating bar under the thumb: Briefing, Ao vivo, Regras and Caixa on
+  # a phone, Comunidade and Jogadores too on a tablet, and "Mais" for the
+  # rest. Hidden from xl up, where the rail owns navigation.
+  def tab_bar(assigns) do
+    by_key = Map.new(assigns.areas, &{&1.key, &1})
+
+    tabs =
+      for key <- [:briefing, :live, :rules, :inbox, :community, :players],
+          area = by_key[key],
+          area != nil,
+          do: area
+
+    assigns = assign(assigns, :tabs, tabs)
+
+    ~H"""
+    <nav id={@id} class="tab-bar xl:hidden" aria-label={gettext("Navigation")}>
+      <.link
+        :for={area <- @tabs}
+        navigate={area.path}
+        id={"#{@id}-#{area.key}"}
+        aria-current={!@more_active && @active == area.key && "page"}
+        class={["tab-bar-item", area.key in [:community, :players] && "max-md:hidden"]}
+      >
+        <span class="relative">
+          <.icon name={area.icon} class="size-5" />
+          <span :if={area.badge > 0} class="tab-bar-badge" data-nav-badge={!@in_sheet}>
+            {badge_text(area.badge)}
+          </span>
+        </span>
+        <span class="max-w-full truncate">{area.label}</span>
+      </.link>
+
+      <button
+        type="button"
+        id={"#{@id}-more"}
+        class="tab-bar-item"
+        aria-current={@more_active && "page"}
+        aria-haspopup="dialog"
+        aria-controls="more-sheet-dialog"
+        phx-click={
+          if @in_sheet,
+            do: JS.dispatch("app:close-dialog", to: "#more-sheet-dialog"),
+            else: open_more()
+        }
+      >
+        <.icon name="hero-ellipsis-horizontal" class="size-5" />
+        <span>{gettext("More")}</span>
+      </button>
+    </nav>
+    """
+  end
+
+  defp open_more do
+    "more-sheet-dialog"
+    |> show_dialog()
+    |> JS.push("open", target: "#more-sheet")
+  end
+
+  # ── Scope switcher ─────────────────────────────────────────────────────────
+
+  attr :id, :string, required: true
+  attr :nav, :map, required: true
+  attr :current_user, :map, default: nil
+  attr :current_path, :string, required: true
+
+  # The server the page is about - or all of them - as a pill in the header.
+  # Switching keeps the page: from one server's leaderboard to the other's.
+  @doc false
+  def scope_switcher(assigns) do
+    ~H"""
+    <div class="relative hidden md:block" x-data="{ open: false }" id={@id}>
+      <button
+        type="button"
+        id={"#{@id}-button"}
+        class="scope-pill"
+        x-on:click="open = !open"
+        x-bind:aria-expanded="open"
+        aria-haspopup="menu"
+        aria-controls={"#{@id}-menu"}
+      >
+        <%= if @nav.server do %>
+          <img src={server_art(@nav.server)} alt="" class="size-9 shrink-0 rounded-full object-cover" />
+          <span class="max-w-44 truncate">{@nav.server.name}</span>
+          <span
+            class={["size-2 shrink-0 rounded-full", stream_dot(@nav.status)]}
+            title={Labels.stream_status(@nav.status)}
+          ></span>
+        <% else %>
+          <span class="scope-count">{length(@nav.servers)}</span>
+          <span class="truncate">{gettext("All servers")}</span>
+        <% end %>
+        <.icon name="hero-chevron-down" class="size-4 shrink-0 text-muted" />
+      </button>
+
+      <div
+        id={"#{@id}-menu"}
+        role="menu"
+        class="scope-menu"
+        x-show="open"
+        x-cloak
+        x-transition.opacity.duration.100ms
+        x-on:click.outside="open = false"
+        x-on:keydown.escape.window="open = false"
+      >
+        <.scope_options nav={@nav} current_user={@current_user} current_path={@current_path} />
+      </div>
+    </div>
+    """
+  end
+
+  attr :nav, :map, required: true
+  attr :current_user, :map, default: nil
+  attr :current_path, :string, required: true
+
+  @doc false
+  def scope_options(assigns) do
+    ~H"""
+    <p class="px-2 pb-1.5 pt-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted">
+      {gettext("Servers")}
+    </p>
+
+    <.link
+      navigate={~p"/"}
+      role="menuitem"
+      class={["scope-menu-item", is_nil(@nav.server) && "is-current"]}
+    >
+      <span class="scope-count size-7 text-[0.6875rem]">{length(@nav.servers)}</span>
+      <span class="flex-1 text-sm">{gettext("All servers")}</span>
+      <.icon :if={is_nil(@nav.server)} name="hero-check" class="size-4 shrink-0 text-primary" />
+    </.link>
+
+    <.link
+      :for={server <- @nav.servers}
+      navigate={Nav.switch_path(@current_path, server.id)}
+      role="menuitem"
+      class={["scope-menu-item", @nav.server && @nav.server.id == server.id && "is-current"]}
+    >
+      <img src={server_art(server)} alt="" class="size-7 shrink-0 rounded-full object-cover" />
+      <span class="min-w-0 flex-1">
+        <span class="block truncate text-sm">{server.name}</span>
+        <span class="block truncate text-xs text-muted">{Labels.game(server.game)}</span>
+      </span>
+
+      <.icon
+        :if={@nav.server && @nav.server.id == server.id}
+        name="hero-check"
+        class="size-4 shrink-0 text-primary"
+      />
+    </.link>
+
+    <div :if={Accounts.can?(@current_user, :manage_servers)} class="my-1 h-px bg-base-300"></div>
+
+    <.link
+      :if={Accounts.can?(@current_user, :manage_servers)}
+      navigate={~p"/servers/new"}
+      role="menuitem"
+      class="scope-menu-item"
+    >
+      <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary">
+        <.icon name="hero-plus" class="size-4 text-subtle" />
+      </span>
+      <span class="flex-1 text-sm">{gettext("Add a server")}</span>
+    </.link>
+    """
+  end
+
+  defp stream_dot(:connected), do: "bg-primary"
+  defp stream_dot(:connecting), do: "bg-warning"
+  defp stream_dot({:error, _reason}), do: "bg-error"
+  defp stream_dot(_status), do: "bg-base-300"
+
+  # ── Flash ──────────────────────────────────────────────────────────────────
+
+  @doc """
+  Shows the flash group: toasts at the bottom right (above the tab bar on a
+  phone), and the connection notices.
+  """
+  attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+
+  def flash_group(assigns) do
+    ~H"""
+    <div id={@id} aria-live="polite" class="toast-stack">
+      <.flash kind={:info} flash={@flash} /> <.flash kind={:error} flash={@flash} />
+      <.flash
+        id="client-error"
+        kind={:error}
+        title={gettext("We can't find the internet")}
+        phx-disconnected={show_toast(".phx-client-error #client-error")}
+        phx-connected={hide("#client-error")}
+        hidden
+      >
+        {gettext("Attempting to reconnect")}
+        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+      </.flash>
+
+      <.flash
+        id="server-error"
+        kind={:error}
+        title={gettext("Something went wrong!")}
+        phx-disconnected={show_toast(".phx-server-error #server-error")}
+        phx-connected={hide("#server-error")}
+        hidden
+      >
+        {gettext("Hang in there while we get back on track")}
+        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+      </.flash>
+    </div>
+    """
+  end
+
+  # A toast is a flex row: shown with `display: flex`, not the block that
+  # `JS.show/1` would put on it.
+  defp show_toast(selector) do
+    selector
+    |> then(
+      &JS.show(
+        to: &1,
+        display: "flex",
+        time: 300,
+        transition:
+          {"transition-all ease-out duration-300", "opacity-0 translate-y-4",
+           "opacity-100 translate-y-0"}
+      )
+    )
+    |> JS.remove_attribute("hidden", to: selector)
+  end
+
+  defp locale_short("pt_BR"), do: "Português"
+  defp locale_short("es"), do: "Español"
+  defp locale_short("en"), do: "English"
+  defp locale_short(locale), do: locale
+
+  # ── About ──────────────────────────────────────────────────────────────────
+
   # The dialog is plain markup rather than the `.modal` component, which renders
-  # itself open off `:if`. This one is opened by a click, like the mobile drawer.
+  # itself open off `:if`. This one is opened by a click.
   attr :id, :string, required: true
   attr :status, :map, required: true
 
-  defp about_dialog(assigns) do
+  @doc false
+  def about_dialog(assigns) do
     ~H"""
     <dialog id={@id} class="app-dialog" aria-labelledby={"#{@id}-title"}>
-      <div class="max-h-[85vh] w-[min(42rem,92vw)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-5 shadow-figma-card-large sm:p-6">
+      <div class="max-h-[85vh] w-[min(42rem,92vw)] overflow-y-auto rounded-[1.625rem] border border-base-300 bg-base-100 p-5 shadow-figma-card-large sm:p-6">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <h2 id={"#{@id}-title"} class="text-title-large">{gettext("About")}</h2>
+            <h2 id={"#{@id}-title"} class="font-display text-xl font-semibold">{gettext("About")}</h2>
 
             <p class="mt-0.5 text-label-small text-muted">
               {gettext("Conditional Actions for Hell Let Loose")}
@@ -543,10 +808,7 @@ defmodule HllConditionalActionsWeb.Layouts do
           </div>
 
           <form method="dialog">
-            <button
-              class="flex size-8 cursor-pointer items-center justify-center rounded-field text-muted transition-colors hover:bg-base-200 hover:text-base-content"
-              aria-label={gettext("Close")}
-            >
+            <button class="icon-round size-8" aria-label={gettext("Close")}>
               <.icon name="hero-x-mark" class="size-4" />
             </button>
           </form>
@@ -557,7 +819,7 @@ defmodule HllConditionalActionsWeb.Layouts do
             href="https://github.com/fxsobr/hll_conditional_actions/wiki"
             target="_blank"
             rel="noopener noreferrer"
-            class="btn btn-sm btn-outline"
+            class="chip-button"
           >
             <.icon name="hero-book-open" class="size-4" /> {gettext("Documentation")}
           </.link>
@@ -566,7 +828,7 @@ defmodule HllConditionalActionsWeb.Layouts do
             href="https://github.com/fxsobr/hll_conditional_actions/issues"
             target="_blank"
             rel="noopener noreferrer"
-            class="btn btn-sm btn-outline"
+            class="chip-button"
           >
             <.icon name="hero-bug-ant" class="size-4" /> {gettext("Report an issue")}
           </.link>
@@ -575,7 +837,7 @@ defmodule HllConditionalActionsWeb.Layouts do
             href="https://discord.com/invite/zpSQQef"
             target="_blank"
             rel="noopener noreferrer"
-            class="btn btn-sm btn-outline"
+            class="chip-button"
           >
             <.icon name="hero-chat-bubble-left-right" class="size-4" /> {gettext("CRCON Discord")}
           </.link>
@@ -601,7 +863,7 @@ defmodule HllConditionalActionsWeb.Layouts do
           </div>
         </dl>
 
-        <p :if={@status.update_available?} class="mt-4 rounded-box bg-warning/10 p-3 text-sm">
+        <p :if={@status.update_available?} class="mt-4 rounded-2xl bg-warning/10 p-3 text-sm">
           <.icon name="hero-arrow-up-circle" class="size-4 text-warning" /> {gettext(
             "A newer release is available."
           )}
@@ -609,9 +871,9 @@ defmodule HllConditionalActionsWeb.Layouts do
 
         <p
           :if={not @status.update_available? and @status.latest}
-          class="mt-4 rounded-box bg-success/10 p-3 text-sm"
+          class="mt-4 rounded-2xl bg-primary/10 p-3 text-sm"
         >
-          <.icon name="hero-check-circle" class="size-4 text-success" /> {gettext(
+          <.icon name="hero-check-circle" class="size-4 text-primary" /> {gettext(
             "You are up to date."
           )}
         </p>
@@ -659,575 +921,362 @@ defmodule HllConditionalActionsWeb.Layouts do
     Calendar.strftime(at, gettext("%m/%d/%Y"))
   end
 
-  attr :title, :string, required: true
-  attr :items, :list, required: true
-  attr :current_path, :string, required: true
-
-  defp nav_section(assigns) do
-    ~H"""
-    <div>
-      <p class="eyebrow px-3 pb-1.5 text-muted">{@title}</p>
-
-      <ul class="space-y-0.5">
-        <li
-          :for={item <- @items}
-          class="nav-item"
-          data-active={to_string(active?(@current_path, item.path))}
-        >
-          <.link
-            navigate={item.path}
-            aria-current={active?(@current_path, item.path) && "page"}
-            class={[
-              "flex items-center gap-3 rounded-field px-3 py-2 text-sm transition-colors",
-              if(active?(@current_path, item.path),
-                do: "bg-primary/10 font-medium text-primary",
-                else: "text-subtle hover:bg-base-200 hover:text-base-content"
-              )
-            ]}
-          >
-            <.icon
-              name={item.icon}
-              class={[
-                "size-4 shrink-0",
-                if(active?(@current_path, item.path),
-                  do: "text-primary",
-                  else: "text-muted"
-                )
-              ]}
-            /> <span class="truncate">{item.label}</span>
-            <span
-              :if={Map.get(item, :badge, 0) > 0}
-              class="ml-auto min-w-5 rounded-full bg-warning px-1.5 text-center text-xs font-semibold leading-5 text-warning-content"
-              data-nav-badge
-              title={gettext("Waiting for an admin")}
-            >
-              {item.badge}
-            </span>
-          </.link>
-        </li>
-      </ul>
-    </div>
-    """
-  end
-
-  attr :current_user, :map, default: nil
-
-  attr :nav, :map, required: true
-
-  # The unread Attention items: a bell with their count, opening the inbox
-  # of the server being looked at, or the whole organisation's.
-  defp attention_bell(assigns) do
-    assigns =
-      assign(assigns,
-        count: assigns.nav.attention,
-        path:
-          if(assigns.nav[:server],
-            do: "/servers/#{assigns.nav.server.id}/attention",
-            else: "/attention"
-          )
-      )
-
-    ~H"""
-    <.link
-      navigate={@path}
-      id="attention-bell"
-      class="attention-bell"
-      aria-label={
-        ngettext("1 unread item in Attention", "%{count} unread items in Attention", @count)
-      }
-      title={ngettext("1 unread item in Attention", "%{count} unread items in Attention", @count)}
-    >
-      <.icon name={if @count > 0, do: "hero-bell-alert", else: "hero-bell"} class="size-5" />
-      <span :if={@count > 0} class="attention-bell-badge">{if @count > 99, do: "99+", else: @count}</span>
-    </.link>
-    """
-  end
-
-  defp user_menu(assigns) do
-    ~H"""
-    <div :if={@current_user} class="relative" x-data="{ menu: false }">
-      <button
-        type="button"
-        class="flex cursor-pointer items-center gap-2 rounded-field px-1.5 py-1 transition-colors hover:bg-base-200"
-        x-ref="usertrigger"
-        x-on:click.stop="menu = !menu"
-        aria-haspopup="menu"
-        x-bind:aria-expanded="menu"
-      >
-        <div class="flex size-7 items-center justify-center rounded-full bg-neutral text-xs font-semibold text-neutral-content">
-          {initials(@current_user)}
-        </div>
-        <span class="hidden max-w-32 truncate text-sm sm:inline">{@current_user.username}</span>
-        <.icon name="hero-chevron-down" class="size-3 opacity-60" />
-      </button>
-
-      <div
-        class="absolute right-0 z-50 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl"
-        x-show="menu"
-        x-cloak
-        x-on:click.outside="menu = false"
-        x-on:keydown.escape.stop="menu = false; $refs.usertrigger?.focus()"
-        x-effect="if (menu) $nextTick(() => $el.querySelector('a')?.focus())"
-        x-on:keydown.arrow-down.prevent="(() => { const items = [...$el.querySelectorAll('a')]; const i = items.indexOf(document.activeElement); items[Math.min(i + 1, items.length - 1)]?.focus() })()"
-        x-on:keydown.arrow-up.prevent="(() => { const items = [...$el.querySelectorAll('a')]; const i = items.indexOf(document.activeElement); items[Math.max(i - 1, 0)]?.focus() })()"
-        x-transition.opacity.duration.150ms
-      >
-        <div class="px-3 py-2">
-          <p class="truncate text-sm font-medium">{@current_user.name || @current_user.username}</p>
-
-          <p class="truncate text-xs text-muted">{role_name(@current_user)}</p>
-        </div>
-
-        <div class="my-1 border-t border-base-300"></div>
-
-        <ul class="w-full" role="menu">
-          <li role="none">
-            <.link
-              navigate={~p"/account"}
-              role="menuitem"
-              class="flex items-center gap-2 rounded-field px-2.5 py-1.5 text-sm hover:bg-base-200 focus-visible:bg-base-200 focus-visible:outline-none"
-            >
-              <.icon name="hero-user-circle" class="size-4" />{gettext("My account")}
-            </.link>
-          </li>
-
-          <li role="none">
-            <.link
-              href={~p"/logout"}
-              method="delete"
-              role="menuitem"
-              class="flex items-center gap-2 rounded-field px-2.5 py-1.5 text-sm hover:bg-base-200 focus-visible:bg-base-200 focus-visible:outline-none"
-            >
-              <.icon name="hero-arrow-right-start-on-rectangle" class="size-4" />{gettext("Sign out")}
-            </.link>
-          </li>
-        </ul>
-      </div>
-    </div>
-    """
-  end
+  # ── Areas ──────────────────────────────────────────────────────────────────
 
   @doc """
-  Shows the flash group with standard titles and content.
+  The areas of the navigation the user can open, in rail order, each with
+  its icon, the page it opens, its badge and its pages (the header tabs).
+
+  "Ao vivo" opens the cockpit of the server in scope, or of the first
+  server; "Módulos" the marketplace of the same server.
   """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
-
-  def flash_group(assigns) do
-    ~H"""
-    <div
-      id={@id}
-      aria-live="polite"
-      class="pointer-events-none fixed right-4 top-4 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
-    >
-      <.flash kind={:info} flash={@flash} /> <.flash kind={:error} flash={@flash} />
-      <.flash
-        id="client-error"
-        kind={:error}
-        title={gettext("We can't find the internet")}
-        phx-disconnected={show(".phx-client-error #client-error") |> JS.remove_attribute("hidden")}
-        phx-connected={hide("#client-error")}
-        hidden
-      >
-        {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
-      </.flash>
-
-      <.flash
-        id="server-error"
-        kind={:error}
-        title={gettext("Something went wrong!")}
-        phx-disconnected={show(".phx-server-error #server-error") |> JS.remove_attribute("hidden")}
-        phx-connected={hide("#server-error")}
-        hidden
-      >
-        {gettext("Hang in there while we get back on track")}
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
-      </.flash>
-    </div>
-    """
-  end
-
-  # ── Navigation data ────────────────────────────────────────────────────────
-
-  # Entries the signed in user has no permission for are dropped, and a section
-  # with nothing left in it disappears too.
-  defp nav_sections(current_user, %{server: %{id: id}} = nav) do
-    base = "/servers/#{id}"
+  @spec areas(map() | nil, map() | nil) :: [map()]
+  def areas(user, nav) do
+    scoped = nav && nav[:server]
+    servers = (nav && nav[:servers]) || []
+    home = scoped || List.first(servers)
+    base = scoped && "/servers/#{scoped.id}"
 
     [
+      %{key: :briefing, icon: "hero-squares-2x2", path: "/", tabs: []},
+      live_area(user, nav, home, base),
+      rules_area(user, nav, base),
+      inbox_area(user, nav, base),
+      community_area(user, nav, base),
       %{
-        title: gettext("Server"),
-        items: [
-          %{label: gettext("Overview"), path: base, icon: "hero-squares-2x2", permission: nil},
-          %{
-            label: gettext("Live feed"),
-            path: base <> "/feed",
-            feature: :live_feed,
-            icon: "hero-signal",
-            permission: :view_live_feed
-          },
-          %{
-            label: gettext("Leaderboard"),
-            path: base <> "/leaderboard",
-            feature: :stats,
-            icon: "hero-trophy",
-            permission: :view_stats
-          },
-          %{
-            label: gettext("Matches"),
-            path: base <> "/matches",
-            feature: :stats,
-            icon: "hero-flag",
-            permission: :view_stats
-          },
-          %{
-            label: gettext("Tickets"),
-            path: base <> "/tickets",
-            feature: :tickets,
-            icon: "hero-chat-bubble-left-ellipsis",
-            permission: :view_tickets,
-            badge: waiting_tickets(nav, id)
-          }
-        ]
+        key: :players,
+        icon: "hero-users",
+        path: "/players",
+        tabs: [],
+        permission: :view_stats
       },
       %{
-        title: gettext("Automation"),
-        items: [
-          %{
-            label: gettext("Rules"),
-            path: base <> "/rules",
-            feature: :rules,
-            icon: "hero-bolt",
-            permission: :view_rules
-          },
-          %{
-            label: gettext("History"),
-            path: base <> "/history",
-            feature: :rules,
-            icon: "hero-clock",
-            permission: :view_executions
-          },
-          %{
-            label: gettext("Attention"),
-            path: base <> "/attention",
-            icon: "hero-bell-alert",
-            permission: :view_executions
-          }
-        ]
+        key: :modules,
+        icon: "hero-square-3-stack-3d",
+        path: home && "/servers/#{home.id}/marketplace",
+        tabs: [],
+        permission: :manage_servers
       },
-      %{
-        title: gettext("Community"),
-        items: [
-          %{
-            label: gettext("Achievements"),
-            path: base <> "/achievements",
-            feature: :progression,
-            icon: "hero-trophy",
-            permission: :view_progression
-          },
-          %{
-            label: gettext("Seasons"),
-            path: base <> "/seasons",
-            feature: :progression,
-            icon: "hero-calendar-days",
-            permission: :view_progression
-          }
-        ]
-      },
-      %{
-        title: gettext("Settings"),
-        items: [
-          %{
-            label: gettext("Marketplace"),
-            path: base <> "/marketplace",
-            icon: "hero-squares-plus",
-            permission: :manage_servers
-          },
-          %{
-            label: gettext("Server settings"),
-            path: base <> "/edit",
-            icon: "hero-cog-6-tooth",
-            permission: :manage_servers
-          }
-        ]
-      }
+      settings_area(user)
     ]
-    |> visible_sections(current_user, nav)
-  end
-
-  defp nav_sections(current_user, nav) do
-    [
-      %{
-        title: gettext("Organisation"),
-        items: [
-          %{label: gettext("Overview"), path: "/", icon: "hero-squares-2x2", permission: nil},
-          %{
-            label: gettext("Attention"),
-            path: "/attention",
-            icon: "hero-bell-alert",
-            permission: :view_executions
-          },
-          %{
-            label: gettext("Tickets"),
-            path: "/tickets",
-            feature: :tickets,
-            icon: "hero-chat-bubble-left-ellipsis",
-            permission: :view_tickets,
-            badge: waiting_tickets(nav)
-          },
-          %{
-            label: gettext("Servers"),
-            path: "/servers",
-            icon: "hero-server-stack",
-            permission: :view_servers
-          }
-        ]
-      },
-      %{
-        title: gettext("Automation"),
-        items: [
-          %{
-            label: gettext("All rules"),
-            path: "/rules",
-            feature: :rules,
-            icon: "hero-bolt",
-            permission: :view_rules
-          },
-          %{
-            label: gettext("Discord"),
-            path: "/discord",
-            icon: "hero-chat-bubble-left-right",
-            permission: :manage_integrations
-          },
-          %{
-            label: gettext("History"),
-            path: "/executions",
-            feature: :rules,
-            icon: "hero-clock",
-            permission: :view_executions
-          },
-          %{
-            label: gettext("Metrics"),
-            path: "/metrics",
-            icon: "hero-chart-bar",
-            permission: :view_executions
-          }
-        ]
-      },
-      %{
-        title: gettext("Community"),
-        items: [
-          %{
-            label: gettext("Seasons"),
-            path: "/seasons",
-            feature: :progression,
-            icon: "hero-calendar-days",
-            permission: :view_progression
-          }
-        ]
-      },
-      %{
-        title: gettext("Platform"),
-        items: [
-          %{
-            label: gettext("Users"),
-            path: "/users",
-            icon: "hero-users",
-            permission: :manage_users
-          },
-          %{
-            label: gettext("Roles"),
-            path: "/roles",
-            icon: "hero-shield-check",
-            permission: :manage_roles
-          }
-        ]
-      }
-    ]
-    |> visible_sections(current_user, nav)
-  end
-
-  # Tickets waiting on an admin, for the badge next to "Tickets".
-  defp waiting_tickets(%{tickets: counts}) when is_map(counts),
-    do: counts |> Map.values() |> Enum.sum()
-
-  defp waiting_tickets(_nav), do: 0
-
-  defp waiting_tickets(%{tickets: counts}, server_id) when is_map(counts),
-    do: Map.get(counts, server_id, 0)
-
-  defp waiting_tickets(_nav, _server_id), do: 0
-
-  # Entries the role cannot reach are dropped, and a section left with
-  # nothing in it disappears too.
-  defp visible_sections(sections, current_user, nav) do
-    sections
-    |> Enum.map(fn section ->
-      items =
-        Enum.filter(
-          section.items,
-          &(allowed?(current_user, &1.permission) and Nav.feature?(nav, &1[:feature]))
-        )
-
-      %{section | items: items}
+    |> Enum.filter(&(&1 && &1.path && allowed?(user, Map.get(&1, :permission))))
+    |> Enum.map(fn area ->
+      area
+      |> Map.put(:label, area_label(area.key))
+      |> Map.put(:badge, area_badge(area.key, nav))
     end)
-    |> Enum.reject(&(&1.items == []))
   end
 
-  # ── Scope switcher ─────────────────────────────────────────────────────────
+  # Feed is the cockpit (Cockpit and Leaderboard boards); it is "quiet": the
+  # cockpit has these views in its own content, so on it the header shows
+  # no tabs.
+  defp live_area(user, nav, home, base) do
+    scores = (base || "") <> "/leaderboard"
 
-  attr :id, :string, required: true
-  attr :nav, :map, required: true
-  attr :current_user, :map, default: nil
-  attr :current_path, :string, required: true
+    tabs =
+      visible_tabs(user, nav, [
+        home &&
+          %{
+            label: gettext("Feed"),
+            path: "/servers/#{home.id}",
+            permission: :view_servers,
+            quiet: true
+          },
+        %{label: gettext("Scoreboard"), path: scores, permission: :view_stats, feature: :stats},
+        %{
+          label: gettext("Squads"),
+          path: scores <> "?view=squads",
+          permission: :view_stats,
+          feature: :stats
+        }
+      ])
 
-  # The card at the top of the sidebar that says where you are - a server,
-  # with its game, stream and link to switch, or the whole organisation - the
-  # way CRCON's own sidebar opens on the server it belongs to. Switching keeps
-  # the page: from one server's leaderboard to the other's.
-  defp scope_switcher(assigns) do
+    path =
+      cond do
+        home && Accounts.can?(user, :view_servers) -> "/servers/#{home.id}"
+        tabs != [] -> hd(tabs).path
+        true -> nil
+      end
+
+    %{key: :live, icon: "hero-signal", path: path, tabs: tabs}
+  end
+
+  defp rules_area(user, nav, base) do
+    tabs =
+      visible_tabs(user, nav, [
+        %{label: gettext("Rules"), path: (base || "") <> "/rules"},
+        %{
+          label: gettext("History"),
+          path: if(base, do: base <> "/history", else: "/executions"),
+          permission: :view_executions
+        },
+        %{label: gettext("Simulator"), path: "/rules/simulate"}
+      ])
+
+    %{
+      key: :rules,
+      icon: "hero-bolt",
+      path: (base || "") <> "/rules",
+      tabs: tabs,
+      permission: :view_rules,
+      feature: :rules
+    }
+    |> only_with_feature(nav)
+  end
+
+  defp inbox_area(user, nav, base) do
+    tickets = (base || "") <> "/tickets"
+
+    config =
+      visible_tabs(user, nav, [
+        %{
+          label: gettext("Assistant"),
+          path: tickets <> "/setup",
+          permission: :manage_tickets,
+          feature: :tickets
+        },
+        %{
+          label: gettext("Settings"),
+          path: tickets <> "/settings",
+          permission: :manage_tickets,
+          feature: :tickets
+        },
+        %{
+          label: gettext("Metrics"),
+          path: tickets <> "/metrics",
+          permission: :view_tickets,
+          feature: :tickets
+        }
+      ])
+
+    config =
+      case config do
+        [first | rest] -> [Map.put(first, :section, gettext("Configure tickets")) | rest]
+        [] -> []
+      end
+
+    %{
+      key: :inbox,
+      icon: "hero-inbox",
+      path: "/inbox",
+      tabs: [%{label: gettext("Incoming"), path: "/inbox"} | config],
+      permission: :view_executions
+    }
+  end
+
+  defp community_area(user, nav, base) do
+    tabs =
+      visible_tabs(user, nav, [
+        %{
+          label: gettext("Seasons"),
+          path: (base || "") <> "/seasons",
+          permission: :view_progression,
+          feature: :progression,
+          prefix: true
+        },
+        %{
+          label: gettext("Achievements"),
+          path: (base || "") <> "/achievements",
+          permission: :view_progression,
+          feature: :progression,
+          prefix: true
+        },
+        %{
+          label: gettext("Matches"),
+          path: (base || "") <> "/matches",
+          permission: :view_stats,
+          feature: :stats,
+          prefix: true
+        },
+        %{
+          label: gettext("VIP shop"),
+          path: "/vip-shop",
+          permission: :manage_integrations,
+          feature: :vip_shop,
+          prefix: true
+        }
+      ])
+
+    case tabs do
+      [] -> nil
+      [first | _rest] -> %{key: :community, icon: "hero-trophy", path: first.path, tabs: tabs}
+    end
+  end
+
+  defp settings_area(user) do
+    people =
+      visible_tabs(user, nil, [
+        %{label: gettext("Users"), path: "/users", permission: :manage_users, prefix: true},
+        %{label: gettext("Roles"), path: "/roles", permission: :manage_roles, prefix: true}
+      ])
+
+    %{key: :settings, icon: "hero-cog-6-tooth", path: "/settings", tabs: people}
+  end
+
+  # The pages whose content does not change with the server - Ajustes and
+  # the VIP shop - have no scope to pick (Settings and VipShop boards).
+  defp scoped_area?(path) do
+    area_key(path) != :settings and not String.starts_with?(path, "/vip-shop")
+  end
+
+  defp only_with_feature(area, nav) do
+    if Nav.feature?(nav, area[:feature]), do: area
+  end
+
+  defp visible_tabs(user, nav, tabs) do
+    Enum.filter(tabs, fn tab ->
+      tab && allowed?(user, tab[:permission]) &&
+        (nav == nil or Nav.feature?(nav, tab[:feature]))
+    end)
+  end
+
+  defp area_label(:briefing), do: gettext("Briefing")
+  defp area_label(:live), do: gettext("Live")
+  defp area_label(:rules), do: gettext("Rules")
+  defp area_label(:inbox), do: gettext("Inbox")
+  defp area_label(:community), do: gettext("Community")
+  defp area_label(:players), do: gettext("Players")
+  defp area_label(:modules), do: gettext("Modules")
+  defp area_label(:settings), do: gettext("Settings")
+
+  # Caixa counts what waits in the inbox: attention items and open tickets.
+  defp area_badge(:inbox, %{inbox: count}) when is_integer(count), do: count
+  defp area_badge(_key, _nav), do: 0
+
+  defp badge_tone(tone) when tone in ["primary", "success", "live"], do: "live"
+  defp badge_tone(tone) when tone in ["engine", "simulating"], do: "simulating"
+  defp badge_tone(tone) when tone in ["warning", "error", "info"], do: tone
+  defp badge_tone(_tone), do: "neutral"
+
+  defp badge_text(count) when count > 99, do: "99+"
+  defp badge_text(count), do: count
+
+  @doc """
+  The area a path belongs to.
+
+      iex> alias HllConditionalActionsWeb.Layouts
+      iex> Layouts.area_key("/servers/3/leaderboard")
+      :live
+      iex> Layouts.area_key("/servers/3/edit")
+      :settings
+      iex> Layouts.area_key("/tickets/12")
+      :inbox
+  """
+  @spec area_key(String.t()) :: atom()
+  def area_key(path) do
+    case Regex.run(~r{^/servers/\d+(/[a-z_-]+)?}, path) do
+      [_all] -> :live
+      [_all, section] -> section_area(section)
+      nil -> section_area(path)
+    end
+  end
+
+  defp section_area("/"), do: :briefing
+  defp section_area(path), do: path |> String.split("/", trim: true) |> hd() |> top_area()
+
+  defp top_area(section) when section in ~w(feed leaderboard), do: :live
+  defp top_area(section) when section in ~w(rules history executions), do: :rules
+  defp top_area(section) when section in ~w(inbox attention tickets), do: :inbox
+
+  defp top_area(section) when section in ~w(seasons achievements matches vip-shop),
+    do: :community
+
+  defp top_area("players"), do: :players
+  defp top_area("marketplace"), do: :modules
+  defp top_area(_settings), do: :settings
+
+  # The tabs over the page: its own, or the pages of its area when it is one
+  # of them. None on a detail page (one with a back button).
+  defp tabs_for(%{tabs: tabs, current_path: path}, _areas, _active) when is_list(tabs) do
+    Enum.map(tabs, fn tab ->
+      tab
+      |> Map.put_new(:active, active_tab?(path, tab))
+      |> Map.put_new(:count, nil)
+    end)
+  end
+
+  defp tabs_for(%{tabs: :auto, back: nil, current_path: path} = assigns, areas, active) do
+    area = Enum.find(areas, &(&1.key == active))
+    nav = assigns.nav || %{}
+    counts = nav[:tab_counts] || %{}
+    full = if nav[:query] in [nil, ""], do: path, else: path <> "?" <> nav[:query]
+
+    with %{tabs: [_one, _two | _rest] = tabs} <- area,
+         %{} = current <- current_tab(tabs, path, full),
+         false <- Map.get(current, :quiet, false) do
+      Enum.map(tabs, fn tab ->
+        tab
+        |> Map.put(:active, tab.path == current.path)
+        |> Map.put(:count, Map.get(counts, tab.path))
+      end)
+    else
+      _no_tabs -> []
+    end
+  end
+
+  defp tabs_for(_assigns, _areas, _active), do: []
+
+  # The tab of the page: the one whose link, query included, is the page's
+  # ("Squads" is the leaderboard with ?view=squads), else the one whose path
+  # is.
+  defp current_tab(tabs, path, full) do
+    Enum.find(tabs, &(&1.path == full)) ||
+      Enum.find(tabs, &(not String.contains?(&1.path, "?") and active_tab?(path, &1)))
+  end
+
+  defp active_tab?(path, %{path: tab_path} = tab) do
+    path == tab_path or
+      (Map.get(tab, :prefix, false) and String.starts_with?(path, tab_path <> "/"))
+  end
+
+  # ── Shared bits ────────────────────────────────────────────────────────────
+
+  attr :class, :any, default: "size-7"
+
+  @doc false
+  def logo_chevrons(assigns) do
     ~H"""
-    <div class="relative shrink-0 border-b border-base-300 p-3" x-data="{ open: false }">
-      <button
-        type="button"
-        id={"#{@id}-button"}
-        class="scope-switcher"
-        x-on:click="open = !open"
-        x-bind:aria-expanded="open"
-        aria-haspopup="menu"
-        aria-controls={"#{@id}-menu"}
-      >
-        <%= if @nav.server do %>
-          <img
-            src={server_art(@nav.server)}
-            alt=""
-            class="size-9 shrink-0 rounded-field object-cover"
-          />
-          <span class="min-w-0 flex-1 text-left">
-            <span class="block truncate text-sm font-medium leading-tight">
-              {@nav.server.name}
-            </span>
-
-            <span class="flex items-center gap-1.5 text-xs text-muted">
-              <span class={["size-1.5 shrink-0 rounded-full", stream_dot(@nav.status)]}></span>
-              <span class="truncate">
-                {Labels.game(@nav.server.game)} · {Labels.stream_status(@nav.status)}
-              </span>
-            </span>
-          </span>
-        <% else %>
-          <span class="flex size-9 shrink-0 items-center justify-center rounded-field bg-base-content text-base-100">
-            <.icon name="hero-squares-2x2" class="size-4" />
-          </span>
-
-          <span class="min-w-0 flex-1 text-left">
-            <span class="block truncate text-sm font-medium leading-tight">
-              {gettext("All servers")}
-            </span>
-
-            <span class="block truncate text-xs text-muted">
-              {ngettext("1 server", "%{count} servers", length(@nav.servers))}
-            </span>
-          </span>
-        <% end %>
-        <.icon name="hero-chevron-up-down" class="size-4 shrink-0 text-muted" />
-      </button>
-
-      <div
-        id={"#{@id}-menu"}
-        role="menu"
-        class="scope-menu"
-        x-show="open"
-        x-cloak
-        x-transition.opacity.duration.100ms
-        x-on:click.outside="open = false"
-        x-on:keydown.escape.window="open = false"
-      >
-        <p class="px-2 pt-1 pb-1.5 text-[0.6875rem] font-medium tracking-wide text-muted uppercase">
-          {gettext("Servers")}
-        </p>
-
-        <.link
-          :for={server <- @nav.servers}
-          navigate={Nav.switch_path(@current_path, server.id)}
-          role="menuitem"
-          class={["scope-menu-item", @nav.server && @nav.server.id == server.id && "is-current"]}
-        >
-          <img src={server_art(server)} alt="" class="size-7 shrink-0 rounded-selector object-cover" />
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm">{server.name}</span>
-            <span class="block truncate text-xs text-muted">{Labels.game(server.game)}</span>
-          </span>
-
-          <.icon
-            :if={@nav.server && @nav.server.id == server.id}
-            name="hero-check"
-            class="size-4 shrink-0 text-primary"
-          />
-        </.link>
-
-        <div class="my-1 h-px bg-base-300"></div>
-
-        <.link
-          navigate={~p"/"}
-          role="menuitem"
-          class={["scope-menu-item", is_nil(@nav.server) && "is-current"]}
-        >
-          <span class="flex size-7 shrink-0 items-center justify-center rounded-selector bg-base-200">
-            <.icon name="hero-squares-2x2" class="size-4 text-subtle" />
-          </span>
-          <span class="flex-1 text-sm">{gettext("All servers")}</span>
-        </.link>
-
-        <.link
-          :if={Accounts.can?(@current_user, :manage_servers)}
-          navigate={~p"/servers/new"}
-          role="menuitem"
-          class="scope-menu-item"
-        >
-          <span class="flex size-7 shrink-0 items-center justify-center rounded-selector bg-base-200">
-            <.icon name="hero-plus" class="size-4 text-subtle" />
-          </span>
-          <span class="flex-1 text-sm">{gettext("Add a server")}</span>
-        </.link>
-      </div>
-    </div>
+    <svg
+      viewBox="0 0 24 24"
+      class={@class}
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.4"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 11 7-5 7 5" /><path d="m5 17 7-5 7 5" />
+    </svg>
     """
   end
-
-  defp stream_dot(:connected), do: "bg-success"
-  defp stream_dot(:connecting), do: "bg-warning"
-  defp stream_dot({:error, _reason}), do: "bg-error"
-  defp stream_dot(_status), do: "bg-base-300"
 
   defp allowed?(_user, nil), do: true
   defp allowed?(user, permission), do: Accounts.can?(user, permission)
 
-  defp active?(current_path, "/"), do: current_path == "/"
+  @doc false
+  def role_name(%{role: %{name: name}}), do: name
+  def role_name(_user), do: nil
 
-  defp active?(current_path, "/servers/" <> rest = path) do
-    if String.contains?(rest, "/"),
-      do: String.starts_with?(current_path, path),
-      else: current_path == path or String.starts_with?(current_path, path <> "/edit")
+  @doc """
+  The letters of a user's avatar: the first two of a single name ("MA" for
+  Marcelo), the initials of the first two words otherwise.
+
+      iex> HllConditionalActionsWeb.Layouts.initials(%{name: "Marcelo"})
+      "MA"
+      iex> HllConditionalActionsWeb.Layouts.initials(%{name: "Claude (dev)", username: "c"})
+      "CD"
+  """
+  def initials(%{name: name} = user) when is_binary(name) and name != "" do
+    case String.split(name, ~r/[^\p{L}\p{N}]+/u, trim: true) do
+      [] -> initials(Map.delete(user, :name))
+      [word] -> word |> String.slice(0, 2) |> String.upcase()
+      [first, second | _rest] -> String.upcase(String.first(first) <> String.first(second))
+    end
   end
 
-  defp active?(current_path, "/servers"),
-    do: current_path == "/servers" or current_path == "/servers/new"
+  def initials(%{username: username}) when is_binary(username),
+    do: username |> String.slice(0, 2) |> String.upcase()
 
-  defp active?(current_path, path), do: String.starts_with?(current_path, path)
-
-  defp role_name(%{role: %{name: name}}), do: name
-  defp role_name(_user), do: nil
-
-  defp initials(%{name: name}) when is_binary(name) and name != "" do
-    name
-    |> String.split(~r/\s+/, trim: true)
-    |> Enum.take(2)
-    |> Enum.map_join(&String.first/1)
-    |> String.upcase()
-  end
-
-  defp initials(%{username: username}), do: username |> String.first() |> String.upcase()
-  defp initials(_user), do: "?"
+  def initials(_user), do: "?"
 end

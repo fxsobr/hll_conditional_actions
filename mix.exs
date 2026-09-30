@@ -4,7 +4,7 @@ defmodule HllConditionalActions.MixProject do
   def project do
     [
       app: :hll_conditional_actions,
-      version: "0.2.5",
+      version: "0.3.0",
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -54,6 +54,15 @@ defmodule HllConditionalActions.MixProject do
        app: false,
        compile: false,
        depth: 1},
+      # Brand icons for the VIP shop's social links (CC0), read at compile
+      # time like heroicons; nothing of it ships to the browser but the paths.
+      {:simple_icons,
+       github: "simple-icons/simple-icons",
+       tag: "15.10.0",
+       sparse: "icons",
+       app: false,
+       compile: false,
+       depth: 1},
       {:petal_components, "~> 4.13"},
       {:req, "~> 0.5"},
       # QR codes for the two factor enrolment screen. Pure Elixir, no NIF.
@@ -70,6 +79,10 @@ defmodule HllConditionalActions.MixProject do
       # Trust store for the WebSocket client's TLS connections.
       {:castore, "~> 1.0"},
       {:cloak_ecto, "~> 1.3"},
+      # Shop emails over the SMTP server the admin configures. gen_smtp is
+      # pure Erlang, so no C toolchain is needed.
+      {:swoosh, "~> 1.17"},
+      {:gen_smtp, "~> 1.2"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},

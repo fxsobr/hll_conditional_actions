@@ -362,6 +362,14 @@ defmodule HllConditionalActions.Engine do
         end)
     }
 
+    # The log line that made the rule act, so the live feed can show the
+    # rule beside it (see `HllConditionalActions.LiveFeed`).
+    base =
+      case HllConditionalActions.LiveFeed.event_key(context.event) do
+        nil -> base
+        key -> Map.put(base, "event_key", key)
+      end
+
     if Escalation.escalating?(rule) and context.player_id do
       Map.merge(base, %{
         "step" => Escalation.step_index(rule, context.player_id) + 1,

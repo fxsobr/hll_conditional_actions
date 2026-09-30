@@ -116,6 +116,29 @@ defmodule HllConditionalActions.AccountsTest do
 
       assert role.permissions == ["view_servers"]
     end
+
+    test "acting on players is its own permission, apart from tickets" do
+      assert Permission.valid?("manage_players")
+      assert Permission.group(:manage_players) == :support
+      assert :manage_players in Permission.in_group(:support)
+
+      agent = user_fixture(%{role: role_fixture(%{permissions: ["manage_tickets"]})})
+      moderator = user_fixture(%{role: role_fixture(%{permissions: ["manage_players"]})})
+
+      assert Accounts.can?(agent, :manage_tickets)
+      refute Accounts.can?(agent, :manage_players)
+      assert Accounts.can?(moderator, :manage_players)
+      refute Accounts.can?(moderator, :view_tickets)
+    end
+
+    test "the built-in Administrator and Operator act on players, the Viewer does not" do
+      %{administrator: admin, operator: operator, viewer: viewer} =
+        Accounts.ensure_system_roles!()
+
+      assert Role.can?(admin, :manage_players)
+      assert Role.can?(operator, :manage_players)
+      refute Role.can?(viewer, :manage_players)
+    end
   end
 
   describe "users" do

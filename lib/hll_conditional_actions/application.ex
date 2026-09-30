@@ -34,7 +34,11 @@ defmodule HllConditionalActions.Application do
         HllConditionalActions.Metrics,
         # The last evaluations per server and trigger, which the rule builder
         # replays an edited rule against.
-        HllConditionalActions.Engine.Samples
+        HllConditionalActions.Engine.Samples,
+        # What each server is playing right now, cached for the Briefing.
+        HllConditionalActions.Briefing.LiveStatus,
+        # What the VIP shop's servers are playing, cached for the storefront.
+        HllConditionalActions.VipShop.LiveServers
       ] ++
         update_checker() ++
         Runtime.children() ++

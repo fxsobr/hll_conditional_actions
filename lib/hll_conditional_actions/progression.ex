@@ -38,6 +38,7 @@ defmodule HllConditionalActions.Progression do
   alias HllConditionalActions.Progression.Rating
   alias HllConditionalActions.Progression.Scoring
   alias HllConditionalActions.Progression.Season
+  alias HllConditionalActions.Progression.SeasonRankSnapshot
   alias HllConditionalActions.Progression.SeasonScore
   alias HllConditionalActions.Repo
   alias HllConditionalActions.Rules.Action
@@ -284,7 +285,9 @@ defmodule HllConditionalActions.Progression do
     {:ok, count} =
       Repo.transaction(fn ->
         Repo.query!("SELECT pg_advisory_xact_lock($1, $2)", [@season_lock, season.id])
-        score_season(season, played, outcome, now)
+        count = score_season(season, played, outcome, now)
+        snapshot_ranks(season, now)
+        count
       end)
 
     count
@@ -301,12 +304,30 @@ defmodule HllConditionalActions.Progression do
         {score.player_id, Map.take(score, [:score, :total, :matches, :wins, :losses])}
       end)
 
+    sides =
+      SeasonScore
+      |> where([s], s.season_id == ^season.id and s.player_id in ^player_ids)
+      |> select([s], {s.player_id, {s.allies_matches, s.axis_matches}})
+      |> Repo.all()
+      |> Map.new()
+
     names = Map.new(played, &{&1["player_id"], &1["name"]})
+    teams = Map.new(played, &{&1["player_id"], &1["team"]})
 
     scored = Scoring.score_match(season, played, current, outcome)
 
     for {player_id, standing} <- scored do
-      standing = Map.put(standing, :last_match_at, now)
+      {allies, axis} = Map.get(sides, player_id, {0, 0})
+      team = teams[player_id]
+
+      standing =
+        standing
+        |> Map.take([:score, :total, :matches, :wins, :losses])
+        |> Map.merge(%{
+          last_match_at: now,
+          allies_matches: allies + if(team == "allies", do: 1, else: 0),
+          axis_matches: axis + if(team == "axis", do: 1, else: 0)
+        })
 
       %SeasonScore{
         season_id: season.id,
@@ -456,6 +477,7 @@ defmodule HllConditionalActions.Progression do
       rating: season.rating,
       metric: season.metric,
       weights: season.weights,
+      per_match: season.per_match,
       starts_at: starts_at,
       duration_days: season.duration_days,
       winners_count: season.winners_count,
@@ -541,8 +563,100 @@ defmodule HllConditionalActions.Progression do
       |> then(&Repo.all(from sv in Server, where: sv.id in ^&1, order_by: sv.name))
   end
 
+  @doc """
+  Changes a season. The servers come as `server_ids`, like on creation;
+  leaving them out keeps the season's own.
+  """
+  @spec update_season(Season.t(), map()) :: {:ok, Season.t()} | {:error, Ecto.Changeset.t()}
+  def update_season(%Season{} = season, attrs) do
+    season
+    |> Repo.preload(:servers)
+    |> Season.changeset(attrs, servers_of(attrs))
+    |> Repo.update()
+  end
+
   @spec delete_season(Season.t()) :: {:ok, Season.t()} | {:error, Ecto.Changeset.t()}
   def delete_season(%Season{} = season), do: Repo.delete(season)
+
+  @doc "How many players scored in the season."
+  @spec season_participants(Season.t()) :: non_neg_integer()
+  def season_participants(%Season{id: id}) do
+    SeasonScore |> where([s], s.season_id == ^id) |> select([s], count(s.id)) |> Repo.one()
+  end
+
+  @doc """
+  The side a player played most of their season on: `"allies"`, `"axis"`,
+  or nil before the first match that told.
+  """
+  @spec main_side(map()) :: String.t() | nil
+  def main_side(%{allies_matches: allies, axis_matches: axis})
+      when is_integer(allies) and is_integer(axis) and allies + axis > 0,
+      do: if(allies >= axis, do: "allies", else: "axis")
+
+  def main_side(_score), do: nil
+
+  # The standings at the end of the day, one row per season and day,
+  # rewritten by every match of that day.
+  defp snapshot_ranks(season, now) do
+    ranks =
+      season
+      |> standings(limit: 1000)
+      |> Enum.with_index(1)
+      |> Map.new(fn {score, rank} -> {score.player_id, rank} end)
+
+    %SeasonRankSnapshot{
+      season_id: season.id,
+      day: DateTime.to_date(now),
+      ranks: ranks,
+      inserted_at: now,
+      updated_at: now
+    }
+    |> Repo.insert!(
+      on_conflict: [set: [ranks: ranks, updated_at: now]],
+      conflict_target: [:season_id, :day]
+    )
+  end
+
+  @doc """
+  How far each player moved over the last week, as `%{player_id => moved}`:
+  a positive number went up, a negative one down, `:new` was not ranked a
+  week ago. Compared with the standings of a week ago - or, in a season
+  younger than that, with its first day. Empty when there is nothing to
+  compare with yet.
+  """
+  @spec rank_moves(Season.t(), [map()], Date.t()) :: %{String.t() => integer() | :new}
+  def rank_moves(%Season{id: id}, standings, today \\ Date.utc_today()) do
+    week_ago = Date.add(today, -7)
+
+    before =
+      SeasonRankSnapshot
+      |> where([s], s.season_id == ^id and s.day <= ^week_ago)
+      |> order_by([s], desc: s.day)
+      |> limit(1)
+      |> Repo.one() ||
+        SeasonRankSnapshot
+        |> where([s], s.season_id == ^id and s.day < ^today)
+        |> order_by([s], asc: s.day)
+        |> limit(1)
+        |> Repo.one()
+
+    case before do
+      nil ->
+        %{}
+
+      %{ranks: ranks} ->
+        standings
+        |> Enum.with_index(1)
+        |> Map.new(&rank_change(&1, ranks))
+    end
+  end
+
+  defp rank_change({score, rank}, ranks) do
+    case ranks[score.player_id] do
+      old when is_integer(old) -> {score.player_id, old - rank}
+      _new -> {score.player_id, :new}
+    end
+  end
 
   @doc "The server's running season, or nil."
   @spec active_season(term()) :: Season.t() | nil
@@ -640,8 +754,17 @@ defmodule HllConditionalActions.Progression do
     |> where([u], u.server_id == ^server_id)
     |> order_by([u], desc: u.unlocked_at, desc: u.id)
     |> limit(^count)
-    |> preload(:achievement)
+    |> preload([:achievement, :server])
     |> Repo.all()
+  end
+
+  @doc "How many players ever finished a match on the server."
+  @spec server_player_count(term()) :: non_neg_integer()
+  def server_player_count(server_id) do
+    PlayerTotal
+    |> where([t], t.server_id == ^server_id)
+    |> select([t], count(t.id))
+    |> Repo.one()
   end
 
   @doc "A player's unlocked achievements, newest first."
@@ -675,6 +798,30 @@ defmodule HllConditionalActions.Progression do
   """
   @spec create_starter_set(term()) :: [Achievement.t()]
   def create_starter_set(server_id) do
+    Enum.flat_map(starter_set(), fn {name, description, icon, tier, scope, metric, threshold, vip} ->
+      case create_achievement(%{
+             server_id: server_id,
+             name: name,
+             description: description,
+             icon: icon,
+             tier: tier,
+             scope: scope,
+             metric: metric,
+             threshold: threshold,
+             reward_vip_hours: vip,
+             simulation: true
+           }) do
+        {:ok, achievement} -> [achievement]
+        {:error, _changeset} -> []
+      end
+    end)
+  end
+
+  @doc "How many achievements the starter set has."
+  @spec starter_set_size() :: pos_integer()
+  def starter_set_size, do: length(starter_set())
+
+  defp starter_set do
     [
       {gettext("First blood"), gettext("20 kills in one match"), "hero-fire", :bronze, :match,
        :kills, 20, 0},
@@ -693,25 +840,14 @@ defmodule HllConditionalActions.Progression do
       {gettext("Squad leader"), gettext("50 matches leading a squad"), "hero-user-group", :silver,
        :career, :leader_matches, 50, 48},
       {gettext("Regular"), gettext("100 hours played on this server"), "hero-clock", :legendary,
-       :career, :playtime_minutes, 6000, 168}
+       :career, :playtime_minutes, 6000, 168},
+      {gettext("Iron wall"), gettext("800 defense in one match"), "hero-shield-exclamation",
+       :silver, :match, :defense, 800, 0},
+      {gettext("Spearhead"), gettext("1000 offense in one match"), "hero-arrow-trending-up",
+       :gold, :match, :offense, 1000, 24},
+      {gettext("Legend"), gettext("5000 combat in one match"), "hero-star", :legendary, :match,
+       :combat, 5000, 168}
     ]
-    |> Enum.flat_map(fn {name, description, icon, tier, scope, metric, threshold, vip} ->
-      case create_achievement(%{
-             server_id: server_id,
-             name: name,
-             description: description,
-             icon: icon,
-             tier: tier,
-             scope: scope,
-             metric: metric,
-             threshold: threshold,
-             reward_vip_hours: vip,
-             simulation: true
-           }) do
-        {:ok, achievement} -> [achievement]
-        {:error, _changeset} -> []
-      end
-    end)
   end
 
   defp present?(value), do: is_binary(value) and String.trim(value) != ""

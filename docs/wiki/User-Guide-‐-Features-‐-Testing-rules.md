@@ -24,9 +24,13 @@ real player. All of it comes with the **Conditional rules** module.
 
 ## Saved events
 
-The app keeps the **latest 50 real events of each trigger on each server**.
-They are what *Try it*, the simulator and *Why didn't it fire?* replay, so you
-can test with no server online and no player connected.
+The app keeps real events for **7 days, up to 2,000 per trigger on each
+server** - a quiet trigger covers the whole week, a busy one (kills) its
+newest 2,000. They are what *Try it*, the simulator, *Why didn't it fire?* and
+the builder's 7-day replay use, so you can test with no server online and no
+player connected. The replay reads at most the newest 2,000 events of the
+trigger across the servers in scope, and says since when it covers when that
+is less than the week.
 
 ## Try it, in the builder
 

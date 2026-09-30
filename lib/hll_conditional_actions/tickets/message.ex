@@ -23,6 +23,8 @@ defmodule HllConditionalActions.Tickets.Message do
     field :delivery, Ecto.Enum, values: [:sent, :failed]
     field :delivery_error, :string
     field :log_key, :string
+    # The title of the quick reply an admin answer started from.
+    field :quick_reply, :string
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
@@ -31,7 +33,16 @@ defmodule HllConditionalActions.Tickets.Message do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(message, attrs) do
     message
-    |> cast(attrs, [:ticket_id, :author, :user_id, :body, :delivery, :delivery_error, :log_key])
+    |> cast(attrs, [
+      :ticket_id,
+      :author,
+      :user_id,
+      :body,
+      :delivery,
+      :delivery_error,
+      :log_key,
+      :quick_reply
+    ])
     |> validate_required([:ticket_id, :author, :body])
     |> validate_length(:body, max: 2000)
     |> update_change(:delivery_error, &String.slice(&1, 0, 255))

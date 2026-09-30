@@ -1,61 +1,144 @@
 defmodule HllConditionalActionsWeb.DashboardLive do
   @moduledoc """
-  The overview: what the rules did over a period, and the state of the fleet.
+  The Briefing: the organisation's front page. One question - *what needs
+  me?* - answered in three rows:
 
-  Read top to bottom it answers, in order, the questions an admin opens the
-  tool with:
+    1. *How is it going?* - a greeting with the week in one sentence, and
+       the tiles: rules running, players online, success rate, open
+       attention items and tickets
+    2. *Anything to decide?* - a rule that simulated long enough to go live,
+       with what it would have done; and the fires per day, with the
+       period's totals against the period before
+    3. *What needs me, and are the servers alive?* - the top of the
+       attention inbox, and one card per server with its match right now
 
-    1. *Is it set up?* - a checklist until the install is trusted to act on
-       its own (`HllConditionalActions.Onboarding`)
-    2. *Is it working?* - fired, success rate, players reached and run time,
-       each against the period before
-    3. *When and on what?* - a daily chart and the split by trigger
-    4. *Which rules?* - the busiest rules with their failure rate
-    5. *Are the servers alive?* - one card per server with its stream
+  A new server - one with nothing installed yet - turns the page into its
+  first steps (`HllConditionalActions.Onboarding`) until it is set up or the
+  admin skips them for the session.
 
-  The period lives in the URL (`?period=30`), so a view can be shared.
+  The period lives in the URL (`?period=30`), so a view can be shared. The
+  page refreshes itself every ten seconds, follows the streams live and
+  reads each server's match from CRCON in the background
+  (`HllConditionalActions.Briefing.LiveStatus`).
   """
 
   use HllConditionalActionsWeb, :live_view
 
+  import HllConditionalActionsWeb.BriefingComponents
+
   alias HllConditionalActions.Accounts
+  alias HllConditionalActions.Attention
+  alias HllConditionalActions.Briefing
+  alias HllConditionalActions.Briefing.LiveStatus
   alias HllConditionalActions.Crcon.LogStream
-  alias HllConditionalActions.Engine.Runner
+  alias HllConditionalActions.Features
   alias HllConditionalActions.Onboarding
   alias HllConditionalActions.Reports
   alias HllConditionalActions.Rules
-  alias HllConditionalActions.Rules.Recipes
+  alias HllConditionalActions.Runtime
   alias HllConditionalActions.Servers
+  alias HllConditionalActionsWeb.Nav
 
   @refresh_ms :timer.seconds(10)
   @default_period 30
+  @metrics ~w(fired players failed duration)
+  @attention_rows 4
+  @weekdays ~w(monday tuesday wednesday thursday friday saturday sunday)
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Servers.subscribe()
       # One subscription for every server's status, including the ones added
-      # while this page is open. Subscribing per server, as this used to, left
-      # a new server stuck on "Connecting" until a reload.
+      # while this page is open.
       LogStream.subscribe_status()
 
       :timer.send_interval(@refresh_ms, :refresh)
     end
 
-    {:ok, assign(socket, page_title: gettext("Overview"), period: @default_period)}
+    {:ok,
+     assign(socket,
+       page_title: gettext("Briefing"),
+       period: @default_period,
+       metric: "fired",
+       series: "all",
+       skipped?: false,
+       setup: nil,
+       live: %{},
+       live_loading?: false,
+       picked: default_modules(),
+       events_server: nil,
+       events: %{count: 0, first_at: nil, recent: [], rate: 0},
+       arrivals: []
+     )}
   end
 
   @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
-    {:noreply, socket |> assign(:period, parse_period(params["period"])) |> load()}
+    {:noreply,
+     socket
+     |> assign(:period, parse_period(params["period"]))
+     |> assign(:skipped?, socket.assigns.skipped? or params["onboarding"] == "skip")
+     |> assign(:setup, params["setup"])
+     |> load()}
   end
+
+  @impl Phoenix.LiveView
+  def handle_event("chart_metric", %{"metric" => metric}, socket) when metric in @metrics do
+    {:noreply, assign(socket, :metric, metric)}
+  end
+
+  def handle_event("chart_series", %{"series" => series}, socket) do
+    if series in Briefing.series() do
+      {:noreply, socket |> assign(:series, series) |> load()}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("skip_onboarding", _params, socket) do
+    {:noreply, socket |> assign(:skipped?, true) |> load()}
+  end
+
+  def handle_event("pick_modules", params, socket) do
+    {:noreply, assign(socket, :picked, parse_modules(params))}
+  end
+
+  def handle_event("install_modules", params, socket) do
+    install(socket, parse_modules(params))
+  end
+
+  def handle_event("copy_modules", %{"from" => from}, socket) do
+    case Enum.find(socket.assigns.servers, &(to_string(&1.id) == from)) do
+      nil -> {:noreply, socket}
+      source -> install(socket, Features.installed(source.id))
+    end
+  end
+
+  def handle_event("grant_team", _params, socket) do
+    %{current_user: user, onboarding_server: server} = socket.assigns
+
+    if server && Accounts.can?(user, :manage_users) do
+      team = Briefing.team_without(user, server)
+      :ok = Briefing.grant_server(team, server)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, gettext("They can see %{server} now.", server: server.name))
+       |> load()}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
   def handle_info({:crcon_stream_status, server_id, status}, socket) do
     {:noreply,
      socket
      |> update(:stream_status, &Map.put(&1, server_id, status))
-     |> assign_onboarding()}
+     |> load()}
   end
 
   def handle_info(:refresh, socket), do: {:noreply, load(socket)}
@@ -65,7 +148,24 @@ defmodule HllConditionalActionsWeb.DashboardLive do
     {:noreply, load(socket)}
   end
 
+  def handle_info({:crcon_event, %{server_id: server_id} = event}, socket) do
+    if socket.assigns.events_server == server_id do
+      {:noreply, record_event(socket, event)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  @impl Phoenix.LiveView
+  def handle_async(:live, {:ok, live}, socket) do
+    {:noreply, assign(socket, live: live, live_loading?: false)}
+  end
+
+  def handle_async(:live, {:exit, _reason}, socket) do
+    {:noreply, assign(socket, :live_loading?, false)}
+  end
 
   defp parse_period(value) do
     case Integer.parse(value || "") do
@@ -74,56 +174,316 @@ defmodule HllConditionalActionsWeb.DashboardLive do
     end
   end
 
+  defp parse_modules(params) do
+    params
+    |> Map.get("modules", [])
+    |> List.wrap()
+    |> Enum.map(&Features.parse/1)
+    |> Enum.reject(&is_nil/1)
+    |> MapSet.new()
+  end
+
+  # ── Loading ────────────────────────────────────────────────────────────────
+
   # Every authenticated user lands here, so this page has no permission of its
   # own. That makes what it *loads* the only gate: a role without
-  # `:view_servers` must not learn the names of the servers from the dashboard
+  # `:view_servers` must not learn the names of the servers from the Briefing
   # when `/servers` would refuse to show them, and one without
   # `:view_executions` sees no activity numbers.
   defp load(socket) do
-    servers = visible_servers(socket)
-    user = socket.assigns[:current_user]
-
-    socket
-    |> assign(:servers, servers)
-    |> assign(:stream_status, Map.new(servers, &{&1.id, LogStream.status(&1.id)}))
-    |> assign(:runner_info, Map.new(servers, &{&1.id, Runner.info(&1.id)}))
-    |> assign(:activity?, Accounts.can?(user, :view_executions))
-    |> assign(:report, report(user, socket.assigns.period))
-    |> assign(:recent, recent_executions(user))
-    |> assign_onboarding()
-  end
-
-  defp assign_onboarding(socket) do
     user = socket.assigns.current_user
-    steps = Onboarding.steps(user, socket.assigns.servers, socket.assigns.stream_status)
+    servers = visible_servers(user)
+    stream_status = Map.new(servers, &{&1.id, LogStream.status(&1.id)})
+    rules = if Accounts.can?(user, :view_rules), do: Rules.list_rules_for(user), else: []
+
+    socket =
+      socket
+      |> assign(servers: servers, stream_status: stream_status, rules: rules)
+      |> assign_onboarding()
+
+    if socket.assigns.onboarding?,
+      do: load_onboarding(socket),
+      else: load_briefing(socket)
+  end
+
+  # The first steps take the page while the install is new (no rule acts
+  # for real yet), or while a server that just joined is being set up.
+  # `?setup=<id>` opens them for one server on purpose, done or not.
+  defp assign_onboarding(socket) do
+    %{current_user: user, servers: servers, stream_status: stream_status, rules: rules} =
+      socket.assigns
+
+    chosen = chosen_server(socket)
+    new_server = chosen || new_server(user, servers, rules)
+    steps = Onboarding.steps(user, servers, stream_status, server: new_server)
+    first_run? = new_server != nil or not Onboarding.established?(rules)
+    wanted? = chosen != nil or (first_run? and Onboarding.show?(user, steps))
+
+    assign(socket,
+      steps: steps,
+      onboarding?: wanted? and not socket.assigns.skipped?,
+      onboarding_server: new_server || single(servers),
+      new_server?: new_server != nil
+    )
+  end
+
+  defp chosen_server(%{assigns: %{setup: nil}}), do: nil
+
+  defp chosen_server(%{assigns: %{setup: id, servers: servers, current_user: user}}) do
+    if Accounts.can?(user, :manage_servers),
+      do: Enum.find(servers, &(to_string(&1.id) == id))
+  end
+
+  defp new_server(user, servers, rules) do
+    if Accounts.can?(user, :manage_servers) do
+      installed = Features.installed_by_server(Enum.map(servers, & &1.id))
+      Onboarding.new_server(servers, installed, rules)
+    end
+  end
+
+  defp single([server]), do: server
+  defp single(_servers), do: nil
+
+  defp load_briefing(socket) do
+    %{current_user: user, servers: servers, rules: rules} = socket.assigns
+    executions? = Accounts.can?(user, :view_executions)
+
+    activity =
+      if executions?,
+        do: Briefing.activity(user, socket.assigns.period, socket.assigns.series)
+
+    week =
+      cond do
+        not executions? -> nil
+        socket.assigns.period == 7 and socket.assigns.series == "all" -> activity
+        true -> Briefing.activity(user, 7)
+      end
 
     socket
-    |> assign(:steps, steps)
-    |> assign(:onboarding?, Onboarding.show?(user, steps))
+    |> assign(
+      activity: activity,
+      week: week,
+      rule_summary: rule_summary(user, rules),
+      tickets: ticket_counts(socket),
+      last_events: Briefing.last_events(Enum.map(servers, & &1.id))
+    )
+    |> assign_attention()
+    |> fetch_live(servers)
   end
 
-  defp visible_servers(socket) do
-    if Accounts.can?(socket.assigns[:current_user], :view_servers) do
-      Servers.list_servers_for(socket.assigns[:current_user])
-    else
-      []
-    end
-  end
+  # The open items of the attention inbox; the first rule ready to leave
+  # simulation is lifted out of the list into its own panel.
+  defp assign_attention(socket) do
+    user = socket.assigns.current_user
 
-  defp report(user, period) do
-    if Accounts.can?(user, :view_executions), do: Reports.overview(user, period)
-  end
-
-  defp recent_executions(user) do
     if Accounts.can?(user, :view_executions) do
-      Rules.list_executions_for(user, limit: 6)
+      %{open: open} = Attention.items(user, socket.assigns.servers, socket.assigns.stream_status)
+      suggestion = Enum.find(open, &(&1.kind == :ready_to_go_live))
+      needs_you = if suggestion, do: List.delete(open, suggestion), else: open
+      shown = Enum.take(needs_you, @attention_rows)
+
+      ticket_ids = for %{kind: :ticket_waiting, subject: %{ticket: t}} <- shown, do: t.id
+
+      assign(socket,
+        attention: open,
+        suggestion: suggestion,
+        digest: suggestion && Briefing.simulation_digest(user, suggestion.subject.rule),
+        needs_you: shown,
+        quotes: Briefing.ticket_quotes(ticket_ids)
+      )
     else
-      []
+      assign(socket, attention: nil, suggestion: nil, digest: nil, needs_you: [], quotes: %{})
     end
   end
+
+  defp load_onboarding(socket) do
+    %{current_user: user, onboarding_server: server, servers: servers, rules: rules} =
+      socket.assigns
+
+    installed = Features.installed_by_server(Enum.map(servers, & &1.id))
+
+    others =
+      for other <- servers, server == nil or other.id != server.id do
+        %{
+          server: other,
+          modules: installed |> Map.get(other.id, MapSet.new()) |> MapSet.to_list()
+        }
+      end
+
+    socket
+    |> assign(
+      others: others,
+      team: if(server, do: Briefing.team_without(user, server), else: []),
+      server_rules: if(server, do: Enum.filter(rules, &(&1.server_id == server.id)), else: [])
+    )
+    |> follow_events(server)
+    |> fetch_live(List.wrap(server))
+  end
+
+  # The events card of the first steps follows one server's stream live,
+  # starting from what is already on record.
+  defp follow_events(socket, nil), do: socket
+
+  defp follow_events(%{assigns: %{events_server: id}} = socket, %{id: id}), do: socket
+
+  defp follow_events(socket, server) do
+    if connected?(socket) do
+      if old = socket.assigns.events_server, do: LogStream.unsubscribe(old)
+      LogStream.subscribe(server.id)
+    end
+
+    stats = Briefing.event_stats(server.id)
+
+    assign(socket,
+      events_server: server.id,
+      arrivals: [],
+      events: %{
+        count: stats.count,
+        first_at: stats.first_at,
+        rate: 0,
+        recent: Briefing.recent_events(server.id, 3)
+      }
+    )
+  end
+
+  defp record_event(socket, event) do
+    now = System.monotonic_time(:second)
+    arrivals = [now | Enum.filter(socket.assigns.arrivals, &(now - &1 < 60))]
+    at = Map.get(event, :occurred_at) || DateTime.utc_now()
+
+    update(socket, :events, fn events ->
+      %{
+        events
+        | count: events.count + 1,
+          first_at: events.first_at || at,
+          rate: length(arrivals),
+          recent: Enum.take([%{at: at, event: event} | events.recent], 3)
+      }
+    end)
+    |> assign(:arrivals, arrivals)
+  end
+
+  # Players, score and time left come from CRCON, off the LiveView process.
+  defp fetch_live(socket, []), do: socket
+
+  defp fetch_live(socket, servers) do
+    if connected?(socket) and not socket.assigns.live_loading? do
+      socket
+      |> assign(:live_loading?, true)
+      |> start_async(:live, fn -> LiveStatus.fetch(servers) end)
+    else
+      socket
+    end
+  end
+
+  defp install(socket, features) do
+    %{current_user: user, onboarding_server: server} = socket.assigns
+
+    if server && Accounts.can?(user, :manage_servers) && MapSet.size(features) > 0 do
+      Enum.each(features, &Features.install(server.id, &1, user.email))
+
+      nav =
+        case socket.assigns[:nav] do
+          %{features: installed} = nav ->
+            %{nav | features: Map.put(installed, server.id, Features.installed(server.id))}
+
+          nav ->
+            nav
+        end
+
+      {:noreply,
+       socket
+       |> assign(:nav, nav)
+       |> put_flash(
+         :info,
+         ngettext(
+           "1 module installed on %{server}.",
+           "%{count} modules installed on %{server}.",
+           MapSet.size(features),
+           server: server.name
+         )
+       )
+       |> load()}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp visible_servers(user) do
+    if Accounts.can?(user, :view_servers), do: Servers.list_servers_for(user), else: []
+  end
+
+  defp rule_summary(user, rules) do
+    if Accounts.can?(user, :view_rules) do
+      enabled = Enum.filter(rules, & &1.enabled)
+      %{enabled: length(enabled), simulating: Enum.count(enabled, & &1.simulation)}
+    end
+  end
+
+  # Tickets only where the module is installed.
+  defp ticket_counts(socket) do
+    user = socket.assigns.current_user
+
+    if Accounts.can?(user, :view_tickets) and Nav.feature?(socket.assigns[:nav], :tickets),
+      do: Briefing.ticket_counts(user)
+  end
+
+  # ── Render ─────────────────────────────────────────────────────────────────
 
   @impl Phoenix.LiveView
+  def render(%{onboarding?: true} = assigns) do
+    ~H"""
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      current_path={@current_path}
+      nav={assigns[:nav]}
+      page_title={gettext("First steps")}
+      eyebrow={
+        if @new_server?,
+          do: gettext("Briefing of a new server"),
+          else: gettext("Briefing of a new install")
+      }
+    >
+      <:actions>
+        <.link
+          id="onboarding-skip"
+          patch={~p"/?onboarding=skip"}
+          class="flex h-11 items-center rounded-full border border-base-300 bg-base-100 px-5 text-sm font-medium transition-colors hover:border-base-content/25 md:h-12"
+        >
+          {gettext("Skip for now")}
+        </.link>
+      </:actions>
+
+      <.onboarding
+        steps={@steps}
+        server={@onboarding_server}
+        others={@others}
+        picked={@picked}
+        events={@events}
+        live={live_of(@live, @onboarding_server)}
+        rules={@server_rules}
+        team={@team}
+        has_servers={@servers != []}
+      />
+    </Layouts.app>
+    """
+  end
+
   def render(assigns) do
+    cards = server_cards(assigns)
+    players = LiveStatus.players_online(assigns.live)
+
+    tiles = kpi_tiles(assigns, players)
+
+    assigns =
+      assign(assigns,
+        cards: cards,
+        players: players,
+        tiles: tiles,
+        areas: areas(assigns, cards, tiles)
+      )
+
     ~H"""
     <Layouts.app
       flash={@flash}
@@ -131,30 +491,10 @@ defmodule HllConditionalActionsWeb.DashboardLive do
       current_path={@current_path}
       nav={assigns[:nav]}
       page_title={@page_title}
-      page_subtitle={subtitle(@report, @servers)}
+      greeting={header_greeting(@current_user, @servers)}
+      greeting_eyebrow={header_date(@servers)}
     >
       <:actions>
-        <nav
-          :if={@report}
-          id="overview-period"
-          aria-label={gettext("Period")}
-          class="flex items-center gap-0.5 rounded-pill border border-base-300 bg-base-100 p-0.5"
-        >
-          <.link
-            :for={days <- Reports.periods()}
-            patch={~p"/?period=#{days}"}
-            class={[
-              "rounded-pill px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors",
-              if(days == @period,
-                do: "bg-primary text-primary-content",
-                else: "text-muted hover:text-base-content"
-              )
-            ]}
-            aria-current={days == @period && "true"}
-          >
-            {gettext("%{count} days", count: days)}
-          </.link>
-        </nav>
         <.button
           :if={Accounts.can?(@current_user, :manage_rules) and @servers != []}
           link_type="live_redirect"
@@ -162,18 +502,17 @@ defmodule HllConditionalActionsWeb.DashboardLive do
           size="sm"
           color="primary"
           icon="hero-plus"
+          class="max-md:hidden"
+          aria-label={gettext("New rule")}
         >
-          <span class="hidden sm:inline">{gettext("New rule")}</span>
+          <span class="hidden xl:inline">{gettext("New rule")}</span>
         </.button>
       </:actions>
 
-      <.onboarding :if={@onboarding?} steps={@steps} />
-
       <%!-- "No servers yet" would be a lie to somebody whose role simply does
-            not let them see the ones that exist; and the checklist above
-            already says it to anyone who can add one. --%>
+            not let them see the ones that exist. --%>
       <.empty_state
-        :if={@servers == [] and not @onboarding? and Accounts.can?(@current_user, :view_servers)}
+        :if={@servers == [] and Accounts.can?(@current_user, :view_servers)}
         icon="hero-server-stack"
         title={gettext("No servers yet")}
         description={
@@ -181,962 +520,584 @@ defmodule HllConditionalActionsWeb.DashboardLive do
         }
       />
 
-      <div :if={@report && @servers != []} class="space-y-4">
-        <div id="overview-kpis" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <.kpi
-            icon="hero-bolt"
-            label={gettext("Rules fired")}
-            value={format_number(@report.totals.fired)}
-            change={Reports.change(@report.totals.fired, @report.previous.fired)}
-            hint={
-              ngettext("%{count} in simulation", "%{count} in simulation", @report.totals.simulated)
-            }
-            to={~p"/executions"}
-          />
-          <.kpi
-            icon="hero-check-badge"
-            label={gettext("Success rate")}
-            value={percent(@report.totals.success_rate)}
-            change={points(@report.totals.success_rate, @report.previous.success_rate)}
-            change_unit={gettext("pts")}
-            hint={ngettext("1 failed", "%{count} failed", @report.totals.failed)}
-            to={~p"/executions"}
-          />
-          <.kpi
-            icon="hero-users"
-            label={gettext("Players reached")}
-            value={format_number(@report.totals.players)}
-            change={Reports.change(@report.totals.players, @report.previous.players)}
-            hint={gettext("different players a rule acted on")}
-          />
-          <.kpi
-            icon="hero-clock"
-            label={gettext("Average run time")}
-            value={duration(@report.totals.duration_ms)}
-            change={Reports.change(@report.totals.duration_ms, @report.previous.duration_ms)}
-            lower_is_better
-            hint={gettext("from trigger to last action")}
+      <div
+        :if={@servers != [] or not Accounts.can?(@current_user, :view_servers)}
+        id="briefing"
+        class="briefing-grid"
+        style={@areas}
+      >
+        <div data-area="greet" class="hidden min-w-0 xl:block">
+          <.greeting name={first_name(@current_user)}>
+            <%= if @week do %>
+              {ngettext(
+                "Your rules acted once this week",
+                "Your rules acted %{fires} times this week",
+                @week.totals.fired,
+                fires: format_number(@week.totals.fired)
+              )}<span :if={is_integer(change(@week.totals.fired, @week.previous.fired))}>,</span>
+              <.week_change change={change(@week.totals.fired, @week.previous.fired)} />
+            <% else %>
+              {gettext("Your servers, and what the rules are doing on them")}
+            <% end %>
+          </.greeting>
+        </div>
+
+        <div :if={@tiles != []} data-area="kpis" class="hidden min-w-0 md:block">
+          <.kpi_row tiles={@tiles} />
+        </div>
+
+        <div :if={@cards != []} data-area="chips" class="min-w-0 md:hidden">
+          <.server_chips cards={@cards} />
+        </div>
+
+        <div :if={@week} data-area="week" class="min-w-0 md:hidden">
+          <.week_card
+            week={@week}
+            rules={@rule_summary && @rule_summary.enabled}
+            players={@players && format_number(elem(@players, 0))}
+            success={percent(@week.totals.success_rate)}
           />
         </div>
 
-        <div class="grid gap-4 xl:grid-cols-3">
-          <section class="overview-card xl:col-span-2" aria-labelledby="overview-chart-title">
-            <header class="overview-card-head">
-              <h2 id="overview-chart-title" class="overview-card-title">
-                <.icon name="hero-chart-bar" class="size-4" />
-                {gettext("Activity · last %{count} days", count: @period)}
-              </h2>
-              <div class="flex items-center gap-3 text-xs text-subtle">
-                <span class="flex items-center gap-1.5">
-                  <span class="size-2 rounded-full bg-primary"></span>{gettext("Fired")}
-                </span>
-                <span class="flex items-center gap-1.5">
-                  <span class="size-2 rounded-full bg-error"></span>{gettext("Failed")}
-                </span>
-              </div>
-            </header>
-
-            <.activity_chart :if={@report.totals.fired > 0} daily={@report.daily} />
-            <.quiet_period :if={@report.totals.fired == 0} period={@period} />
-          </section>
-
-          <section class="overview-card" aria-labelledby="overview-trigger-title">
-            <header class="overview-card-head">
-              <h2 id="overview-trigger-title" class="overview-card-title">
-                <.icon name="hero-bolt" class="size-4" />{gettext("By trigger")}
-              </h2>
-            </header>
-
-            <p :if={@report.by_trigger == []} class="py-6 text-center text-sm text-muted">
-              {gettext("Nothing fired in this period.")}
-            </p>
-
-            <ul :if={@report.by_trigger != []} class="space-y-3.5">
-              <li :for={
-                {{trigger, count}, index} <- Enum.with_index(Enum.take(@report.by_trigger, 6))
-              }>
-                <div class="flex items-center gap-2 text-sm">
-                  <span class={["size-2 shrink-0 rounded-full", bar_tone(index)]}></span>
-                  <span class="min-w-0 flex-1 truncate">{trigger_label(trigger)}</span>
-                  <span class="font-medium tabular-nums">{format_number(count)}</span>
-                  <span class="w-9 text-right text-xs text-muted tabular-nums">
-                    {share(count, @report.totals.fired)}%
-                  </span>
-                </div>
-                <div class="mt-1.5 h-1.5 overflow-hidden rounded-pill bg-base-200">
-                  <div
-                    class={["h-full rounded-pill", bar_tone(index)]}
-                    style={"width: #{share(count, @report.totals.fired)}%"}
-                  >
-                  </div>
-                </div>
-              </li>
-            </ul>
-          </section>
+        <div :if={@activity && @suggestion} data-area="suggest" class="flex min-w-0">
+          <.suggestion rule={@suggestion.subject.rule} digest={@digest} />
         </div>
 
-        <section
-          :if={@report.rules != []}
-          id="overview-rules"
-          class="overview-card"
-          aria-labelledby="overview-rules-title"
-        >
-          <header class="overview-card-head">
-            <h2 id="overview-rules-title" class="overview-card-title">
-              <.icon name="hero-trophy" class="size-4" />
-              {gettext("Busiest rules · last %{count} days", count: @period)}
-            </h2>
-            <.link navigate={~p"/rules"} class="text-xs text-muted hover:text-primary hover:underline">
-              {gettext("All rules")}
-            </.link>
-          </header>
+        <div :if={@activity} data-area="chart" class="hidden min-w-0 md:flex">
+          <.fires_panel
+            activity={@activity}
+            metric={@metric}
+            series={@series}
+            period={@period}
+          />
+        </div>
 
-          <div class="-mx-4 overflow-x-auto sm:-mx-5">
-            <table class="w-full min-w-[40rem] text-sm">
-              <thead class="text-left text-xs tracking-wide text-muted uppercase">
-                <tr class="border-b border-base-300">
-                  <th class="px-4 py-2 font-medium sm:px-5">{gettext("Rule")}</th>
-                  <th class="px-2 py-2 text-right font-medium">{gettext("Fired")}</th>
-                  <th class="px-2 py-2 text-right font-medium">{gettext("Success")}</th>
-                  <th class="px-2 py-2 text-right font-medium">{gettext("Players")}</th>
-                  <th class="px-2 py-2 font-medium">{gettext("State")}</th>
-                  <th class="px-4 py-2 text-right font-medium sm:px-5">{gettext("Last fired")}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-base-300">
-                <tr :for={rule <- @report.rules} class="transition-colors hover:bg-base-200/50">
-                  <td class="px-4 py-2.5 sm:px-5">
-                    <.link navigate={~p"/rules/#{rule.id}"} class="flex items-center gap-2.5">
-                      <span class="flex size-8 shrink-0 items-center justify-center rounded-field bg-primary/10 text-primary">
-                        <.icon name={Icons.trigger(rule.trigger)} class="size-4" />
-                      </span>
-                      <span class="min-w-0">
-                        <span class="block truncate font-medium hover:underline">{rule.name}</span>
-                        <span class="block truncate text-xs text-muted">
-                          {Labels.trigger(rule.trigger)}
-                        </span>
-                      </span>
-                    </.link>
-                  </td>
-                  <td class="px-2 py-2.5 text-right font-mono tabular-nums">
-                    {format_number(rule.fired)}
-                  </td>
-                  <td class={[
-                    "px-2 py-2.5 text-right font-mono tabular-nums",
-                    success_tone(rule)
-                  ]}>
-                    {rule_success(rule)}
-                  </td>
-                  <td class="px-2 py-2.5 text-right font-mono tabular-nums">
-                    {format_number(rule.players)}
-                  </td>
-                  <td class="px-2 py-2.5"><.rule_state rule={rule} /></td>
-                  <td class="px-4 py-2.5 text-right text-xs whitespace-nowrap text-muted sm:px-5">
-                    <.local_time id={"overview-rule-#{rule.id}-at"} at={rule.last_at} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+        <div :if={@attention} data-area="needs" class="flex min-w-0">
+          <.briefing_panel
+            id="briefing-attention"
+            title={gettext("Needs you")}
+            aria-label={gettext("Needs you")}
+            class="flex-1"
+          >
+            <:action>
+              <.panel_link id="briefing-open-inbox" navigate={~p"/inbox"}>
+                {gettext("Open the inbox")}
+              </.panel_link>
+            </:action>
 
-      <div :if={@servers != []} class="mt-4 grid gap-4 xl:grid-cols-3">
-        <section
-          class={["overview-card", if(@recent == [], do: "xl:col-span-3", else: "xl:col-span-2")]}
-          aria-labelledby="overview-servers-title"
-        >
-          <header class="overview-card-head">
-            <h2 id="overview-servers-title" class="overview-card-title">
-              <.icon name="hero-server-stack" class="size-4" />{gettext("Servers")}
-            </h2>
-            <span class="text-xs text-muted">
-              {stream_hint(@stream_status, @servers)}
-            </span>
-          </header>
-
-          <div class="grid gap-3 sm:grid-cols-2">
-            <.link
-              :for={server <- @servers}
-              navigate={~p"/servers/#{server}"}
-              class="group flex items-center gap-3 rounded-box border border-base-300 p-2.5 transition-colors hover:border-primary/40 hover:bg-base-200/40"
-            >
-              <img
-                src={server_art(server)}
-                alt=""
-                class="size-12 shrink-0 rounded-field object-cover"
-                loading="lazy"
+            <div :if={@needs_you != []} class="flex flex-col gap-0.5 md:gap-1 xl:-mx-0.5 xl:gap-1.5">
+              <.attention_row
+                :for={{item, index} <- Enum.with_index(@needs_you)}
+                item={item}
+                extra={%{last_events: @last_events, quotes: @quotes}}
+                class={index >= 3 && "max-md:hidden xl:hidden"}
               />
-              <span class="min-w-0 flex-1">
-                <span class="block truncate font-medium">{server.name}</span>
-                <span class="block truncate text-xs text-muted">
-                  {Labels.game(server.game)} · {rule_count(@runner_info[server.id])}
-                </span>
-              </span>
-              <.stream_badge status={@stream_status[server.id]} enabled={server.enabled} />
-            </.link>
-          </div>
-        </section>
+            </div>
 
-        <section :if={@recent != []} class="overview-card" aria-labelledby="overview-recent-title">
-          <header class="overview-card-head">
-            <h2 id="overview-recent-title" class="overview-card-title">
-              <.icon name="hero-clock" class="size-4" />{gettext("Latest rule activity")}
-            </h2>
-            <.link
-              navigate={~p"/executions"}
-              class="text-xs text-muted hover:text-primary hover:underline"
-            >
-              {gettext("See all")}
-            </.link>
-          </header>
+            <.needs_you_empty :if={@needs_you == []} feed_path={feed_path(@servers)} />
+          </.briefing_panel>
+        </div>
 
-          <ul class="-my-1 divide-y divide-base-300">
-            <li :for={execution <- @recent} class="flex items-start gap-2.5 py-2.5">
-              <.status_dot
-                tone={execution_tone(execution.status)}
-                label={Labels.execution_status(execution.status)}
-                class="mt-1.5"
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium leading-tight">{execution.rule.name}</p>
-                <p class="truncate text-xs text-muted">
-                  {execution.player_name || gettext("server wide")} · {execution.server.name}
-                </p>
-              </div>
-              <.local_time
-                id={"recent-#{execution.id}-at"}
-                at={execution.executed_at}
-                class="shrink-0 text-xs text-muted"
-              />
-            </li>
-          </ul>
-        </section>
+        <div :if={@cards != []} data-area="servers" class="hidden min-w-0 md:flex">
+          <.briefing_panel
+            id="briefing-servers"
+            title={gettext("Servers now")}
+            aria-label={gettext("Servers now")}
+            class="flex-1"
+          >
+            <:action>
+              <.panel_link id="briefing-all-servers" navigate={~p"/servers"}>
+                {gettext("See them all")}
+              </.panel_link>
+            </:action>
+
+            <div class="grid flex-1 grid-cols-3 gap-3">
+              <.server_card :for={card <- Enum.take(@cards, 3)} card={card} />
+            </div>
+          </.briefing_panel>
+        </div>
       </div>
     </Layouts.app>
     """
   end
 
-  # ── Onboarding ─────────────────────────────────────────────────────────────
+  # ── Fires ──────────────────────────────────────────────────────────────────
 
-  attr :steps, :list, required: true
+  attr :activity, :map, required: true
+  attr :metric, :string, required: true
+  attr :series, :string, required: true
+  attr :period, :integer, required: true
 
-  # A vertical stepper. Every step is visible so the road ahead is clear, but
-  # only the ones whose prerequisites exist carry anything to press; a locked
-  # step says what it is waiting for instead.
-  defp onboarding(assigns) do
-    done = Enum.count(assigns.steps, &(&1.state == :done))
+  defp fires_panel(assigns) do
+    totals = assigns.activity.totals
+    previous = assigns.activity.previous
 
     assigns =
       assign(assigns,
-        done: done,
-        total: length(assigns.steps),
-        focus: Onboarding.focus(assigns.steps)
+        totals: totals,
+        changes: %{
+          fired: change(totals.fired, previous.fired),
+          players: change(totals.players, previous.players),
+          failed: change(totals.failed, previous.failed)
+        }
       )
 
     ~H"""
     <section
-      id="onboarding"
-      class="onboarding mb-4"
-      data-collapsed="false"
-      data-keep-attrs="data-collapsed"
-      x-data
-      x-init="try { if (localStorage.getItem('onboarding-collapsed') === '1') $el.dataset.collapsed = 'true' } catch (_e) {}"
-      aria-labelledby="onboarding-title"
+      id="overview-activity"
+      aria-label={gettext("Rule fires")}
+      class="flex min-w-0 flex-1 flex-col gap-2.5 rounded-[1.75rem] bg-base-100 px-[1.375rem] py-5 shadow-[var(--shadow-card)] xl:min-h-[25rem] xl:gap-3.5 xl:px-[1.625rem] xl:py-[1.125rem]"
     >
-      <div class="onboarding-hero">
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium tracking-wide text-primary uppercase">
-            {gettext("Getting started")}
-          </p>
-          <h2 id="onboarding-title" class="mt-1 text-xl font-semibold">
-            {hero_title(@focus, @done)}
-          </h2>
-          <p class="mt-1 max-w-2xl text-sm text-subtle">
-            {gettext(
-              "A rule needs a server to run on, and earns trust in simulation before it acts. The steps unlock in that order."
-            )}
-          </p>
-
-          <div class="mt-3 flex items-center gap-3">
-            <div class="h-2 w-full max-w-xs overflow-hidden rounded-pill bg-base-300">
-              <div
-                class="h-full rounded-pill bg-primary transition-all"
-                style={"width: #{round(@done * 100 / max(@total, 1))}%"}
-              >
-              </div>
-            </div>
-            <span class="text-xs text-muted tabular-nums">{@done}/{@total}</span>
-          </div>
+      <header class="flex flex-wrap items-center gap-2">
+        <h2 class="flex-1 font-display text-[1.25rem] font-semibold whitespace-nowrap xl:text-[1.375rem]">
+          {gettext("Rule fires")}
+        </h2>
+        <div id="chart-series" role="group" aria-label={gettext("Which fires")} class="flex gap-2">
+          <button
+            :for={
+              {key, label} <- [
+                {"all", gettext("All")},
+                {"live", gettext("Live")},
+                {"simulated", gettext("Simulation")}
+              ]
+            }
+            id={"chart-series-#{key}"}
+            type="button"
+            phx-click="chart_series"
+            phx-value-series={key}
+            aria-pressed={to_string(@series == key)}
+            class={[
+              "h-9 cursor-pointer rounded-full border px-3.5 text-[0.8125rem] transition-colors",
+              if(@series == key,
+                do:
+                  "border-base-content bg-base-content font-semibold text-base-100 dark:border-primary/45 dark:bg-primary/10 dark:text-primary",
+                else: "border-base-300 bg-white hover:border-base-content/25 dark:bg-secondary"
+              )
+            ]}
+          >
+            {label}
+          </button>
         </div>
 
-        <button
-          type="button"
-          class="onboarding-toggle"
-          x-on:click="const c = $root.dataset.collapsed !== 'true'; $root.dataset.collapsed = c; try { localStorage.setItem('onboarding-collapsed', c ? '1' : '0') } catch (_e) {}"
-        >
-          <span class="onboarding-when-open">{gettext("Hide steps")}</span>
-          <span class="onboarding-when-collapsed">{gettext("Show steps")}</span>
-          <.icon name="hero-chevron-up" class="onboarding-chevron size-4" />
-        </button>
+        <details id="overview-period" class="briefing-period relative">
+          <summary
+            aria-label={gettext("Period")}
+            class="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border border-base-300 bg-white px-3.5 text-[0.8125rem] transition-colors hover:border-base-content/25 dark:bg-secondary"
+          >
+            <.icon name="hero-calendar" class="size-3.5" />
+            {gettext("%{count} days", count: @period)}
+          </summary>
+          <nav class="absolute right-0 z-20 mt-2 flex min-w-32 flex-col rounded-2xl border border-base-300 bg-base-100 p-1.5 shadow-[var(--shadow-card-large)]">
+            <.link
+              :for={days <- Reports.periods()}
+              id={"overview-period-#{days}"}
+              patch={~p"/?period=#{days}"}
+              aria-current={days == @period && "true"}
+              class={[
+                "rounded-xl px-3 py-2 text-[0.8125rem] transition-colors hover:bg-secondary",
+                days == @period && "font-semibold text-primary"
+              ]}
+            >
+              {gettext("%{count} days", count: days)}
+            </.link>
+          </nav>
+        </details>
+      </header>
+
+      <div class="hidden grid-cols-4 gap-2.5 xl:grid">
+        <.metric_tile
+          id="chart-metric-fired"
+          metric="fired"
+          selected={@metric}
+          label={gettext("Fires")}
+          value={format_number(@totals.fired)}
+          change={@changes.fired}
+        />
+        <.metric_tile
+          id="chart-metric-players"
+          metric="players"
+          selected={@metric}
+          label={gettext("Reached")}
+          value={format_number(@totals.players)}
+          change={@changes.players}
+        />
+        <.metric_tile
+          id="chart-metric-failed"
+          metric="failed"
+          selected={@metric}
+          label={gettext("Failures")}
+          value={format_number(@totals.failed)}
+          change={@changes.failed}
+          lower_is_better
+        />
+        <.metric_tile
+          id="chart-metric-duration"
+          metric="duration"
+          selected={@metric}
+          label={gettext("Average time")}
+          value={duration(@totals.duration_ms)}
+        />
       </div>
 
-      <ol class="onboarding-steps">
-        <li
-          :for={{step, index} <- Enum.with_index(@steps, 1)}
-          id={"onboarding-step-#{step.id}"}
-          class="onboarding-step"
-          data-state={step.state}
-        >
-          <span class="onboarding-marker" aria-hidden="true">
-            <%= case step.state do %>
-              <% :done -> %>
-                <.icon name="hero-check" class="size-4" />
-              <% :locked -> %>
-                <.icon name="hero-lock-closed" class="size-3.5" />
-              <% :waiting -> %>
-                <span class="onboarding-pulse"></span>
-              <% :blocked -> %>
-                <.icon name="hero-exclamation-triangle" class="size-4" />
-              <% _numbered -> %>
-                {index}
-            <% end %>
-          </span>
+      <p class="flex flex-wrap items-baseline gap-x-[1.125rem] gap-y-1 text-[0.8125rem] text-subtle xl:hidden">
+        <span>
+          <strong class="font-display text-lg font-semibold text-base-content">
+            {format_number(@totals.fired)}
+          </strong>
+          {ngettext("fire", "fires", @totals.fired)}
+          <.change_note change={@changes.fired} />
+        </span>
+        <span>
+          <strong class="font-display text-lg font-semibold text-base-content">
+            {format_number(@totals.players)}
+          </strong>
+          {ngettext("player", "players", @totals.players)}
+        </span>
+        <span>
+          <strong class="font-display text-lg font-semibold text-base-content">
+            {format_number(@totals.failed)}
+          </strong>
+          {ngettext("failure", "failures", @totals.failed)}
+          <.change_note change={@changes.failed} lower_is_better />
+        </span>
+        <span>
+          <strong class="font-display text-lg font-semibold text-base-content">
+            {duration(@totals.duration_ms)}
+          </strong>
+          {gettext("on average")}
+        </span>
+      </p>
 
-          <div class="min-w-0 flex-1 pb-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <p class="font-medium">{step_title(step.id)}</p>
-              <span class="onboarding-state">{state_label(step)}</span>
-            </div>
-
-            <p :if={step.state != :done} class="mt-0.5 text-sm text-subtle">
-              {step_hint(step)}
-            </p>
-
-            <p :if={step.state == :locked} class="mt-1 flex items-center gap-1.5 text-xs text-muted">
-              <.icon name="hero-lock-closed" class="size-3.5" />
-              {gettext("Unlocks after: %{step}", step: step_title(step.requires))}
-            </p>
-
-            <p
-              :if={step.state == :blocked}
-              class="mt-2 rounded-field bg-error/10 px-3 py-2 font-mono text-xs break-words text-error"
-            >
-              {stream_problem(step.context.error)}
-            </p>
-
-            <div
-              :if={step.state in [:current, :waiting, :blocked, :available]}
-              class="mt-3 flex flex-wrap items-center gap-2"
-            >
-              <.step_actions step={step} primary={step.state in [:current, :blocked]} />
-            </div>
-          </div>
-        </li>
-      </ol>
+      <.fires_chart
+        :if={@totals.fired > 0}
+        id="overview-chart"
+        points={chart_points(@activity.daily, @metric, @series)}
+        tone={chart_tone(@metric, @series)}
+        label={chart_label(@metric, @series, @period)}
+      />
+      <.quiet_period :if={@totals.fired == 0} period={@period} />
     </section>
     """
   end
 
-  attr :step, :map, required: true
-  attr :primary, :boolean, default: false
-
-  defp step_actions(%{step: %{id: :server}} = assigns) do
-    ~H"""
-    <.button
-      link_type="live_redirect"
-      to={~p"/servers/new?from=onboarding"}
-      size="sm"
-      color={if @primary, do: "primary", else: "gray"}
-      variant={if @primary, do: "solid", else: "outline"}
-      icon="hero-plus"
-      label={gettext("Connect a server")}
-    />
-    <span class="text-xs text-muted">
-      {gettext("You will need its address and an API key from CRCON.")}
-    </span>
-    """
-  end
-
-  defp step_actions(%{step: %{id: :stream}} = assigns) do
-    ~H"""
-    <.button
-      :if={@step.context[:server]}
-      link_type="live_redirect"
-      to={
-        if @step.state == :blocked,
-          do: ~p"/servers/#{@step.context.server}/edit",
-          else: ~p"/servers/#{@step.context.server}"
-      }
-      size="sm"
-      color={if @primary, do: "primary", else: "gray"}
-      variant={if @primary, do: "solid", else: "outline"}
-      icon={if @step.state == :blocked, do: "hero-wrench-screwdriver", else: "hero-signal"}
-      label={
-        if @step.state == :blocked,
-          do: gettext("Review the server"),
-          else: gettext("Open %{name}", name: @step.context.server.name)
-      }
-    />
-    """
-  end
-
-  defp step_actions(%{step: %{id: :modules}} = assigns) do
-    ~H"""
-    <.button
-      :if={@step.context[:server]}
-      link_type="live_redirect"
-      to={~p"/servers/#{@step.context.server}/marketplace"}
-      size="sm"
-      color={if @primary, do: "primary", else: "gray"}
-      variant={if @primary, do: "solid", else: "outline"}
-      icon="hero-squares-plus"
-      label={gettext("Open the marketplace")}
-    />
-    <span class="text-xs text-muted">
-      {gettext("Rules, tickets, achievements, leaderboards: install only what you need.")}
-    </span>
-    """
-  end
-
-  # Rules are a module too: without it, the recipes would open a page that
-  # is not installed, so the step points at the marketplace instead.
-  defp step_actions(
-         %{step: %{id: :rule, context: %{rules_installed?: false, server: server}}} = assigns
-       )
-       when not is_nil(server) do
-    ~H"""
-    <.button
-      link_type="live_redirect"
-      to={~p"/servers/#{@step.context.server}/marketplace"}
-      size="sm"
-      color={if @primary, do: "primary", else: "gray"}
-      variant={if @primary, do: "solid", else: "outline"}
-      icon="hero-bolt"
-      label={gettext("Install Conditional rules")}
-    />
-    """
-  end
-
-  defp step_actions(%{step: %{id: :rule}} = assigns) do
-    assigns =
-      assign(assigns, :server_id, assigns.step.context.server && assigns.step.context.server.id)
-
-    ~H"""
-    <.link
-      :for={recipe <- Enum.take(Recipes.all(), 3)}
-      navigate={new_rule_path(recipe: recipe.id, server_id: @server_id)}
-      class="onboarding-recipe"
-    >
-      <.recipe_art id={recipe.id} class="size-6 text-primary" />{Labels.recipe_name(recipe.id)}
-    </.link>
-    <.link navigate={new_rule_path(server_id: @server_id)} class="onboarding-recipe">
-      <.icon name="hero-document-plus" class="size-4 text-muted" />{gettext("Blank rule")}
-    </.link>
-    <p class="basis-full text-xs text-muted">
-      {gettext("Recipes start in simulation: they record what they would do, and touch nothing.")}
-    </p>
-    """
-  end
-
-  defp step_actions(%{step: %{id: :simulation}} = assigns) do
-    ~H"""
-    <%= if rule = @step.context[:rule] do %>
-      <.button
-        link_type="live_redirect"
-        to={~p"/rules/#{rule.id}/edit"}
-        size="sm"
-        color="gray"
-        variant="outline"
-        icon="hero-arrow-path"
-        label={gettext("Replay it on recent events")}
-      />
-      <.link
-        navigate={~p"/rules/#{rule.id}"}
-        class="text-xs text-muted hover:text-primary hover:underline"
-      >
-        {gettext("Open %{name}", name: rule.name)}
-      </.link>
-    <% end %>
-    """
-  end
-
-  defp step_actions(%{step: %{id: :live}} = assigns) do
-    ~H"""
-    <.button
-      link_type="live_redirect"
-      to={if @step.context[:rule], do: ~p"/rules/#{@step.context.rule.id}", else: ~p"/rules"}
-      size="sm"
-      color={if @primary, do: "primary", else: "gray"}
-      variant={if @primary, do: "solid", else: "outline"}
-      icon="hero-play"
-      label={
-        if @step.context[:rule],
-          do: gettext("Review %{name}", name: @step.context.rule.name),
-          else: gettext("Open your rules")
-      }
-    />
-    """
-  end
-
-  defp step_actions(%{step: %{id: :two_factor}} = assigns) do
-    ~H"""
-    <.button
-      link_type="live_redirect"
-      to={~p"/account"}
-      size="sm"
-      color={if @primary, do: "primary", else: "gray"}
-      variant={if @primary, do: "solid", else: "outline"}
-      icon="hero-shield-check"
-      label={gettext("Set up two factor")}
-    />
-    """
-  end
-
-  # The builder, pointed at the server the rule is for when there is one. A
-  # role that cannot see servers gets the builder's own default instead.
-  defp new_rule_path(params) do
-    ~p"/rules/new?#{Enum.reject(params, fn {_key, value} -> is_nil(value) end)}"
-  end
-
-  defp stream_problem(:stopped),
-    do:
-      gettext(
-        "The engine for this server stopped. It starts again on its own within a minute; if it does not, save the server again."
-      )
-
-  defp stream_problem(reason), do: reason
-
-  defp hero_title(nil, _done), do: gettext("Almost there")
-  defp hero_title(_focus, 0), do: gettext("Welcome! Start by connecting your server")
-  defp hero_title(%{id: :stream, state: :blocked}, _done), do: gettext("The server needs a look")
-  defp hero_title(%{id: :stream}, _done), do: gettext("Waiting for the game's events")
-  defp hero_title(%{id: :modules}, _done), do: gettext("Pick what your server needs")
-  defp hero_title(%{id: :rule}, _done), do: gettext("Now, your first rule")
-  defp hero_title(%{id: :simulation}, _done), do: gettext("Your rule is watching in simulation")
-  defp hero_title(%{id: :live}, _done), do: gettext("Ready to let it act")
-  defp hero_title(_focus, _done), do: gettext("Keep going")
-
-  defp state_label(%{state: :done}), do: gettext("Done")
-  defp state_label(%{state: :waiting}), do: gettext("Waiting")
-  defp state_label(%{state: :blocked}), do: gettext("Needs attention")
-  defp state_label(%{state: :locked}), do: gettext("Locked")
-  defp state_label(%{id: :two_factor}), do: gettext("Recommended")
-  defp state_label(%{state: :current}), do: gettext("Next")
-  defp state_label(_step), do: gettext("Available")
-
-  defp step_title(:server), do: gettext("Connect a CRCON server")
-  defp step_title(:stream), do: gettext("Receive the game's events")
-  defp step_title(:modules), do: gettext("Install modules from the marketplace")
-  defp step_title(:rule), do: gettext("Create your first rule")
-  defp step_title(:simulation), do: gettext("See what it would have done")
-  defp step_title(:live), do: gettext("Let it act for real")
-  defp step_title(:two_factor), do: gettext("Protect your account")
-
-  defp step_hint(%{id: :server}),
-    do:
-      gettext(
-        "The connection is tested before saving, and the key is stored encrypted. Every other step builds on this one."
-      )
-
-  defp step_hint(%{id: :stream, state: :blocked}),
-    do: gettext("The live log stream could not connect. This is what CRCON answered:")
-
-  defp step_hint(%{id: :stream, state: :waiting, context: %{server: server}})
-       when not is_nil(server),
-       do:
-         gettext(
-           "Connecting to the live log stream of %{name}. Kills, chat and connections reach the engine once it is up - you can already create a rule meanwhile.",
-           name: server.name
-         )
-
-  defp step_hint(%{id: :stream}),
-    do:
-      gettext("Once the live log stream connects, kills, chat and connections reach the engine.")
-
-  defp step_hint(%{id: :modules}),
-    do:
-      gettext(
-        "A new server starts with nothing installed. Each module adds its pages and its work; removing one later keeps its data."
-      )
-
-  defp step_hint(%{id: :rule, context: %{rules_installed?: false}}),
-    do:
-      gettext(
-        "Rules are a module as well: install Conditional rules from the marketplace to write the first one."
-      )
-
-  defp step_hint(%{id: :rule}),
-    do:
-      gettext(
-        "When something happens, if it matches, do this. Pick a recipe to start with everything filled in for your server."
-      )
-
-  defp step_hint(%{id: :simulation, state: :waiting, context: %{rule: rule}})
-       when not is_nil(rule),
-       do:
-         gettext(
-           "\"%{name}\" records what it would do without touching the game. Its first result shows up here as soon as it matches someone - or replay it on recent events right now.",
-           name: rule.name
-         )
-
-  defp step_hint(%{id: :simulation}),
-    do:
-      gettext(
-        "A rule in simulation records what it would have done, so you can read it before it acts."
-      )
-
-  defp step_hint(%{id: :live}),
-    do:
-      gettext(
-        "Happy with what it recorded? Open the rule, turn simulation off, and it starts acting."
-      )
-
-  defp step_hint(%{id: :two_factor}),
-    do: gettext("This tool can kick and ban. A second factor keeps that power with you.")
-
-  # ── KPI tiles ──────────────────────────────────────────────────────────────
-
-  attr :icon, :string, required: true
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :change, :integer, default: nil
-  attr :change_unit, :string, default: "%"
-  attr :lower_is_better, :boolean, default: false
-  attr :hint, :string, default: nil
-  attr :to, :string, default: nil
-
-  defp kpi(assigns) do
-    ~H"""
-    <div class="overview-card flex flex-col gap-3">
-      <p class="overview-card-title border-b border-base-300 pb-3">
-        <.icon name={@icon} class="size-4" />{@label}
-      </p>
-      <div class="flex items-end justify-between gap-2">
-        <p class="text-3xl font-semibold tracking-tight tabular-nums">{@value}</p>
-        <.link
-          :if={@to}
-          navigate={@to}
-          class="flex size-8 items-center justify-center rounded-field border border-base-300 text-muted transition-colors hover:border-primary/40 hover:text-primary"
-          aria-label={gettext("Open %{name}", name: @label)}
-        >
-          <.icon name="hero-arrow-up-right" class="size-4" />
-        </.link>
-      </div>
-      <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
-        <span
-          :if={@change}
-          class={[
-            "rounded-pill px-2 py-0.5 font-medium",
-            change_tone(@change, @lower_is_better)
-          ]}
-        >
-          {change_label(@change, @change_unit)}
-        </span>
-        <span :if={is_nil(@change)} class="rounded-pill bg-base-200 px-2 py-0.5">
-          {gettext("no earlier data")}
-        </span>
-        <span class="truncate">{@hint}</span>
-      </p>
-    </div>
-    """
-  end
-
-  defp change_tone(0, _lower_is_better), do: "bg-base-200 text-subtle"
-
-  defp change_tone(change, lower_is_better) do
-    if change > 0 != lower_is_better,
-      do: "bg-primary/10 text-primary",
-      else: "bg-error/10 text-error"
-  end
-
-  defp change_label(change, unit) when change > 0,
-    do: gettext("%{change} vs before", change: "+#{change}#{unit}")
-
-  defp change_label(change, unit), do: gettext("%{change} vs before", change: "#{change}#{unit}")
-
-  defp points(nil, _previous), do: nil
-  defp points(_current, nil), do: nil
-  defp points(current, previous), do: current - previous
-
-  # ── Chart ──────────────────────────────────────────────────────────────────
-
-  @chart_width 640
-  @chart_height 220
-  @chart_pad_left 36
-  @chart_pad_bottom 26
-  @chart_pad_top 10
-
-  attr :daily, :list, required: true
-
-  # Drawn on the server as a plain SVG: two smoothed lines over a light grid,
-  # with the day under the cursor readable from each point's <title>.
-  defp activity_chart(assigns) do
-    max = assigns.daily |> Enum.map(& &1.fired) |> Enum.max(fn -> 0 end) |> nice_max()
-
-    assigns =
-      assign(assigns,
-        max: max,
-        width: @chart_width,
-        height: @chart_height,
-        left: @chart_pad_left,
-        bottom: @chart_height - @chart_pad_bottom,
-        ticks: Enum.map(0..3, &round(max * &1 / 3)),
-        fired: points_for(assigns.daily, :fired, max),
-        failed: points_for(assigns.daily, :failed, max),
-        labels: x_labels(assigns.daily)
-      )
-
-    ~H"""
-    <svg
-      id="overview-chart"
-      viewBox={"0 0 #{@width} #{@height}"}
-      class="overview-chart"
-      role="img"
-      aria-label={gettext("Rules fired per day")}
-    >
-      <g :for={tick <- @ticks}>
-        <line
-          x1={@left}
-          x2={@width}
-          y1={y_for(tick, @max)}
-          y2={y_for(tick, @max)}
-          class="overview-chart-grid"
-        />
-        <text x={@left - 8} y={y_for(tick, @max) + 4} text-anchor="end" class="overview-chart-axis">
-          {format_number(tick)}
-        </text>
-      </g>
-
-      <path d={area_path(@fired, @bottom)} class="overview-chart-area" />
-      <path d={smooth_path(@fired)} class="overview-chart-line" />
-      <path d={smooth_path(@failed)} class="overview-chart-line overview-chart-line-failed" />
-
-      <circle :for={{x, y, day} <- @fired} cx={x} cy={y} r="7" class="overview-chart-hit">
-        <title>
-          {Calendar.strftime(day.date, "%d/%m")} · {gettext("%{fired} fired, %{failed} failed",
-            fired: day.fired,
-            failed: day.failed
-          )}
-        </title>
-      </circle>
-
-      <text
-        :for={{x, label} <- @labels}
-        x={x}
-        y={@height - 6}
-        text-anchor="middle"
-        class="overview-chart-axis"
-      >
-        {label}
-      </text>
-    </svg>
-    """
-  end
-
-  defp nice_max(0), do: 4
-
-  defp nice_max(value) do
-    magnitude = :math.pow(10, floor(:math.log10(value)))
-
-    step =
-      Enum.find([1, 2, 2.5, 5, 10], fn factor -> factor * magnitude * 3 >= value end) * magnitude
-
-    max(round(step * 3), 3)
-  end
-
-  defp x_for(index, count) do
-    span = @chart_width - @chart_pad_left - 8
-    @chart_pad_left + 4 + span * index / max(count - 1, 1)
-  end
-
-  defp y_for(value, max) do
-    span = @chart_height - @chart_pad_bottom - @chart_pad_top
-    Float.round(@chart_height - @chart_pad_bottom - span * value / max, 1)
-  end
-
-  defp points_for(daily, key, max) do
-    count = length(daily)
-
-    daily
-    |> Enum.with_index()
-    |> Enum.map(fn {day, index} ->
-      {Float.round(x_for(index, count) * 1.0, 1), y_for(Map.fetch!(day, key), max), day}
+  defp chart_points(daily, metric, series) do
+    Enum.map(daily, fn day ->
+      {value, tip, extra} = point(day, metric, series)
+      %{date: day.date, value: value, tip: tip, extra: extra}
     end)
   end
 
-  # Catmull-Rom through the points, as cubic Béziers.
-  defp smooth_path([]), do: ""
+  defp point(day, "players", _series),
+    do: {day.players, ngettext("1 player", "%{count} players", day.players), nil}
 
-  defp smooth_path([{x, y, _day} | _rest] = points) do
-    coords = Enum.map(points, fn {px, py, _day} -> {px, py} end)
-    padded = [hd(coords)] ++ coords ++ [List.last(coords)]
+  defp point(day, "failed", _series),
+    do: {day.failed, ngettext("1 failure", "%{count} failures", day.failed), nil}
 
-    segments =
-      padded
-      |> Enum.chunk_every(4, 1, :discard)
-      |> Enum.map(fn [{x0, y0}, {x1, y1}, {x2, y2}, {x3, y3}] ->
-        # Control points are held between the two ends of the segment, so a
-        # spike never swings the line below zero or above its own peak.
-        c1 = {x1 + (x2 - x0) / 6, clamp(y1 + (y2 - y0) / 6, y1, y2)}
-        c2 = {x2 - (x3 - x1) / 6, clamp(y2 - (y3 - y1) / 6, y1, y2)}
-        "C#{pt(c1)} #{pt(c2)} #{pt({x2, y2})}"
-      end)
+  defp point(day, "duration", _series),
+    do: {day.duration_ms || 0, duration(day.duration_ms), nil}
 
-    "M#{pt({x, y})} " <> Enum.join(segments, " ")
+  defp point(day, _fired, "simulated"),
+    do: {day.fired, ngettext("1 fire", "%{count} fires", day.fired), nil}
+
+  defp point(day, _fired, _series),
+    do:
+      {day.fired, ngettext("1 fire", "%{count} fires", day.fired),
+       ngettext("1 failure", "%{count} failures", day.failed)}
+
+  defp chart_tone("failed", _series), do: "error"
+  defp chart_tone(_metric, "simulated"), do: "accent"
+  defp chart_tone(_metric, _series), do: "primary"
+
+  defp chart_label("failed", _series, period),
+    do: gettext("Failed runs per day, last %{count} days", count: period)
+
+  defp chart_label("players", _series, period),
+    do: gettext("Players reached per day, last %{count} days", count: period)
+
+  defp chart_label("duration", _series, period),
+    do: gettext("Average run time per day, last %{count} days", count: period)
+
+  defp chart_label(_fired, "simulated", period),
+    do: gettext("Simulated fires per day, last %{count} days", count: period)
+
+  defp chart_label(_fired, "live", period),
+    do: gettext("Live fires per day, last %{count} days", count: period)
+
+  defp chart_label(_fired, _all, period),
+    do: gettext("Rules fired per day, last %{count} days", count: period)
+
+  # ── Tiles ──────────────────────────────────────────────────────────────────
+
+  # The summary row, from what this page already loads: each tile only for a
+  # role that may see what it counts.
+  defp kpi_tiles(assigns, players) do
+    [
+      rules_tile(assigns.rule_summary),
+      players_tile(assigns.servers, assigns.live, players),
+      success_tile(assigns.week),
+      attention_tile(assigns.attention),
+      tickets_tile(assigns.tickets)
+    ]
+    |> Enum.reject(&is_nil/1)
   end
 
-  defp clamp(value, a, b), do: value |> max(min(a, b)) |> min(max(a, b))
+  defp rules_tile(nil), do: nil
 
-  defp area_path([], _bottom), do: ""
-
-  defp area_path(points, bottom) do
-    {first_x, _y, _day} = hd(points)
-    {last_x, _ly, _lday} = List.last(points)
-    smooth_path(points) <> " L#{pt({last_x, bottom})} L#{pt({first_x, bottom})} Z"
+  defp rules_tile(summary) do
+    %{
+      id: "rules",
+      label: gettext("Active rules"),
+      icon: "hero-bolt",
+      value: format_number(summary.enabled),
+      hint: ngettext("%{count} in simulation", "%{count} in simulation", summary.simulating),
+      tone: nil,
+      to: ~p"/rules"
+    }
   end
 
-  defp pt({x, y}), do: "#{Float.round(x * 1.0, 1)},#{Float.round(y * 1.0, 1)}"
+  defp players_tile([], _live, _players), do: nil
 
-  # About six dates under the axis, whatever the period.
-  defp x_labels(daily) do
-    count = length(daily)
-    every = max(div(count, 6), 1)
+  defp players_tile(_servers, live, players) do
+    {value, hint} =
+      case players do
+        {count, servers} ->
+          {format_number(count), ngettext("on 1 server", "on %{count} servers", servers)}
 
-    daily
-    |> Enum.with_index()
-    |> Enum.filter(fn {_day, index} -> rem(index, every) == 0 end)
-    |> Enum.map(fn {day, index} ->
-      {Float.round(x_for(index, count) * 1.0, 1), Calendar.strftime(day.date, "%d/%m")}
+        nil when live == %{} ->
+          {"–", gettext("reading the servers…")}
+
+        nil ->
+          {"–", gettext("no server answering")}
+      end
+
+    %{
+      id: "players",
+      label: gettext("Playing now"),
+      icon: "hero-user",
+      value: value,
+      hint: hint,
+      tone: nil,
+      to: ~p"/players"
+    }
+  end
+
+  defp success_tile(nil), do: nil
+
+  defp success_tile(week) do
+    rate = week.totals.success_rate
+
+    points =
+      rate && week.previous.success_rate && Float.round(rate - week.previous.success_rate, 1)
+
+    {hint, hint_tone} =
+      cond do
+        is_number(points) and points != 0 ->
+          {gettext("%{arrow} %{points} pt this week",
+             arrow: if(points > 0, do: "↑", else: "↓"),
+             points: format_decimal(abs(points))
+           ), if(points > 0, do: "primary", else: "error")}
+
+        is_number(points) ->
+          {gettext("same as last week"), nil}
+
+        true ->
+          {ngettext("1 failed this week", "%{count} failed this week", week.totals.failed), nil}
+      end
+
+    %{
+      id: "success",
+      label: gettext("Success"),
+      icon: "hero-check",
+      value: percent(rate),
+      hint: hint,
+      hint_tone: hint_tone,
+      tone: nil,
+      to: ~p"/executions"
+    }
+  end
+
+  defp attention_tile(nil), do: nil
+
+  defp attention_tile(open) do
+    urgent = Enum.count(open, &(&1.severity == :error))
+
+    %{
+      id: "attention",
+      label: gettext("Attention"),
+      icon: "hero-exclamation-triangle",
+      value: format_number(length(open)),
+      hint: ngettext("1 urgent", "%{count} urgent", urgent),
+      tone: if(open != [], do: "warning"),
+      to: ~p"/inbox"
+    }
+  end
+
+  defp tickets_tile(nil), do: nil
+
+  defp tickets_tile(%{active: active, unassigned: unassigned}) do
+    %{
+      id: "tickets",
+      label: gettext("Tickets"),
+      icon: "hero-chat-bubble-left",
+      value: format_number(active),
+      hint: ngettext("1 unassigned", "%{count} unassigned", unassigned),
+      tone: if(active > 0, do: "engine"),
+      to: ~p"/tickets"
+    }
+  end
+
+  # ── Servers now ────────────────────────────────────────────────────────────
+
+  defp server_cards(assigns) do
+    Enum.map(assigns.servers, fn server ->
+      status = assigns.stream_status[server.id]
+      live = assigns.live[server.id]
+      seeding = Briefing.seeding_threshold(assigns.rules, server.id)
+
+      state =
+        cond do
+          not server.enabled -> :disabled
+          stream_problem?(status) -> :no_stream
+          is_nil(live) -> :loading
+          live == :error -> :unreachable
+          seeding && live.players <= seeding -> :seeding
+          true -> :match
+        end
+
+      %{
+        server: server,
+        status: status,
+        state: state,
+        live: if(is_map(live), do: live),
+        seeding: seeding,
+        last_event: assigns.last_events[server.id]
+      }
     end)
   end
 
-  attr :period, :integer, required: true
+  # The same rule as the attention inbox: an error, or no stream at all on
+  # an enabled server while the engine runs.
+  defp stream_problem?({:error, _reason}), do: true
+  defp stream_problem?(:disconnected), do: Runtime.enabled?()
+  defp stream_problem?(_status), do: false
 
-  defp quiet_period(assigns) do
-    ~H"""
-    <div class="flex flex-col items-center gap-2 py-12 text-center">
-      <span class="flex size-10 items-center justify-center rounded-full bg-base-200 text-muted">
-        <.icon name="hero-moon" class="size-5" />
-      </span>
-      <p class="font-medium">{gettext("No rule fired in the last %{count} days", count: @period)}</p>
-      <p class="max-w-sm text-sm text-muted">
-        {gettext(
-          "Either nothing matched, or no rule is enabled yet. Try a recipe, or replay a rule against recent events from the builder."
-        )}
-      </p>
-    </div>
-    """
+  defp live_of(_live, nil), do: nil
+
+  defp live_of(live, server) do
+    case live[server.id] do
+      %{} = status -> status
+      _missing -> nil
+    end
   end
+
+  defp feed_path([server | _rest]), do: ~p"/servers/#{server}/feed"
+  defp feed_path(_servers), do: nil
+
+  # ── Layout ─────────────────────────────────────────────────────────────────
+
+  # The grid's areas for the phone, the tablet and the desktop, so a block
+  # the viewer may not see leaves no hole: its neighbour takes the row.
+  defp areas(assigns, cards, tiles) do
+    has = %{
+      kpis: tiles != [],
+      chips: cards != [],
+      week: assigns.week != nil,
+      suggest: assigns.activity != nil and assigns.suggestion != nil,
+      chart: assigns.activity != nil,
+      needs: assigns.attention != nil,
+      servers: cards != []
+    }
+
+    # Below the desktop the greeting is the header's (`Layouts.app`'s `greeting`).
+    phone = for(area <- [:chips, :week, :suggest, :needs], has[area], do: [to_string(area)])
+
+    tablet =
+      if(has.kpis, do: [["kpis", "kpis"]], else: []) ++
+        pair(has, :suggest, :needs) ++
+        if(has.chart, do: [["chart", "chart"]], else: []) ++
+        if(has.servers, do: [["servers", "servers"]], else: [])
+
+    desktop =
+      [if(has.kpis, do: ["greet", "kpis"], else: ["greet", "greet"])] ++
+        pair(has, :suggest, :chart) ++ pair(has, :needs, :servers)
+
+    "--areas-sm: #{template(phone)}; --areas-md: #{template(tablet)}; --areas-xl: #{template(desktop)}"
+  end
+
+  defp pair(has, left, right) do
+    case {has[left], has[right]} do
+      {true, true} -> [[to_string(left), to_string(right)]]
+      {true, false} -> [[to_string(left), to_string(left)]]
+      {false, true} -> [[to_string(right), to_string(right)]]
+      {false, false} -> []
+    end
+  end
+
+  defp template(rows), do: Enum.map_join(rows, " ", &~s("#{Enum.join(&1, " ")}"))
 
   # ── Helpers ────────────────────────────────────────────────────────────────
 
-  defp subtitle(nil, _servers), do: gettext("Your servers, and what the rules are doing on them")
+  # The header's greeting on phones and tablets. The server does not know the
+  # viewer's clock, so it reads the time where the servers are (the first
+  # one's time zone); the desktop greeting corrects itself in the browser.
+  defp header_greeting(user, servers) do
+    name = first_name(user)
 
-  defp subtitle(report, servers) do
-    gettext("%{from} – %{to} · %{servers}",
-      from: Calendar.strftime(report.since, "%d/%m/%Y"),
-      to: Calendar.strftime(report.until, "%d/%m/%Y"),
-      servers: ngettext("1 server", "%{count} servers", length(servers))
+    case local_now(servers).hour do
+      hour when hour >= 5 and hour < 12 -> gettext("Good morning, %{name}", name: name)
+      hour when hour >= 12 and hour < 18 -> gettext("Good afternoon, %{name}", name: name)
+      _night -> gettext("Good evening, %{name}", name: name)
+    end
+  end
+
+  defp header_date(servers) do
+    now = local_now(servers)
+
+    gettext("%{weekday}, %{month} %{day}",
+      weekday: Labels.day_of_week(Enum.at(@weekdays, Date.day_of_week(now) - 1)),
+      month: month_name(now.month),
+      day: now.day
     )
   end
 
-  defp format_number(nil), do: "–"
+  defp local_now(servers) do
+    zone =
+      case servers do
+        [%{timezone: zone} | _rest] when is_binary(zone) -> zone
+        _none -> "Etc/UTC"
+      end
 
-  defp format_number(number) when is_integer(number) and number >= 1000 do
-    number
-    |> Integer.to_string()
-    |> String.reverse()
-    |> String.graphemes()
-    |> Enum.chunk_every(3)
-    |> Enum.join(".")
-    |> String.reverse()
+    case DateTime.now(zone) do
+      {:ok, now} -> now
+      _error -> DateTime.utc_now()
+    end
   end
 
-  defp format_number(number), do: to_string(number)
+  defp month_name(1), do: gettext("january")
+  defp month_name(2), do: gettext("february")
+  defp month_name(3), do: gettext("march")
+  defp month_name(4), do: gettext("april")
+  defp month_name(5), do: gettext("may")
+  defp month_name(6), do: gettext("june")
+  defp month_name(7), do: gettext("july")
+  defp month_name(8), do: gettext("august")
+  defp month_name(9), do: gettext("september")
+  defp month_name(10), do: gettext("october")
+  defp month_name(11), do: gettext("november")
+  defp month_name(12), do: gettext("december")
+
+  defp first_name(user) do
+    (Map.get(user, :name) || Map.get(user, :username) || "")
+    |> String.split()
+    |> List.first("")
+  end
 
   defp percent(nil), do: "–"
-  defp percent(value), do: "#{value}%"
+  defp percent(value), do: "#{format_decimal(value)}%"
 
   defp duration(nil), do: "–"
-  defp duration(ms) when ms >= 1000, do: "#{Float.round(ms / 1000, 1)} s"
+  defp duration(ms) when ms >= 1000, do: "#{format_decimal(Float.round(ms / 1000, 1))} s"
   defp duration(ms), do: "#{ms} ms"
 
-  defp share(_count, 0), do: 0
-  defp share(count, total), do: round(count * 100 / total)
-
-  defp rule_success(%{fired: fired, simulated: simulated, failed: failed}) do
-    case fired - simulated do
-      0 -> "–"
-      live -> "#{round((live - failed) * 100 / live)}%"
-    end
-  end
-
-  # Red only when a rule fails often enough to need a look.
-  defp success_tone(%{failed: 0}), do: nil
-
-  defp success_tone(%{fired: fired, simulated: simulated, failed: failed}) do
-    live = fired - simulated
-    if live > 0 and failed * 10 > live, do: "text-error", else: "text-warning"
-  end
-
-  defp bar_tone(0), do: "bg-primary"
-  defp bar_tone(1), do: "bg-primary/60"
-  defp bar_tone(2), do: "bg-info"
-  defp bar_tone(3), do: "bg-warning"
-  defp bar_tone(_index), do: "bg-base-content/25"
-
-  defp trigger_label(trigger) do
-    Labels.trigger(String.to_existing_atom(trigger))
-  rescue
-    _unknown -> trigger
-  end
-
-  # The tone a finished execution reads in, shared with the history page.
-  defp execution_tone(:executed), do: "success"
-  defp execution_tone(:partial), do: "warning"
-  defp execution_tone(:failed), do: "error"
-  defp execution_tone(:simulated), do: "info"
-  defp execution_tone(_status), do: "neutral"
-
-  defp count_status(stream_status, servers, wanted) do
-    Enum.count(servers, &(&1.enabled and stream_status[&1.id] == wanted))
-  end
-
-  defp count_enabled(servers), do: Enum.count(servers, & &1.enabled)
-
-  defp stream_hint(stream_status, servers) do
-    enabled = count_enabled(servers)
-    connected = count_status(stream_status, servers, :connected)
-
-    if connected == enabled do
-      gettext("all enabled servers streaming")
-    else
-      ngettext("1 not connected", "%{count} not connected", enabled - connected)
-    end
-  end
-
-  attr :status, :any, default: nil
-  attr :enabled, :boolean, default: true
-
-  defp stream_badge(assigns) do
-    ~H"""
-    <.tone_badge :if={not @enabled} tone="ghost">{gettext("Disabled")}</.tone_badge>
-    <.tone_badge :if={@enabled} tone={stream_badge_tone(@status)}>
-      <span :if={@status == :connected} class="size-1.5 rounded-full bg-current"></span> {Labels.stream_status(
-        @status
-      )}
-    </.tone_badge>
-    """
-  end
-
-  defp stream_badge_tone(:connected), do: "success"
-  defp stream_badge_tone(:connecting), do: "warning"
-  defp stream_badge_tone({:error, _reason}), do: "error"
-  defp stream_badge_tone(_status), do: "ghost"
-
-  defp rule_count(%{rules: count}),
-    do: ngettext("%{count} active rule", "%{count} active rules", count, count: count)
-
-  defp rule_count(_info), do: gettext("engine offline")
+  defp change(current, previous), do: Reports.change(current, previous)
 end

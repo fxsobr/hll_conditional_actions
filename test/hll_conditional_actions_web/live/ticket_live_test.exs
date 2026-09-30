@@ -75,7 +75,7 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
     view |> form("#reply-form", reply: %{body: "On my way"}) |> render_submit()
     assert has_element?(view, "[data-author=admin]", "On my way")
 
-    view |> form("#close-form", %{"reason" => "duplicate"}) |> render_submit()
+    view |> element("#close-duplicate") |> render_click()
     assert has_element?(view, "#ticket-closed-note", "Duplicate")
     assert HllConditionalActions.Repo.reload!(ticket).close_reason == "duplicate"
   end
@@ -83,11 +83,10 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
   test "settings take several commands", %{conn: conn, server: server} do
     {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
 
+    # The on/off switch sits in the header, tied to the form by its id.
     view
-    |> form("#ticket-settings-form",
-      settings: %{enabled: "true", commands_text: "!admin, !ADM  @help"}
-    )
-    |> render_submit()
+    |> form("#ticket-settings-form", settings: %{commands_text: "!admin, !ADM  @help"})
+    |> render_submit(%{"settings" => %{"enabled" => "true"}})
 
     settings = Tickets.get_settings(server.id)
     assert settings.enabled
@@ -99,8 +98,8 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
 
     html =
       view
-      |> form("#ticket-settings-form", settings: %{enabled: "true", commands_text: " "})
-      |> render_submit()
+      |> form("#ticket-settings-form", settings: %{commands_text: " "})
+      |> render_submit(%{"settings" => %{"enabled" => "true"}})
 
     assert html =~ "add at least one command"
     refute Tickets.get_settings(server.id).enabled
@@ -154,6 +153,9 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       |> render_submit(%{"mode" => "note"})
 
       assert has_element?(view, "[data-author=note]", "banned him last week")
+
+      # The transcript sits with the ticket's other options.
+      view |> element("#ticket-more") |> render_click()
       assert has_element?(view, "#ticket-export")
     end
 
@@ -161,6 +163,7 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       ticket = open_ticket(server)
       {:ok, view, _html} = live(conn, ~p"/tickets/#{ticket.id}")
 
+      view |> element("#ticket-more") |> render_click()
       view |> form("#priority-form") |> render_change(%{"priority" => "high"})
 
       assert HllConditionalActions.Repo.reload!(ticket).priority == :high
@@ -171,6 +174,7 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       ticket = open_ticket(server)
       {:ok, view, _html} = live(conn, ~p"/tickets/#{ticket.id}")
 
+      view |> element("#ticket-more") |> render_click()
       view |> form("#transfer-form") |> render_change(%{"user_id" => to_string(other.id)})
 
       assert HllConditionalActions.Repo.reload!(ticket).assigned_to_id == other.id
@@ -180,39 +184,78 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       conn: conn,
       server: server
     } do
+      enable(server)
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
       assert has_element?(view, "#no-categories")
 
-      view |> element("button", "Add a category") |> render_click()
-      view |> element("button", "Add a category") |> render_click()
+      view |> element("#add-category") |> render_click()
+      view |> element("#add-category") |> render_click()
 
+      # Saturday gets a range of its own.
+      view |> element("#hours-day-6") |> render_click()
+      view |> element("#add-range") |> render_click()
+
+      # The first row folded back when the second opened: its fields are
+      # hidden now, so they ride along as submitted values.
       view
       |> form("#ticket-settings-form",
         settings: %{
-          enabled: "true",
-          commands_text: "!admin",
           default_priority: "low",
-          category_rows: %{
-            "0" => %{name: "TK", priority: "high"},
-            "1" => %{name: "cheat", priority: "urgent"}
-          },
+          categories: %{"1" => %{name: "Tiro amigo", priority: "urgent", color: "teal"}},
           status_word: "Status",
           close_word: "fechar",
-          hours_enabled: "true",
-          hours_start: "20:00",
-          hours_end: "02:00",
-          hours_days: ["", "6", "7"]
+          hours_enabled: "true"
         }
       )
-      |> render_submit()
+      |> render_submit(%{
+        "settings" => %{
+          "categories" => %{"0" => %{"name" => "TK", "priority" => "high", "color" => "red"}}
+        }
+      })
 
       settings = Tickets.get_settings(server.id)
-      assert settings.category_priorities == %{"tk" => "high", "cheat" => "urgent"}
+      assert settings.category_priorities == %{"TK" => "high", "Tiro amigo" => "urgent"}
+      assert settings.category_colors == %{"TK" => "red", "Tiro amigo" => "teal"}
+      assert settings.category_order == ["TK", "Tiro amigo"]
       assert settings.default_priority == "low"
       assert settings.status_word == "status"
       assert settings.hours_enabled
-      assert settings.hours_start == ~T[20:00:00]
-      assert settings.hours_days == [6, 7]
+      assert settings.hours_ranges == %{"6" => [["18:00", "24:00"]]}
+    end
+
+    test "the categories count this month's tickets and reorder by dragging", %{
+      conn: conn,
+      server: server
+    } do
+      settings = enable(server)
+
+      {:ok, settings} =
+        Tickets.save_settings(settings, %{
+          category_priorities: %{"tk" => "high", "vip" => "low"},
+          category_order: ["tk", "vip"]
+        })
+
+      event = %Event{
+        type: :player_chat,
+        action: "CHAT[Allies]",
+        occurred_at: DateTime.utc_now(),
+        player_id: "76561198000000001",
+        player_name: "Sarge",
+        chat_message: "!admin tk bridge"
+      }
+
+      {:opened, _ticket} = Tickets.handle_chat(server, settings, event)
+
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
+
+      view |> element("#category-row-0 button[phx-click=edit_category]") |> render_click()
+      assert has_element?(view, "#category-row-0", "1 this month")
+
+      render_hook(view, "reorder_categories", %{"order" => ["1", "0"]})
+      assert has_element?(view, "#unsaved")
+
+      view |> form("#ticket-settings-form") |> render_submit()
+      assert Tickets.get_settings(server.id).category_order == ["vip", "tk"]
     end
   end
 
@@ -235,10 +278,8 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       assert has_element?(view, "#multi-save-note")
 
       view
-      |> form("#ticket-settings-form",
-        settings: %{enabled: "true", commands_text: "!ticket", max_per_hour: "4"}
-      )
-      |> render_submit()
+      |> form("#ticket-settings-form", settings: %{commands_text: "!ticket", max_per_hour: "4"})
+      |> render_submit(%{"settings" => %{"enabled" => "true"}})
 
       for id <- [server.id, other.id] do
         settings = Tickets.get_settings(id)
@@ -248,7 +289,7 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       end
 
       refute Tickets.get_settings(untouched.id).enabled
-      assert has_element?(view, "#server-picker", "!ticket")
+      assert has_element?(view, "#server-picker", "On")
     end
 
     test "ticking one server loads its settings", %{conn: conn, server: server} do
@@ -277,8 +318,8 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
 
       html =
         view
-        |> form("#ticket-settings-form", settings: %{enabled: "true", commands_text: "!admin"})
-        |> render_submit()
+        |> form("#ticket-settings-form", settings: %{commands_text: "!admin"})
+        |> render_submit(%{"settings" => %{"enabled" => "true"}})
 
       assert html =~ "Pick at least one server."
     end
@@ -325,7 +366,8 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       render_async(view)
 
       assert has_element?(view, "#player-offline-warning")
-      assert has_element?(view, "#player-card", "KICK")
+      assert has_element?(view, "#player-online", "Left the server")
+      assert has_element?(view, "#player-online", "2 penalties")
     end
 
     test "an online player shows as online", %{conn: conn, server: server} do
@@ -343,11 +385,66 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       ticket = open_ticket(server)
       {:ok, view, _html} = live(conn, ~p"/tickets/#{ticket.id}")
 
-      view
-      |> form("#act-form", act: %{action: "punish", reason: "Team killing", target: ""})
-      |> render_submit()
+      # Nobody else is named: the action falls on the player of the ticket.
+      view |> element("#punish-menu button", "Punish") |> render_click()
+      assert has_element?(view, "#act-sheet", "Punish Sarge")
+
+      view |> form("#act-form", act: %{reason: "Team killing"}) |> render_submit()
 
       assert has_element?(view, "[data-author=system]", "PUNISH Sarge: Team killing")
+      refute has_element?(view, "#act-sheet")
+    end
+
+    test "answering tickets without the player permission leaves the player alone", %{
+      conn: conn,
+      server: server
+    } do
+      ticket = open_ticket(server)
+      {:ok, ticket} = Tickets.set_reported(ticket, "76561198000000002", "Cabo")
+
+      role = role_fixture(%{permissions: ["manage_tickets"]})
+      agent = user_fixture(%{role: role})
+      conn = Plug.Conn.put_session(conn, :user_id, agent.id)
+
+      {:ok, view, _html} = live(conn, ~p"/tickets/#{ticket.id}")
+
+      # Answering is still theirs.
+      assert has_element?(view, "#reply-form")
+      assert has_element?(view, "#ticket-actions")
+
+      refute has_element?(view, "#punish-menu")
+      refute has_element?(view, "#cited-actions")
+
+      # Nor by pushing the events by hand.
+      render_hook(view, "act_open", %{"action" => "kick"})
+      refute has_element?(view, "#act-sheet")
+
+      agent = HllConditionalActions.Repo.preload(agent, :role)
+
+      assert {:error, :forbidden} =
+               Tickets.act(ticket, agent, :kick, "Team killing", "76561198000000002")
+
+      refute has_element?(view, "[data-author=system]", "KICK")
+    end
+
+    test "with the player permission the reported player can be punished", %{
+      conn: conn,
+      server: server
+    } do
+      ticket = open_ticket(server)
+      {:ok, ticket} = Tickets.set_reported(ticket, "76561198000000002", "Cabo")
+
+      role = role_fixture(%{permissions: ["manage_tickets", "manage_players"]})
+      agent = user_fixture(%{role: role})
+      conn = Plug.Conn.put_session(conn, :user_id, agent.id)
+
+      {:ok, view, _html} = live(conn, ~p"/tickets/#{ticket.id}")
+      assert has_element?(view, "#punish-menu")
+
+      view |> element("#cited-kick") |> render_click()
+      view |> form("#act-form", act: %{reason: "Team killing"}) |> render_submit()
+
+      assert has_element?(view, "[data-author=system]", "KICK Cabo: Team killing")
     end
 
     test "the inbox searches by player", %{conn: conn, server: server} do
@@ -365,7 +462,7 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       open_ticket(server)
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/metrics")
 
-      assert has_element?(view, "#metrics-kpis", "1")
+      assert has_element?(view, "#metrics-total", "1")
       assert has_element?(view, "#metrics-top-players", "Sarge")
     end
 
@@ -373,16 +470,17 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       conn: conn,
       server: server
     } do
+      enable(server)
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
+
+      view |> element("#add-reply") |> render_click()
 
       view
       |> form("#ticket-settings-form",
         settings: %{
-          enabled: "true",
-          commands_text: "!admin",
           max_per_hour: "3",
           attention_minutes: "10",
-          quick_replies_text: "On my way\nSend a clip"
+          replies: %{"0" => %{title: "Clip", body: "Send a clip on Discord", closes: "true"}}
         }
       )
       |> render_submit()
@@ -390,7 +488,36 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
       settings = Tickets.get_settings(server.id)
       assert settings.max_per_hour == 3
       assert settings.attention_minutes == 10
-      assert settings.quick_replies == ["On my way", "Send a clip"]
+
+      assert settings.replies == [
+               %{"title" => "Clip", "body" => "Send a clip on Discord", "closes" => true}
+             ]
+
+      assert settings.quick_replies == ["Send a clip on Discord"]
+    end
+
+    test "a quick reply that closes counts its use and closes the ticket", %{
+      conn: conn,
+      server: server
+    } do
+      ticket = open_ticket(server)
+
+      {:ok, _} =
+        Tickets.save_settings(Tickets.get_settings(server.id), %{
+          replies: [%{"title" => "Solved", "body" => "Solved, {player_name}!", "closes" => true}]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/tickets/#{ticket.id}")
+      view |> element("#quick-replies button", "Solved") |> render_click()
+      assert has_element?(view, "#reply-form textarea", "Solved, Sarge!")
+
+      view |> form("#reply-form", reply: %{body: "Solved, Sarge!"}) |> render_submit()
+
+      assert HllConditionalActions.Repo.reload!(ticket).status == :closed
+      assert HllConditionalActions.Tickets.Stats.reply_uses(server.id) == %{"Solved" => 1}
+
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
+      assert has_element?(view, "#reply-row-0", "used 1×")
     end
   end
 end

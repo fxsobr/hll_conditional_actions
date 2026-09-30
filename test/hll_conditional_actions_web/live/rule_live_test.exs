@@ -117,19 +117,16 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
       )
       |> render_change()
 
-      html = view |> element("#rule-replay") |> render()
-      assert html =~ "Of the last 3"
-      assert html =~ "2 would take Then"
+      assert has_element?(view, "#rule-replay-fires", "2×")
 
       # Live from then on: the next edit re-judges the same events.
-      html =
-        view
-        |> form("#rule-form",
-          rule: %{conditions: %{"0" => %{field: "kills", operator: "greater_than", value: "30"}}}
-        )
-        |> render_change()
+      view
+      |> form("#rule-form",
+        rule: %{conditions: %{"0" => %{field: "kills", operator: "greater_than", value: "30"}}}
+      )
+      |> render_change()
 
-      assert html =~ "1 would take Then"
+      assert has_element?(view, "#rule-replay-fires", "1×")
     end
 
     test "adding a condition keeps the ones already there", %{conn: conn} do
@@ -298,10 +295,9 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
       assert html =~ "Greeter"
 
       # A row offers two ways to switch a rule off: the switch on the row
-      # itself and the entry in its kebab menu. This is the switch, whose
-      # clickable part is the checkbox the label hides.
+      # itself and the entry in its menu. This is the switch.
       view
-      |> element("input[type=checkbox][phx-click=toggle][phx-value-id='#{rule.id}']")
+      |> element("#rule-switch-#{rule.id}[role=switch]")
       |> render_click()
 
       refute Rules.get_rule!(rule.id).enabled
@@ -313,19 +309,18 @@ defmodule HllConditionalActionsWeb.RuleLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/rules")
 
-      html = view |> form("#rule-filters", %{search: "greet"}) |> render_change()
+      html = view |> form("#rule-search", %{search: "greet"}) |> render_change()
 
       assert html =~ "Greeter"
       refute html =~ "Team kill ban"
     end
 
-    test "filters by game", %{conn: conn} do
+    test "under a server shows the rules of its game", %{conn: conn} do
       _hll = rule_fixture(%{name: "WW2 rule", game: :hll})
       _hllv = rule_fixture(%{name: "Vietnam rule", game: :hllv})
+      vietnam = server_fixture(%{game: :hllv})
 
-      {:ok, view, _html} = live(conn, ~p"/rules")
-
-      html = view |> form("#rule-filters", %{game: "hllv"}) |> render_change()
+      {:ok, _view, html} = live(conn, ~p"/servers/#{vietnam.id}/rules")
 
       assert html =~ "Vietnam rule"
       refute html =~ "WW2 rule"

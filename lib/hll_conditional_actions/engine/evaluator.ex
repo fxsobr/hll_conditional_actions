@@ -13,6 +13,7 @@ defmodule HllConditionalActions.Engine.Evaluator do
   alias HllConditionalActions.Leaderboards
   alias HllConditionalActions.Rules.Catalog
   alias HllConditionalActions.Rules.Condition
+  alias HllConditionalActions.Rules.ConditionGroups
   alias HllConditionalActions.Rules.Rule
 
   @doc """
@@ -32,7 +33,7 @@ defmodule HllConditionalActions.Engine.Evaluator do
   @spec evaluate(Rule.t(), Context.t()) :: boolean()
   def evaluate(%Rule{} = rule, %Context{} = context) do
     results = Enum.map(rule.conditions, &evaluate_condition(&1, context))
-    combine(rule.logical_operator, results)
+    ConditionGroups.combine(rule.logical_operator, rule.conditions, results)
   end
 
   @doc """
@@ -59,7 +60,12 @@ defmodule HllConditionalActions.Engine.Evaluator do
       end)
 
     %{
-      result: combine(rule.logical_operator, Enum.map(conditions, & &1.result)),
+      result:
+        ConditionGroups.combine(
+          rule.logical_operator,
+          rule.conditions,
+          Enum.map(conditions, & &1.result)
+        ),
       conditions: conditions
     }
   end

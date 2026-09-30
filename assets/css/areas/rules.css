@@ -1,0 +1,52 @@
+/* Styles of the rules area of the overhaul. Utilities first; add rules here only for what
+   Tailwind classes cannot express. */
+
+/* The second nesting colour of the boards (teal): a rule's second condition
+   group and the chat-command recipes. Not one of the app's tones, so it is
+   defined here for both schemes. */
+:root {
+  --rules-teal: #0f7a68;
+}
+
+.dark {
+  --rules-teal: #7fd6c2;
+}
+
+.rules-teal-tile {
+  background-color: color-mix(in oklab, var(--rules-teal) 13%, transparent);
+  color: var(--rules-teal);
+}
+
+.rules-teal {
+  color: var(--rules-teal);
+}
+
+/* The expression editor: a transparent textarea over its highlighted copy,
+   so the caret and the selection stay native while the colours show
+   through. Both layers share the exact same box and metrics. */
+.rules-code {
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 0.875rem;
+  line-height: 1.6875rem;
+  tab-size: 4;
+}
+
+.rules-code-input {
+  color: transparent;
+  caret-color: var(--color-primary);
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  field-sizing: content;
+}
+
+.rules-code-input::selection {
+  background: color-mix(in oklab, var(--color-primary) 30%, transparent);
+  color: transparent;
+}
+
+.rules-code-input:focus {
+  outline: none;
+  box-shadow: none;
+}

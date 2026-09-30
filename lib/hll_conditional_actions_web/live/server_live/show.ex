@@ -1,69 +1,98 @@
 defmodule HllConditionalActionsWeb.ServerLive.Show do
   @moduledoc """
-  A server's home: everything about it on one screen, most urgent first.
+  A server's cockpit - *Ao vivo*: what is happening on the server right
+  now, on one screen.
 
-  It is laid out for the question an admin opens it with - *is my server
-  fine, and what is going on?* - and reads top to bottom:
+    1. **The match, live** - the map's picture as the backdrop, the map, the
+       mode and when the match started, the score in the teams' colours with
+       the five sectors under it, time left, both teams' head count against
+       the server's cap, the queue and the VIPs playing.
+    2. **The feed** - the server's log as it happens, with the rule that
+       acted on a line (or the ticket a line opened) as a pill on that line,
+       and the rules' own lines where no log line started them. Chips narrow
+       it to kills, chat, or only where rules acted; the pause freezes it
+       without losing what arrives meanwhile.
+    3. **The match's best and the rules in this match** - the leader of the
+       kills, support and defense, and how many times each rule acted since
+       the match started.
 
-    1. **The match, live** - map, score with the five sectors drawn as a bar,
-       time left, both teams' head count and the stream's health.
-    2. **Who is playing well** - the top three of the match's key categories
-       and the best squad of each type.
-    3. **What the automation did** - rules running, what fired, what needs
-       attention.
-    4. **What already happened** - the last matches and the running season.
+  On a phone what needs the admin comes first, under the hero.
 
-  Every block is a summary that opens its full page (leaderboard, matches,
-  rules, history, attention, seasons): nothing is hidden behind tabs, and
-  nothing is shown twice.
-
-  The CRCON calls - the live snapshot and the match history - run off the
-  LiveView process and refresh on timers, so a slow server shows skeletons,
-  never a frozen page.
+  The feed opens on the last lines of CRCON's log (`get_recent_logs`) with
+  the executions they triggered, so it is never blank; see
+  `HllConditionalActions.LiveFeed`. It shows only when the live feed module
+  is installed on the server and the admin may see it; otherwise the panel
+  lists the rules' latest executions. The CRCON calls run off the LiveView
+  process and refresh on a timer, so a slow server shows skeletons, never a
+  frozen page.
   """
 
   use HllConditionalActionsWeb, :live_view
+
+  import HllConditionalActionsWeb.LiveComponents
 
   on_mount {HllConditionalActionsWeb.UserAuth, {:ensure_permission, :view_servers}}
 
   alias HllConditionalActions.Accounts
   alias HllConditionalActions.Attention
+  alias HllConditionalActions.Crcon
   alias HllConditionalActions.Crcon.LogStream
   alias HllConditionalActions.Engine
   alias HllConditionalActions.Engine.Snapshot
+  alias HllConditionalActions.Features
   alias HllConditionalActions.Leaderboards
-  alias HllConditionalActions.Matches
-  alias HllConditionalActions.Progression
+  alias HllConditionalActions.LiveFeed
+  alias HllConditionalActions.LiveMatch
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Servers
-  alias HllConditionalActionsWeb.MapArt
+  alias HllConditionalActions.Tickets
+  alias HllConditionalActionsWeb.LiveFeedRows
 
   @live_ms :timer.seconds(15)
-  @history_ms :timer.minutes(2)
+  @shown 60
+  @kept 150
+  @seed_lines 80
+  @best_categories [:kills, :support, :defense]
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
     server = Servers.get_server!(id)
+    user = socket.assigns.current_user
 
-    if Accounts.can_access_server?(socket.assigns.current_user, server) do
+    if Accounts.can_access_server?(user, server) do
+      feed? = Accounts.can?(user, :view_live_feed) and Features.installed?(server.id, :live_feed)
+
       if connected?(socket) do
         LogStream.subscribe(server.id)
         Engine.subscribe(server.id)
         :timer.send_interval(@live_ms, :refresh_live)
-        :timer.send_interval(@history_ms, :refresh_history)
       end
 
       {:ok,
        socket
        |> assign(:server, server)
-       |> assign(:page_title, server.name)
+       |> assign(:page_title, gettext("Live"))
        |> assign(:stream_status, LogStream.status(server.id))
        |> assign(:snapshot, nil)
        |> assign(:live_error?, false)
-       |> assign(:matches, nil)
+       |> assign(:match, %{started_at: nil, max_players: nil})
+       |> assign(:log_started_at, nil)
+       |> assign(:feed?, feed?)
+       |> assign(:paused?, false)
+       |> assign(:filter, "all")
+       |> assign(:buffer, LiveFeedRows.new(@kept))
+       |> assign(:seq, 0)
+       |> assign(:seeded?, false)
+       |> assign(:recount?, false)
+       |> assign(:ticket_commands, ticket_commands(user, server))
+       |> assign(:messaging?, false)
+       |> assign(:message_form, to_form(%{"text" => ""}, as: :message))
+       |> assign(:can_message?, Accounts.can?(user, :manage_servers))
+       |> stream_configure(:feed, dom_id: & &1.id)
+       |> stream(:feed, [])
        |> load()
-       |> fetch_live()
-       |> fetch_history()}
+       |> seed_feed()
+       |> fetch_live()}
     else
       {:ok,
        socket
@@ -72,58 +101,378 @@ defmodule HllConditionalActionsWeb.ServerLive.Show do
     end
   end
 
+  # ── Events ─────────────────────────────────────────────────────────────────
+
+  @impl Phoenix.LiveView
+  def handle_event("toggle_feed", _params, socket) do
+    socket = update(socket, :paused?, &(not &1))
+    {:noreply, if(socket.assigns.paused?, do: socket, else: restream(socket))}
+  end
+
+  def handle_event("feed_filter", %{"filter" => filter}, socket) do
+    {:noreply, socket |> assign(:filter, LiveFeedRows.parse_filter(filter)) |> restream()}
+  end
+
+  def handle_event("open_message", _params, socket) do
+    {:noreply, assign(socket, :messaging?, socket.assigns.can_message?)}
+  end
+
+  def handle_event("close_message", _params, socket) do
+    {:noreply, assign(socket, :messaging?, false)}
+  end
+
+  def handle_event("send_message", %{"message" => %{"text" => text}}, socket) do
+    text = String.trim(text || "")
+
+    cond do
+      not socket.assigns.can_message? ->
+        {:noreply, socket}
+
+      text == "" ->
+        {:noreply,
+         assign(
+           socket,
+           :message_form,
+           to_form(%{"text" => ""},
+             as: :message,
+             errors: [
+               text: {gettext("Write the message first."), []}
+             ]
+           )
+         )}
+
+      true ->
+        server = socket.assigns.server
+
+        {:noreply,
+         socket
+         |> assign(:messaging?, false)
+         |> assign(:message_form, to_form(%{"text" => ""}, as: :message))
+         |> start_async(:message, fn -> Crcon.message_all_players(server, text) end)}
+    end
+  end
+
+  def handle_event("claim_ticket", %{"id" => id}, socket) do
+    user = socket.assigns.current_user
+
+    with true <- Accounts.can?(user, :manage_tickets),
+         {:ok, ticket} <- Tickets.fetch_ticket(user, id),
+         {:ok, _ticket} <- Tickets.assign(ticket, user, user) do
+      {:noreply, push_navigate(socket, to: ~p"/tickets/#{ticket.id}")}
+    else
+      _denied -> {:noreply, push_navigate(socket, to: ~p"/tickets/#{id}")}
+    end
+  end
+
+  # ── Messages ───────────────────────────────────────────────────────────────
+
   @impl Phoenix.LiveView
   def handle_info({:crcon_stream_status, _server_id, status}, socket) do
     {:noreply, socket |> assign(:stream_status, status) |> load()}
   end
 
-  def handle_info({:rule_fired, _execution}, socket), do: {:noreply, load(socket)}
+  def handle_info({:crcon_event, event}, %{assigns: %{feed?: true}} = socket) do
+    seq = socket.assigns.seq + 1
+    key = LiveFeed.event_key(event)
+
+    row =
+      event
+      |> event_row(LiveFeedRows.row_id(key, "live-#{seq}"),
+        roster: socket.assigns.snapshot && socket.assigns.snapshot.players
+      )
+      |> LiveFeedRows.with_session(socket.assigns.buffer.rows)
+
+    socket =
+      socket
+      |> assign(:seq, seq)
+      |> update(:buffer, &LiveFeedRows.add(&1, row))
+      |> show_new(row)
+      |> watch_ticket(event, row)
+
+    socket =
+      if event.type == :match_start,
+        do: socket |> assign(:log_started_at, event.occurred_at) |> load_counts(),
+        else: socket
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:rule_fired, execution}, socket) do
+    socket = ensure_rule(socket, execution.rule_id)
+    rule = Enum.find(socket.assigns.rules, &(&1.id == execution.rule_id))
+    annotation = LiveFeed.annotation(execution, rule)
+
+    socket =
+      case LiveFeedRows.annotate(
+             socket.assigns.buffer,
+             LiveFeed.execution_event_key(execution),
+             annotation
+           ) do
+        {:ok, row, buffer} ->
+          socket |> assign(:buffer, buffer) |> show_changed(row)
+
+        :error ->
+          row = execution_row(execution, rule)
+
+          socket
+          |> update(:buffer, &LiveFeedRows.add(&1, row))
+          |> show_new(row)
+      end
+
+    {:noreply, schedule_recount(socket)}
+  end
+
+  def handle_info(:recount, socket) do
+    {:noreply, socket |> assign(:recount?, false) |> load_counts()}
+  end
+
+  # A chat line that looked like a ticket command: the ticket, if it opened,
+  # goes on the line.
+  def handle_info({:check_ticket, row_id}, socket) do
+    buffer = socket.assigns.buffer
+
+    with %{ticket: nil} = row <- Enum.find(buffer.rows, &(&1.id == row_id)),
+         %{} = ticket <-
+           socket.assigns.server.id |> LiveFeed.tickets_for([row]) |> Map.get(row.key) do
+      row = %{row | ticket: ticket}
+
+      {:noreply,
+       socket |> assign(:buffer, LiveFeedRows.replace(buffer, row)) |> show_changed(row)}
+    else
+      _nothing -> {:noreply, socket}
+    end
+  end
+
   def handle_info(:refresh_live, socket), do: {:noreply, socket |> load() |> fetch_live()}
-  def handle_info(:refresh_history, socket), do: {:noreply, fetch_history(socket)}
   def handle_info(_message, socket), do: {:noreply, socket}
 
+  # ── Async ──────────────────────────────────────────────────────────────────
+
   @impl Phoenix.LiveView
-  def handle_async(:live, {:ok, %Snapshot{stale?: false} = snapshot}, socket) do
-    {:noreply, assign(socket, snapshot: snapshot, live_error?: false)}
+  def handle_async(:live, {:ok, {%Snapshot{stale?: false} = snapshot, match}}, socket) do
+    socket =
+      socket
+      |> assign(snapshot: snapshot, live_error?: false)
+      |> assign_match(match)
+      |> enrich_rows()
+
+    {:noreply, load_counts(socket)}
   end
 
   # A failed read keeps the last good one on screen, if there is one.
+  def handle_async(:live, {:ok, {_stale, match}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:live_error?, is_nil(socket.assigns.snapshot))
+     |> assign_match(match)}
+  end
+
   def handle_async(:live, _failed, socket) do
     {:noreply, assign(socket, :live_error?, is_nil(socket.assigns.snapshot))}
   end
 
-  def handle_async(:history, {:ok, {:ok, %{matches: matches}}}, socket),
-    do: {:noreply, assign(socket, :matches, matches)}
+  def handle_async(:seed, {:ok, seed}, socket) do
+    roster = socket.assigns.snapshot && socket.assigns.snapshot.players
+    seeded = LiveFeedRows.seed(seed.events, seed.executions, seed.tickets, roster: roster)
+    seeded_ids = MapSet.new(seeded, & &1.id)
 
-  def handle_async(:history, _failed, socket), do: {:noreply, assign(socket, :matches, [])}
+    # Lines that arrived while the log was being read stay on top.
+    live = Enum.reject(socket.assigns.buffer.rows, &MapSet.member?(seeded_ids, &1.id))
+
+    {:noreply,
+     socket
+     |> assign(:buffer, LiveFeedRows.reset(socket.assigns.buffer, live ++ seeded))
+     |> assign(:seeded?, true)
+     |> assign(:log_started_at, LiveMatch.started_at_from(seed.events))
+     |> load_counts()
+     |> restream()}
+  end
+
+  def handle_async(:seed, _failed, socket), do: {:noreply, assign(socket, :seeded?, true)}
+
+  def handle_async(:message, {:ok, {:ok, _result}}, socket) do
+    {:noreply, put_flash(socket, :info, gettext("Message sent to every player."))}
+  end
+
+  def handle_async(:message, _failed, socket) do
+    {:noreply, put_flash(socket, :error, gettext("CRCON did not take the message. Try again."))}
+  end
 
   defp fetch_live(socket) do
     server = socket.assigns.server
-    start_async(socket, :live, fn -> Snapshot.refresh(server) end)
+
+    start_async(socket, :live, fn ->
+      match =
+        case LiveMatch.info(server) do
+          {:ok, info} -> info
+          {:error, _error} -> nil
+        end
+
+      {Snapshot.refresh(server), match}
+    end)
   end
 
-  defp fetch_history(socket) do
-    server = socket.assigns.server
+  defp assign_match(socket, nil), do: socket
+  defp assign_match(socket, match), do: assign(socket, :match, match)
 
-    if Accounts.can?(socket.assigns.current_user, :view_stats),
-      do: start_async(socket, :history, fn -> Matches.list(server, limit: 5) end),
-      else: assign(socket, :matches, [])
+  # The feed opens on the last lines of the log and what the rules did on
+  # them; without the live feed module, on the rules' latest executions.
+  defp seed_feed(socket) do
+    if connected?(socket) do
+      %{server: server, feed?: feed?} = socket.assigns
+
+      start_async(socket, :seed, fn -> seed_rows(server, feed?) end)
+    else
+      socket
+    end
   end
+
+  defp seed_rows(server, feed?) do
+    events =
+      with true <- feed?,
+           {:ok, events} <- LiveFeed.recent_events(server, @seed_lines) do
+        events
+      else
+        _none -> []
+      end
+
+    since = events |> List.last() |> then(&(&1 && &1.occurred_at))
+
+    executions =
+      if since,
+        do: LiveFeed.executions(server.id, since: since, limit: @seed_lines),
+        else: LiveFeed.executions(server.id, limit: 20)
+
+    %{
+      events: events,
+      executions: executions,
+      tickets: LiveFeed.tickets_for(server.id, events)
+    }
+  end
+
+  # ── The feed's rows ────────────────────────────────────────────────────────
+
+  defp restream(socket) do
+    rows =
+      socket.assigns.buffer
+      |> LiveFeedRows.visible(socket.assigns.filter)
+      |> Enum.take(@shown)
+
+    stream(socket, :feed, rows, reset: true)
+  end
+
+  defp show_new(%{assigns: %{paused?: true}} = socket, _row), do: socket
+
+  defp show_new(socket, row) do
+    if LiveFeedRows.matches?(row, socket.assigns.filter),
+      do: stream_insert(socket, :feed, row, at: 0, limit: @shown),
+      else: socket
+  end
+
+  # A row that changed in place (a rule or a ticket joined it). Under the
+  # "where rules acted" filter it may have just become visible, so the list
+  # is redrawn in order.
+  defp show_changed(%{assigns: %{paused?: true}} = socket, _row), do: socket
+  defp show_changed(%{assigns: %{filter: "acted"}} = socket, _row), do: restream(socket)
+
+  defp show_changed(socket, row) do
+    if LiveFeedRows.shown?(socket.assigns.buffer, socket.assigns.filter, row.id, @shown),
+      do: stream_insert(socket, :feed, row),
+      else: socket
+  end
+
+  # A joining player is not in the roster yet when the line arrives; the
+  # next snapshot gives their level and session.
+  defp enrich_rows(socket) do
+    roster = socket.assigns.snapshot.players
+    since = DateTime.add(DateTime.utc_now(), -300, :second)
+
+    socket.assigns.buffer.rows
+    |> Enum.filter(fn row ->
+      row.kind == :event and row.type == :player_connected and row.details == %{} and
+        DateTime.compare(row.occurred_at, since) == :gt
+    end)
+    |> Enum.reduce(socket, fn row, socket ->
+      case details(row, roster) do
+        details when details == %{} ->
+          socket
+
+        details ->
+          row = %{row | details: details}
+
+          socket
+          |> update(:buffer, &LiveFeedRows.replace(&1, row))
+          |> show_changed(row)
+      end
+    end)
+  end
+
+  defp watch_ticket(%{assigns: %{ticket_commands: []}} = socket, _event, _row), do: socket
+
+  defp watch_ticket(socket, %{type: :player_chat} = event, row) do
+    case Tickets.match_command(event.chat_message, socket.assigns.ticket_commands) do
+      {:ok, _text} ->
+        Process.send_after(self(), {:check_ticket, row.id}, 2_500)
+        socket
+
+      :nomatch ->
+        socket
+    end
+  end
+
+  defp watch_ticket(socket, _event, _row), do: socket
+
+  defp ticket_commands(user, server) do
+    with true <- Accounts.can?(user, :view_tickets),
+         %{enabled: true, commands: commands} when is_list(commands) <-
+           Tickets.get_settings(server.id) do
+      commands
+    else
+      _off -> []
+    end
+  end
+
+  # ── Loading ────────────────────────────────────────────────────────────────
 
   defp load(socket) do
     %{server: server, current_user: user, stream_status: status} = socket.assigns
-    rules = Rules.list_rules_applying_to(server)
 
     socket
-    |> assign(:rules, rules)
-    |> assign(:executions, Rules.list_executions(server_id: server.id, limit: 6))
-    |> assign(:stats, Rules.execution_stats(server_id: server.id))
+    |> assign(:rules, Rules.list_rules_applying_to(server))
     |> assign(:attention, Attention.items(user, [server], %{server.id => status}).open)
-    |> assign(:season, Progression.active_season(server.id))
-    |> then(fn socket ->
-      season = socket.assigns.season
-      assign(socket, :season_top, season && Progression.standings(season, limit: 3))
-    end)
+    |> load_counts()
+  end
+
+  # What the rules did since the match started.
+  defp load_counts(socket) do
+    started_at = started_at(socket.assigns)
+
+    socket
+    |> assign(:started_at, started_at)
+    |> assign(:counts, LiveMatch.rule_counts(socket.assigns.server.id, started_at))
+  end
+
+  # When the match started: CRCON's public info, then its game state, then
+  # the log's last match start line.
+  defp started_at(assigns) do
+    assigns.match.started_at ||
+      LiveMatch.started_at_from_gamestate(assigns.snapshot && assigns.snapshot.gamestate) ||
+      assigns.log_started_at
+  end
+
+  # A sweep at the end of a match fires a rule once per player: the counts
+  # are read again once the burst is over, not once per execution.
+  defp schedule_recount(%{assigns: %{recount?: true}} = socket), do: socket
+
+  defp schedule_recount(socket) do
+    Process.send_after(self(), :recount, 1_000)
+    assign(socket, :recount?, true)
+  end
+
+  defp ensure_rule(socket, rule_id) do
+    if Enum.any?(socket.assigns.rules, &(&1.id == rule_id)),
+      do: socket,
+      else: assign(socket, :rules, Rules.list_rules_applying_to(socket.assigns.server))
   end
 
   # ── Render ─────────────────────────────────────────────────────────────────
@@ -132,9 +481,10 @@ defmodule HllConditionalActionsWeb.ServerLive.Show do
   def render(assigns) do
     assigns =
       assign(assigns,
-        gamestate: assigns.snapshot && assigns.snapshot.gamestate,
         roster: assigns.snapshot && assigns.snapshot.players,
-        base: "/servers/#{assigns.server.id}"
+        base: "/servers/#{assigns.server.id}",
+        stats?: Accounts.can?(assigns.current_user, :view_stats),
+        rule_rows: rule_rows(assigns.rules, assigns.counts)
       )
 
     ~H"""
@@ -143,508 +493,379 @@ defmodule HllConditionalActionsWeb.ServerLive.Show do
       current_user={@current_user}
       current_path={@current_path}
       nav={assigns[:nav]}
-      page_title={@server.name}
-      page_subtitle={Labels.game(@server.game) <> " · " <> @server.base_url}
+      page_title={gettext("Live")}
     >
       <:actions>
-        <.button
-          :if={Accounts.can?(@current_user, :manage_rules)}
-          link_type="live_redirect"
-          to={~p"/rules/new?#{[server_id: @server.id]}"}
-          size="sm"
-          color="primary"
-          icon="hero-plus"
+        <button
+          :if={@can_message?}
+          id="cockpit-message"
+          type="button"
+          phx-click="open_message"
+          aria-label={gettext("Message everyone")}
+          class="flex size-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-base-300 bg-white text-sm font-medium transition-colors hover:bg-base-100 xl:w-auto xl:pl-4 xl:pr-5 dark:bg-secondary dark:hover:bg-base-300"
         >
-          <span class="hidden sm:inline">{gettext("New rule")}</span>
-        </.button>
+          <.icon name="hero-chat-bubble-left" class="size-[1.125rem]" />
+          <span class="hidden xl:inline">{gettext("Message everyone")}</span>
+        </button>
       </:actions>
 
-      <%!-- 1. The match, live ─────────────────────────────────────────── --%>
-      <.live_hero
-        server={@server}
-        gamestate={@gamestate}
-        roster={@roster}
-        stream_status={@stream_status}
-        loading?={is_nil(@snapshot) and not @live_error?}
-        error?={@live_error?}
-      />
-
-      <%!-- 2. Who is playing well ─────────────────────────────────────── --%>
-      <section class="grid gap-4 xl:grid-cols-3" aria-labelledby="cockpit-top-title">
-        <div class="overview-card xl:col-span-2">
-          <.block_head
-            id="cockpit-top-title"
-            icon="hero-trophy"
-            title={gettext("This match's best")}
-            to={@base <> "/leaderboard"}
-            link={gettext("Full leaderboard")}
-          />
-          <div :if={is_nil(@roster)} class="grid gap-3 sm:grid-cols-3">
-            <.skeleton_block :for={_ <- 1..3} class="h-36 rounded-box" />
-          </div>
-          <p :if={@roster == %{}} class="py-8 text-center text-sm text-muted">
-            {gettext("Nobody is playing right now.")}
-          </p>
-          <div :if={@roster not in [nil, %{}]} class="grid gap-3 sm:grid-cols-3">
-            <.rank_board
-              :for={category <- [:kills, :teamplay, :offdef]}
-              id={"cockpit-board-#{category}"}
-              title={Labels.leaderboard_category(category)}
-              rows={
-                for row <- Leaderboards.top_players(@roster, category, 3),
-                    do: %{name: row.name, team: row.team, value: format(row.value), note: nil}
-              }
-            />
-          </div>
-        </div>
-
-        <div class="overview-card">
-          <.block_head
-            icon="hero-user-group"
-            title={gettext("Best squads")}
-            to={@base <> "/leaderboard"}
-            link={gettext("See all")}
-          />
-          <div :if={is_nil(@roster)} class="space-y-2">
-            <.skeleton_block :for={_ <- 1..4} class="h-12 rounded-field" />
-          </div>
-          <ul :if={@roster} class="space-y-2" id="cockpit-squads">
-            <li
-              :for={{type, squad} <- best_squads(@roster)}
-              class="flex items-center gap-3 rounded-field bg-base-200/60 px-3 py-2"
-            >
-              <span class="flex size-8 shrink-0 items-center justify-center rounded-field bg-base-100 text-subtle">
-                <.icon name={squad_icon(type)} class="size-4" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-xs text-muted">{Labels.squad_type(type)}</span>
-                <span class="block truncate text-sm font-medium">
-                  {if squad, do: String.capitalize(squad.name), else: "–"}
-                  <span
-                    :if={squad}
-                    class={["ml-1 inline-block size-1.5 rounded-full", team_dot(squad.team)]}
-                  ></span>
-                </span>
-              </span>
-              <span :if={squad} class="font-mono text-xs tabular-nums">{squad.score}</span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <%!-- 3. What the automation did ─────────────────────────────────── --%>
-      <section class="grid gap-4 lg:grid-cols-3" aria-label={gettext("Automation")}>
-        <div class="overview-card">
-          <.block_head
-            icon="hero-bolt"
-            title={gettext("Rules")}
-            to={@base <> "/rules"}
-            link={gettext("Manage")}
-          />
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <.mini_stat
-              value={Enum.count(@rules, &(&1.enabled and not &1.simulation))}
-              label={gettext("Live")}
-              tone="success"
-            />
-            <.mini_stat
-              value={Enum.count(@rules, &(&1.enabled and &1.simulation))}
-              label={gettext("Simulating")}
-              tone="warning"
-            />
-            <.mini_stat value={@stats.last_24h} label={gettext("Fired 24h")} tone="primary" />
-          </div>
-          <ul class="mt-3 divide-y divide-base-300">
-            <li :for={rule <- Enum.take(@rules, 4)} class="flex items-center gap-2 py-2">
-              <span class="flex size-7 shrink-0 items-center justify-center rounded-selector bg-primary/10 text-primary">
-                <.icon name={Icons.trigger(rule.trigger_event)} class="size-3.5" />
-              </span>
-              <.link
-                navigate={~p"/rules/#{rule.id}"}
-                class="min-w-0 flex-1 truncate text-sm hover:underline"
-              >
-                {rule.name}
-              </.link>
-              <.rule_state rule={rule} />
-            </li>
-          </ul>
-          <p :if={@rules == []} class="py-3 text-center text-sm text-muted">
-            {gettext("No rule runs here yet.")}
-          </p>
-        </div>
-
-        <div class="overview-card">
-          <.block_head
-            icon="hero-clock"
-            title={gettext("Latest activity")}
-            to={@base <> "/history"}
-            link={gettext("History")}
-          />
-          <p :if={@executions == []} class="py-8 text-center text-sm text-muted">
-            {gettext("No rule fired here yet.")}
-          </p>
-          <ol :if={@executions != []} class="cockpit-timeline">
-            <li :for={execution <- @executions} class="cockpit-timeline-item">
-              <.status_dot
-                tone={execution_tone(execution.status)}
-                label={Labels.execution_status(execution.status)}
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium leading-tight">{execution.rule.name}</p>
-                <p class="truncate text-xs text-muted">
-                  {execution.player_name || gettext("server wide")}
-                </p>
-              </div>
-              <.local_time
-                id={"cockpit-execution-#{execution.id}"}
-                at={execution.executed_at}
-                class="shrink-0 text-xs text-muted"
-              />
-            </li>
-          </ol>
-        </div>
-
-        <div class="overview-card">
-          <.block_head
-            icon="hero-bell-alert"
-            title={gettext("Attention")}
-            to={@base <> "/attention"}
-            link={gettext("Open")}
-          />
-          <div :if={@attention == []} class="flex flex-col items-center gap-2 py-6 text-center">
-            <span class="flex size-10 items-center justify-center rounded-full bg-success/15 text-success">
-              <.icon name="hero-check" class="size-5" />
-            </span>
-            <p class="text-sm font-medium">{gettext("All clear")}</p>
-            <p class="text-xs text-muted">{gettext("Nothing on this server needs you.")}</p>
-          </div>
-          <ul :if={@attention != []} class="space-y-2" id="cockpit-attention">
-            <li
-              :for={item <- Enum.take(@attention, 4)}
-              class="attention-item !p-2.5"
-              data-severity={item.severity}
-            >
-              <p class="min-w-0 flex-1 text-sm">{attention_title(item)}</p>
-            </li>
-            <li :if={length(@attention) > 4} class="text-xs text-muted">
-              {ngettext("and 1 more", "and %{count} more", length(@attention) - 4)}
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <%!-- 4. What already happened ───────────────────────────────────── --%>
-      <section class="grid gap-4 xl:grid-cols-3" aria-label={gettext("History")}>
-        <div :if={Accounts.can?(@current_user, :view_stats)} class="overview-card xl:col-span-2">
-          <.block_head
-            icon="hero-flag"
-            title={gettext("Latest matches")}
-            to={@base <> "/matches"}
-            link={gettext("All matches")}
-          />
-          <div :if={is_nil(@matches)} class="space-y-2">
-            <.skeleton_block :for={_ <- 1..4} class="h-12 rounded-field" />
-          </div>
-          <p :if={@matches == []} class="py-6 text-center text-sm text-muted">
-            {gettext("No match recorded yet.")}
-          </p>
-          <ul :if={@matches not in [nil, []]} class="divide-y divide-base-300" id="cockpit-matches">
-            <li :for={match <- @matches}>
-              <.link
-                navigate={~p"/servers/#{@server}/matches/#{match.id}"}
-                class="flex items-center gap-3 py-2.5 transition-colors hover:text-primary"
-              >
-                <span class={["h-8 w-1 shrink-0 rounded-pill", winner_bar(match.winner)]}></span>
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-sm font-medium">{match.map}</span>
-                  <span class="block truncate text-xs text-muted">
-                    {time_ago(match.ended_at)} · {duration(match.duration_seconds)}
-                  </span>
-                </span>
-                <span class="rounded-field bg-base-200 px-2 py-0.5 font-mono text-xs font-semibold tabular-nums">
-                  {match.allied || "–"} : {match.axis || "–"}
-                </span>
-              </.link>
-            </li>
-          </ul>
-        </div>
-
-        <div :if={Accounts.can?(@current_user, :view_progression)} class="overview-card">
-          <.block_head
-            icon="hero-calendar-days"
-            title={gettext("Season")}
-            to={@base <> "/seasons"}
-            link={gettext("Seasons")}
-          />
-          <%= if @season do %>
-            <p class="font-medium">{@season.name}</p>
-            <p class="text-xs text-muted">
-              {Labels.season_measure(@season)} · {HllConditionalActionsWeb.SeasonLive.Index.days_left(
-                @season,
-                DateTime.utc_now()
-              )}
-            </p>
-            <div class="mt-2 h-1.5 overflow-hidden rounded-pill bg-base-200">
-              <div
-                class="h-full rounded-pill bg-primary"
-                style={"width: #{HllConditionalActionsWeb.SeasonLive.Index.elapsed(@season, DateTime.utc_now())}%"}
-              >
-              </div>
-            </div>
-            <ol class="mt-3 space-y-1.5">
-              <li
-                :for={{score, rank} <- Enum.with_index(@season_top, 1)}
-                class="flex items-center gap-2 text-sm"
-              >
-                <span class={["leaderboard-medal", "leaderboard-medal-#{rank}"]}>{rank}</span>
-                <span class="min-w-0 flex-1 truncate">{score.player_name}</span>
-                <span class="font-mono text-xs tabular-nums">{score.score}</span>
-              </li>
-              <li :if={@season_top == []} class="text-xs text-muted">
-                {gettext("Nobody has scored yet: the first match to end starts it.")}
-              </li>
-            </ol>
-          <% else %>
-            <div class="flex flex-col items-center gap-2 py-4 text-center">
-              <p class="text-sm text-subtle">
-                {gettext("No season running. Reward the best players of the next few weeks.")}
-              </p>
-              <.button
-                :if={Accounts.can?(@current_user, :manage_progression)}
-                link_type="live_redirect"
-                to={~p"/seasons/new"}
-                size="sm"
-                variant="outline"
-                color="gray"
-                icon="hero-plus"
-                label={gettext("Start a season")}
-              />
-            </div>
-          <% end %>
-        </div>
-      </section>
-
-      <%!-- The server itself, last: rarely needed, always one click away. --%>
-      <section class="overview-card" aria-label={gettext("Server details")}>
-        <.block_head
-          icon="hero-server-stack"
-          title={gettext("Server details")}
-          to={if Accounts.can?(@current_user, :manage_servers), do: ~p"/servers/#{@server}/edit"}
-          link={gettext("Edit")}
+      <div class="flex flex-col gap-3.5 md:gap-4 xl:gap-5">
+        <.live_hero
+          id="cockpit-live"
+          server={@server}
+          gamestate={@snapshot && @snapshot.gamestate}
+          roster={@roster}
+          stream_status={@stream_status}
+          started_at={@started_at}
+          max_players={@match.max_players}
+          loading?={is_nil(@snapshot) and not @live_error?}
+          error?={@live_error?}
         />
-        <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-          <div>
-            <dt class="text-xs text-muted">{gettext("Address")}</dt>
-            <dd class="truncate">{@server.base_url}</dd>
+
+        <.attention_panel attention={@attention} base={@base} current_user={@current_user} />
+
+        <div class="grid gap-3.5 md:gap-4 xl:grid-cols-[minmax(0,1fr)_25rem] xl:gap-5">
+          <.feed_panel
+            streams={@streams}
+            feed?={@feed?}
+            paused?={@paused?}
+            filter={@filter}
+            seeded?={@seeded?}
+            base={@base}
+            stats?={@stats?}
+          />
+
+          <div class="flex min-w-0 flex-col gap-3.5 md:gap-4 xl:gap-5">
+            <.live_panel
+              id="cockpit-best"
+              title={gettext("Best of the match")}
+              title_id="cockpit-top-title"
+            >
+              <:aside>
+                <span class="hidden text-[0.8125rem] text-muted md:inline xl:hidden">
+                  {gettext("Rules acted")}
+                  <strong class="font-semibold text-primary">{@counts.total}</strong>
+                  {ngettext("time", "times", @counts.total)}
+                </span>
+                <.panel_link :if={@stats?} navigate={@base <> "/leaderboard"}>
+                  {gettext("Scoreboard")}
+                </.panel_link>
+              </:aside>
+              <div
+                :if={is_nil(@roster)}
+                class="grid gap-3 md:grid-cols-3 md:gap-2.5 xl:grid-cols-1 xl:gap-3"
+              >
+                <.skeleton_block :for={_ <- 1..3} class="h-10 w-full rounded-xl" />
+              </div>
+              <p :if={@roster == %{}} class="py-6 text-center text-sm text-muted">
+                {gettext("Nobody is playing right now.")}
+              </p>
+              <div
+                :if={@roster not in [nil, %{}]}
+                class="grid gap-3 md:grid-cols-3 md:gap-2.5 xl:grid-cols-1 xl:gap-3"
+              >
+                <.best_row
+                  :for={category <- best_categories()}
+                  id={"cockpit-board-#{category}"}
+                  category={category}
+                  leader={@roster |> Leaderboards.top_players(category, 1) |> List.first()}
+                />
+              </div>
+            </.live_panel>
+
+            <.live_panel id="cockpit-rules" class="hidden grow xl:flex">
+              <div class="flex items-baseline">
+                <h2 class="flex-1 font-display text-xl font-semibold">
+                  {gettext("Rules in this match")}
+                </h2>
+                <span class="font-display text-xl font-semibold text-primary tabular-nums">
+                  {@counts.total}
+                </span>
+              </div>
+              <ul :if={@rule_rows != []} class="flex flex-col gap-3" id="cockpit-rule-counts">
+                <li :for={row <- @rule_rows}>
+                  <.link
+                    navigate={~p"/rules/#{row.id}"}
+                    class="flex items-center gap-2.5 rounded-[0.875rem] bg-secondary px-3 py-2.5 transition-colors hover:bg-base-300"
+                  >
+                    <span class={["size-2 shrink-0 rounded-full", match_rule_dot(row.state)]}></span>
+                    <span class="min-w-0 flex-1 truncate text-sm">{row.name}</span>
+                    <span
+                      :if={row.state != :live}
+                      class={["text-[0.6875rem] font-semibold", match_rule_text(row.state)]}
+                    >
+                      {match_rule_label(row.state)}
+                    </span>
+                    <span class="font-mono text-[0.8125rem] text-subtle tabular-nums">
+                      {row.count}
+                    </span>
+                  </.link>
+                </li>
+              </ul>
+              <p :if={@rule_rows == []} class="py-3 text-sm text-muted">
+                {if @started_at,
+                  do: gettext("No rule acted in this match yet."),
+                  else: gettext("CRCON has not said when this match started yet.")}
+              </p>
+            </.live_panel>
           </div>
-          <div>
-            <dt class="text-xs text-muted">{gettext("Game")}</dt>
-            <dd>{Labels.game(@server.game)}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-muted">{gettext("Time zone")}</dt>
-            <dd>{@server.timezone || "UTC"}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-muted">{gettext("Log stream")}</dt>
-            <dd class="flex items-center gap-1.5">
-              <.status_dot
-                tone={stream_tone(@stream_status)}
-                label={Labels.stream_status(@stream_status)}
-              />
-              {Labels.stream_status(@stream_status)}
-            </dd>
-          </div>
-        </dl>
-        <p
-          :if={@server.notes not in [nil, ""]}
-          class="mt-3 border-t border-base-300 pt-3 text-sm text-subtle"
+        </div>
+      </div>
+
+      <.modal
+        :if={@messaging?}
+        id="broadcast-modal"
+        title={gettext("Message everyone")}
+        subtitle={gettext("Every player on %{server} sees it on their screen.", server: @server.name)}
+        on_cancel={JS.push("close_message")}
+      >
+        <.form
+          for={@message_form}
+          id="broadcast-form"
+          phx-submit="send_message"
+          class="flex flex-col gap-4"
         >
-          {@server.notes}
-        </p>
-      </section>
+          <.input
+            field={@message_form[:text]}
+            type="textarea"
+            label={gettext("Message")}
+            rows="4"
+            maxlength="300"
+          />
+          <div class="flex justify-end gap-2">
+            <.button type="button" variant="ghost" color="gray" phx-click="close_message">
+              {gettext("Cancel")}
+            </.button>
+            <.button type="submit" color="primary" icon="hero-paper-airplane">
+              {gettext("Send to everyone")}
+            </.button>
+          </div>
+        </.form>
+      </.modal>
     </Layouts.app>
     """
   end
 
-  # ── The live hero ──────────────────────────────────────────────────────────
+  # ── The feed panel ─────────────────────────────────────────────────────────
 
-  attr :server, :map, required: true
-  attr :gamestate, :map, default: nil
-  attr :roster, :map, default: nil
-  attr :stream_status, :any, default: nil
-  attr :loading?, :boolean, default: false
-  attr :error?, :boolean, default: false
+  attr :streams, :any, required: true
+  attr :feed?, :boolean, required: true
+  attr :paused?, :boolean, required: true
+  attr :filter, :string, required: true
+  attr :seeded?, :boolean, required: true
+  attr :base, :string, required: true
+  attr :stats?, :boolean, required: true
 
-  # The match as a scoreboard: the map as the backdrop, the score in the
-  # middle with the five sectors drawn under it, each team's head count on
-  # its side. Allies on the left, the way the game draws them.
-  defp live_hero(assigns) do
-    gs = assigns.gamestate || %{}
-
-    assigns =
-      assign(assigns,
-        map: hero_map(gs),
-        mode: gs["game_mode"],
-        allied: gs["allied_score"],
-        axis: gs["axis_score"],
-        allied_players: gs["num_allied_players"] || 0,
-        axis_players: gs["num_axis_players"] || 0,
-        time_left: gs["raw_time_remaining"],
-        art: hero_art(gs, assigns.server)
-      )
-
+  defp feed_panel(assigns) do
     ~H"""
-    <section id="cockpit-live" class="cockpit-hero" style={"--hero-art: url('#{@art}')"}>
-      <div class="cockpit-hero-scrim"></div>
-
-      <div class="relative flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0">
-          <p class="flex items-center gap-2 text-xs font-medium tracking-wide text-white/70 uppercase">
-            <span class={["size-2 rounded-full", live_dot(@stream_status)]}></span>
-            {gettext("Live match")} · {Labels.stream_status(@stream_status)}
-          </p>
-          <h2 class="mt-1 truncate text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            <%= cond do %>
-              <% @loading? -> %>
-                <span class="inline-block h-9 w-56 animate-pulse rounded-field bg-white/15"></span>
-              <% @error? -> %>
-                {gettext("CRCON is not answering")}
-              <% true -> %>
-                {@map || gettext("Unknown map")}
-            <% end %>
-          </h2>
-          <p :if={not @loading? and not @error?} class="mt-1 text-sm text-white/75">
-            {mode_label(@mode)}
-            <span :if={@time_left}>· {gettext("%{time} left", time: @time_left)}</span>
-          </p>
-        </div>
-
-        <span class="rounded-pill bg-white/10 px-3 py-1 text-xs text-white/85 backdrop-blur">
-          {ngettext("1 player", "%{count} players", @allied_players + @axis_players)}
+    <.live_panel id="cockpit-feed" wide gap="gap-0.5 md:gap-2.5 xl:gap-3.5">
+      <div class="mb-1.5 flex items-baseline md:hidden">
+        <h2 class="flex-1 font-display text-lg font-semibold">
+          {if @feed?, do: gettext("Feed"), else: gettext("Latest activity")}
+        </h2>
+        <span class="text-xs text-muted">
+          {if @paused?, do: gettext("paused"), else: gettext("live")}
         </span>
       </div>
 
-      <div
-        :if={not @loading? and not @error?}
-        class="relative mt-6 grid items-end gap-4 sm:grid-cols-[1fr_auto_1fr]"
-      >
-        <div class="text-white">
-          <p class="text-xs tracking-wide text-white/70 uppercase">{gettext("Allies")}</p>
-          <p class="text-2xl font-semibold tabular-nums">
-            {ngettext("1 player", "%{count} players", @allied_players)}
-          </p>
-        </div>
-
-        <div class="flex flex-col items-center gap-2">
-          <p class="font-mono text-5xl font-bold tracking-tight text-white tabular-nums">
-            {@allied || 0}<span class="px-2 text-white/40">:</span>{@axis || 0}
-          </p>
-          <div class="cockpit-sectors" aria-label={gettext("Sectors held")}>
-            <span
-              :for={index <- 1..5}
-              class={[
-                "cockpit-sector",
-                if(index <= (@allied || 0), do: "is-allies", else: "is-axis")
-              ]}
-            ></span>
-          </div>
-        </div>
-
-        <div class="text-white sm:text-right">
-          <p class="text-xs tracking-wide text-white/70 uppercase">{gettext("Axis")}</p>
-          <p class="text-2xl font-semibold tabular-nums">
-            {ngettext("1 player", "%{count} players", @axis_players)}
-          </p>
-        </div>
+      <div class="hidden items-center gap-2 md:flex">
+        <h2 class="sr-only">
+          {if @feed?, do: gettext("Live feed"), else: gettext("Latest activity")}
+        </h2>
+        <.match_views
+          id="cockpit-views"
+          base={@base}
+          current={:feed}
+          stats?={@stats?}
+          class="bg-secondary"
+        />
+        <span class="grow"></span>
+        <.feed_filters
+          :if={@feed?}
+          id="cockpit-feed-filters"
+          filter={@filter}
+          paused?={@paused?}
+          pause_event="toggle_feed"
+          filter_event="feed_filter"
+        />
       </div>
 
       <div
-        :if={not @loading? and not @error? and @allied_players + @axis_players > 0}
-        class="relative mt-4 flex h-1.5 overflow-hidden rounded-pill bg-white/15"
-        aria-hidden="true"
+        id="cockpit-feed-rows"
+        phx-update="stream"
+        role="log"
+        aria-label={gettext("Live feed")}
+        class="live-feed live-feed-short flex flex-col md:max-h-[36rem] md:overflow-y-auto xl:max-h-[32.5rem]"
       >
-        <span
-          class="bg-info"
-          style={"width: #{share(@allied_players, @allied_players + @axis_players)}%"}
-        ></span>
-        <span
-          class="bg-error"
-          style={"width: #{share(@axis_players, @allied_players + @axis_players)}%"}
-        ></span>
+        <p id="cockpit-feed-empty" class="hidden py-10 text-center text-sm text-muted only:block">
+          <%= cond do %>
+            <% not @seeded? -> %>
+              {gettext("Reading the server's log…")}
+            <% @filter != "all" -> %>
+              {gettext("Nothing like this in the feed yet.")}
+            <% @feed? -> %>
+              {gettext("Waiting for events. Nothing has happened on this server yet.")}
+            <% true -> %>
+              {gettext("No rule fired here yet.")}
+          <% end %>
+        </p>
+        <.feed_row :for={{dom_id, row} <- @streams.feed} id={dom_id} row={row} />
       </div>
-    </section>
-    """
-  end
-
-  # ── Small pieces ───────────────────────────────────────────────────────────
-
-  attr :id, :string, default: nil
-  attr :icon, :string, required: true
-  attr :title, :string, required: true
-  attr :to, :string, default: nil
-  attr :link, :string, default: nil
-
-  defp block_head(assigns) do
-    ~H"""
-    <header class="overview-card-head">
-      <h2 id={@id} class="overview-card-title">
-        <.icon name={@icon} class="size-4" />{@title}
-      </h2>
       <.link
-        :if={@to}
-        navigate={@to}
-        class="flex items-center gap-1 text-xs text-muted transition-colors hover:text-primary"
+        :if={@feed?}
+        id="cockpit-feed-more"
+        navigate={@base <> "/feed"}
+        class="pt-2.5 text-center text-[0.8125rem] text-primary md:hidden"
       >
-        {@link}<.icon name="hero-arrow-right" class="size-3" />
+        {gettext("See the whole feed")}
       </.link>
-    </header>
+    </.live_panel>
     """
   end
 
-  attr :value, :any, required: true
-  attr :label, :string, required: true
-  attr :tone, :string, default: "primary"
+  # ── Side panels ────────────────────────────────────────────────────────────
 
-  defp mini_stat(assigns) do
+  attr :attention, :list, required: true
+  attr :base, :string, required: true
+  attr :current_user, :map, required: true
+
+  # What needs the admin, first on a phone; the bell and the inbox carry it
+  # on wider screens.
+  defp attention_panel(assigns) do
     ~H"""
-    <div class="rounded-field bg-base-200/60 px-2 py-2.5">
-      <p class={["text-xl font-semibold tabular-nums", mini_tone(@tone)]}>{@value}</p>
-      <p class="truncate text-[0.6875rem] text-muted">{@label}</p>
+    <.live_panel :if={@attention != []} id="cockpit-attention" gap="gap-1" class="md:hidden">
+      <div class="mb-1 flex items-baseline">
+        <h2 class="flex-1 font-display text-lg font-semibold">{gettext("Needs you")}</h2>
+        <span class="text-xs text-muted">{length(@attention)}</span>
+      </div>
+      <ul class="flex flex-col">
+        <li
+          :for={item <- Enum.take(@attention, 3)}
+          data-severity={item.severity}
+          class="flex min-h-13 items-center gap-3"
+        >
+          <.link navigate={attention_path(item, @base)} class="flex min-w-0 flex-1 items-center gap-3">
+            <span class={[
+              "flex size-9 shrink-0 items-center justify-center rounded-xl",
+              attention_tint(item)
+            ]}>
+              <.icon name={attention_icon(item)} class="size-[1.125rem]" />
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col gap-px">
+              <strong class="truncate text-sm font-semibold">{attention_title(item)}</strong>
+              <span :if={attention_detail(item)} class="truncate text-xs text-muted">
+                {attention_detail(item)}
+              </span>
+            </span>
+          </.link>
+          <button
+            :if={item.kind == :ticket_waiting and Accounts.can?(@current_user, :manage_tickets)}
+            type="button"
+            phx-click="claim_ticket"
+            phx-value-id={item.subject.ticket.id}
+            class="flex h-8 shrink-0 cursor-pointer items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-content transition-opacity hover:opacity-90"
+          >
+            {gettext("Take it")}
+          </button>
+          <.icon
+            :if={item.kind != :ticket_waiting}
+            name="hero-chevron-right"
+            class="size-4 shrink-0 text-muted"
+          />
+        </li>
+      </ul>
+    </.live_panel>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :category, :atom, required: true
+  attr :leader, :map, default: nil
+
+  # The leader of one category of the match: initials on the team's tint,
+  # the category under the name, the number on the right. A card of its own
+  # on a tablet, a plain row elsewhere.
+  defp best_row(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      class="flex items-center gap-3 md:rounded-[1.125rem] md:bg-secondary md:px-3.5 md:py-3 xl:rounded-none xl:bg-transparent xl:p-0"
+    >
+      <.initials_tile name={(@leader && @leader.name) || "–"} team={@leader && @leader.team} />
+      <span class="flex min-w-0 flex-1 flex-col">
+        <strong class="truncate text-sm font-semibold">{(@leader && @leader.name) || "–"}</strong>
+        <span class="truncate text-xs text-muted">{Labels.leaderboard_category(@category)}</span>
+      </span>
+      <span :if={@leader} class="font-display text-xl font-semibold tabular-nums">
+        {format_number(@leader.value)}
+      </span>
     </div>
     """
   end
 
-  defp mini_tone("success"), do: "text-success"
-  defp mini_tone("warning"), do: "text-warning"
-  defp mini_tone(_primary), do: "text-primary"
-
   # ── Helpers ────────────────────────────────────────────────────────────────
 
-  defp hero_map(gamestate) do
-    case gamestate["current_map"] do
-      %{"map" => %{"pretty_name" => name}} -> name
-      %{"pretty_name" => name} -> name
-      _other -> nil
-    end
+  defp best_categories, do: @best_categories
+
+  # The rules that acted in this match, most active first: live, simulating,
+  # or failing when some of this match's runs failed.
+  defp rule_rows(rules, %{rules: counts}) do
+    by_id = Map.new(rules, &{&1.id, &1})
+
+    counts
+    |> Enum.map(fn {rule_id, %{count: count, failed: failed}} ->
+      rule = Map.get(by_id, rule_id)
+
+      %{
+        id: rule_id,
+        name: (rule && rule.name) || gettext("Deleted rule"),
+        count: count,
+        state:
+          cond do
+            failed > 0 -> :failing
+            rule && rule.simulation -> :simulating
+            true -> :live
+          end
+      }
+    end)
+    |> Enum.sort_by(&{-&1.count, &1.name})
+    |> Enum.take(6)
   end
 
-  # The picture of the map being played - with its time of day - and the
-  # server's own art until the game state arrives.
-  defp hero_art(%{"current_map" => map}, server) when is_map(map),
-    do: MapArt.url(server.game, map)
+  defp match_rule_dot(:failing), do: "bg-warning"
+  defp match_rule_dot(:simulating), do: "border-[1.5px] border-dashed border-accent"
+  defp match_rule_dot(_live), do: "bg-primary"
 
-  defp hero_art(_gamestate, server), do: server_art(server)
+  defp match_rule_text(:failing), do: "text-warning"
+  defp match_rule_text(_simulating), do: "text-accent"
 
-  defp best_squads(roster) do
-    squads = Leaderboards.squads(roster)
-    Enum.map(Leaderboards.squad_types(), &{&1, squads |> Map.get(&1, []) |> List.first()})
-  end
+  defp match_rule_label(:failing), do: gettext("failing")
+  defp match_rule_label(_simulating), do: gettext("simulating")
 
-  defp squad_icon(:infantry), do: "hero-user-group"
-  defp squad_icon(:armor), do: "hero-truck"
-  defp squad_icon(:recon), do: "hero-eye"
-  defp squad_icon(:artillery), do: "hero-fire"
+  defp attention_path(%{kind: :ticket_waiting, subject: %{ticket: ticket}}, _base),
+    do: "/tickets/#{ticket.id}"
+
+  defp attention_path(%{kind: :vip_failed}, _base), do: "/vip-shop/purchases"
+
+  defp attention_path(%{kind: :review, subject: %{execution: execution}}, _base),
+    do: "/players/#{execution.player_id}"
+
+  defp attention_path(%{subject: %{rule: %{id: id}}}, _base), do: "/rules/#{id}"
+  defp attention_path(_item, base), do: base <> "/attention"
+
+  defp attention_icon(%{kind: :ticket_waiting}), do: "hero-chat-bubble-left"
+  defp attention_icon(%{kind: :stream_down}), do: "hero-signal-slash"
+  defp attention_icon(%{kind: :vip_failed}), do: "hero-shopping-bag"
+  defp attention_icon(%{kind: :review}), do: "hero-eye"
+  defp attention_icon(%{subject: %{rule: _rule}}), do: "hero-bolt"
+  defp attention_icon(%{severity: :error}), do: "hero-exclamation-circle"
+  defp attention_icon(%{severity: :warning}), do: "hero-exclamation-triangle"
+  defp attention_icon(_item), do: "hero-information-circle"
+
+  defp attention_tint(%{kind: :ticket_waiting}), do: "bg-accent/13 text-accent"
+  defp attention_tint(%{severity: :error}), do: "bg-error/14 text-error"
+  defp attention_tint(%{severity: :warning}), do: "bg-warning/13 text-warning"
+  defp attention_tint(_item), do: "bg-info/14 text-info"
 
   defp attention_title(%{kind: :stream_down}), do: gettext("The log stream is down")
 
@@ -652,74 +873,44 @@ defmodule HllConditionalActionsWeb.ServerLive.Show do
     do: gettext("Review %{player}", player: e.player_name || e.player_id)
 
   defp attention_title(%{kind: :ticket_waiting, subject: %{ticket: ticket}}),
-    do:
-      gettext("%{player} is waiting for an admin",
-        player: ticket.player_name || ticket.player_id
-      )
+    do: gettext("Ticket from %{player}", player: ticket.player_name || ticket.player_id)
 
-  defp attention_title(%{subject: %{rule: rule}} = item),
-    do: "#{rule.name} · #{attention_kind(item)}"
+  defp attention_title(%{kind: :vip_failed, subject: %{order: order}}),
+    do:
+      gettext("Paid VIP not granted for %{player}", player: order.player_name || order.player_id)
+
+  defp attention_title(%{kind: :failures, subject: %{rule: rule}}),
+    do: gettext("%{rule} failed", rule: rule.name)
+
+  defp attention_title(%{kind: :ready_to_go_live, subject: %{rule: rule}}),
+    do: gettext("%{rule} is ready to go live", rule: rule.name)
+
+  defp attention_title(%{subject: %{rule: rule, issue: issue}}),
+    do: "#{rule.name} · #{Labels.health_issue(issue.id)}"
 
   defp attention_title(_item), do: gettext("Needs attention")
 
-  defp attention_kind(%{kind: :failures}), do: gettext("failing")
-  defp attention_kind(%{kind: :ready_to_go_live}), do: gettext("ready to go live")
-  defp attention_kind(%{subject: %{issue: issue}}), do: Labels.health_issue(issue.id)
-  defp attention_kind(_item), do: ""
+  defp attention_detail(%{kind: :ticket_waiting, subject: %{ticket: ticket}} = item) do
+    waiting =
+      item.at &&
+        gettext("waiting for %{time}", time: waited(DateTime.diff(DateTime.utc_now(), item.at)))
 
-  defp mode_label(nil), do: gettext("Unknown mode")
-
-  defp mode_label(mode) do
-    case to_string(mode) do
-      "warfare" -> gettext("Warfare")
-      "offensive" -> gettext("Offensive")
-      "skirmish" -> gettext("Skirmish")
-      other -> String.capitalize(other)
-    end
+    [waiting, ticket.category] |> Enum.reject(&is_nil/1) |> Enum.join(" · ") |> blank()
   end
 
-  defp time_ago(nil), do: "–"
-
-  defp time_ago(at) do
-    minutes = div(DateTime.diff(DateTime.utc_now(), at), 60)
-
-    cond do
-      minutes < 60 -> ngettext("1 minute ago", "%{count} minutes ago", max(minutes, 1))
-      minutes < 1440 -> ngettext("1 hour ago", "%{count} hours ago", div(minutes, 60))
-      true -> ngettext("1 day ago", "%{count} days ago", div(minutes, 1440))
-    end
+  defp attention_detail(%{kind: :failures, subject: %{count: count} = subject}) do
+    [ngettext("1 time", "%{count} times", count), subject[:error]]
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.join(" · ")
   end
 
-  defp duration(nil), do: "–"
-  defp duration(seconds), do: gettext("%{minutes} min", minutes: div(seconds, 60))
+  defp attention_detail(_item), do: nil
 
-  defp share(_part, 0), do: 0
-  defp share(part, total), do: Float.round(part * 100 / total, 1)
+  defp waited(seconds) when seconds < 3600,
+    do: gettext("%{minutes} min", minutes: max(div(seconds, 60), 1))
 
-  defp winner_bar(:allies), do: "bg-info"
-  defp winner_bar(:axis), do: "bg-error"
-  defp winner_bar(_draw), do: "bg-base-300"
+  defp waited(seconds), do: gettext("%{hours} h", hours: div(seconds, 3600))
 
-  defp team_dot("allies"), do: "bg-info"
-  defp team_dot("axis"), do: "bg-error"
-  defp team_dot(_team), do: "bg-base-300"
-
-  defp live_dot(:connected), do: "bg-success animate-pulse"
-  defp live_dot(:connecting), do: "bg-warning"
-  defp live_dot({:error, _reason}), do: "bg-error"
-  defp live_dot(_status), do: "bg-white/40"
-
-  defp stream_tone(:connected), do: "success"
-  defp stream_tone(:connecting), do: "warning"
-  defp stream_tone({:error, _reason}), do: "error"
-  defp stream_tone(_status), do: "neutral"
-
-  defp execution_tone(:executed), do: "success"
-  defp execution_tone(:partial), do: "warning"
-  defp execution_tone(:failed), do: "error"
-  defp execution_tone(:simulated), do: "info"
-  defp execution_tone(_status), do: "neutral"
-
-  defp format(value) when is_float(value), do: :erlang.float_to_binary(value, decimals: 2)
-  defp format(value), do: to_string(value)
+  defp blank(""), do: nil
+  defp blank(text), do: text
 end

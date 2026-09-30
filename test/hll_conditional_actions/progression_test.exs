@@ -206,6 +206,66 @@ defmodule HllConditionalActions.ProgressionTest do
       assert Template.render("{season_rank}", context) == "#2 (4)"
     end
 
+    test "a match records the side played and the day's ranks", %{server: server} do
+      season = season(server)
+
+      Progression.record_match(
+        server,
+        players([
+          p("ana", %{"kills" => 10, "team" => "axis"}),
+          p("bo", %{"kills" => 4, "team" => "allies"})
+        ])
+      )
+
+      [ana, bo] = Progression.standings(season)
+      assert Progression.main_side(ana) == "axis"
+      assert Progression.main_side(bo) == "allies"
+      assert Progression.season_participants(season) == 2
+
+      # Nothing older than today to compare with yet.
+      assert Progression.rank_moves(season, [ana, bo]) == %{}
+
+      # A week later Bo passed Ana: he went up one, she went down one.
+      later = Date.add(Date.utc_today(), 8)
+      assert %{"ana" => 0, "bo" => 0} = Progression.rank_moves(season, [ana, bo], later)
+      assert %{"ana" => -1, "bo" => 1} = Progression.rank_moves(season, [bo, ana], later)
+
+      newcomer = %{ana | player_id: "cy"}
+      assert %{"cy" => :new} = Progression.rank_moves(season, [newcomer], later)
+    end
+
+    test "a combined season can rank by points per match", %{server: server} do
+      season =
+        season(server, %{
+          scoring: :weighted,
+          metric: nil,
+          weights: %{"kills" => "1", "support" => "0,5"},
+          per_match: true
+        })
+
+      assert season.weights == %{
+               "kills" => 1,
+               "support" => 0.5,
+               "combat" => 0,
+               "offense" => 0,
+               "defense" => 0,
+               "vehicles_destroyed" => 0
+             }
+
+      Progression.record_match(server, players([p("ana", %{"kills" => 10, "support" => 100})]))
+      Progression.record_match(server, players([p("ana", %{"kills" => 30, "support" => 0})]))
+
+      assert [%{player_id: "ana", total: 90, matches: 2, score: 45}] =
+               Progression.standings(season)
+    end
+
+    test "a season can be changed", %{server: server} do
+      season = season(server)
+
+      assert {:ok, %{name: "Renamed", winners_count: 5}} =
+               Progression.update_season(season, %{name: "Renamed", winners_count: 5})
+    end
+
     test "closing rewards the top qualified players and starts the next", %{server: server} do
       season = season(server)
 

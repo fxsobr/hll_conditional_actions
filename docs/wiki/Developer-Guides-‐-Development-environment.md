@@ -8,6 +8,7 @@
 - [With Docker (nothing to install)](#with-docker-nothing-to-install)
 - [Without Docker](#without-docker)
 - [Moving a port](#moving-a-port)
+- [Payment webhooks](#payment-webhooks)
 - [Useful commands](#useful-commands)
 
 ***
@@ -51,6 +52,12 @@ docker compose -f compose.dev.yaml --env-file .env.dev up
 
 The `--env-file` matters. Compose reads `.env` by itself, and `.env` belongs to
 production; naming this one explicitly is what keeps them apart.
+
+## Payment webhooks
+
+Stripe, Dodo Payments and Mercado Pago call the app from the internet. Open a
+tunnel and give its address to the app with `DEV_PUBLIC_URL`; the details are
+in [Trying webhooks on your own computer](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments#trying-webhooks-on-your-own-computer).
 
 ## Useful commands
 

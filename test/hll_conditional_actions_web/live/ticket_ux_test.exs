@@ -1,6 +1,6 @@
 defmodule HllConditionalActionsWeb.TicketUxTest do
   @moduledoc """
-  The help-desk style round: the setup wizard, the settings tabs, the inbox
+  The help-desk style round: the setup wizard, the settings panels, the inbox
   views and claiming, and the collision guard on the ticket page.
   """
 
@@ -59,96 +59,141 @@ defmodule HllConditionalActionsWeb.TicketUxTest do
 
     test "walks through the steps and switches tickets on", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/setup")
-      assert has_element?(view, "#wizard-title", "Commands")
+      assert has_element?(view, "#wizard-title", "How the player calls an admin")
 
-      view
-      |> form("#wizard-form", settings: %{commands_text: "!ticket !adm"})
-      |> render_change()
+      view |> element("#command-add") |> render_submit(%{"command" => "!Ticket"})
+      view |> element("#command-chips button[phx-value-command='!admin']") |> render_click()
+      assert has_element?(view, "#command-chips", "!ticket")
 
-      view |> element("button", "Next") |> render_click()
-      assert has_element?(view, "#wizard-title", "Categories")
+      view |> element("#wizard-next") |> render_click()
+      assert has_element?(view, "#wizard-title", "What the calls are about")
+      # Tickets are still off, so the step was kept as a draft.
+      assert has_element?(view, "#draft-saved")
+      refute Tickets.get_settings(server.id).enabled
+      assert Tickets.get_settings(server.id).commands == ["!ticket"]
 
-      view |> element("button", "Add a category") |> render_click()
+      view |> element("#wizard-next") |> render_click()
+      assert has_element?(view, "#wizard-title", "What the player reads")
+      assert has_element?(view, "#message-received")
 
-      view
-      |> form("#wizard-form",
-        settings: %{category_rows: %{"0" => %{name: "cheat", priority: "urgent"}}}
-      )
-      |> render_change()
-
-      view |> element("button", "Next") |> render_click()
-      assert has_element?(view, "#wizard-title", "Messages")
-      assert has_element?(view, "#preview-received_message")
-
-      view |> element("button", "Next") |> render_click()
-      view |> element("button", "Next") |> render_click()
+      view |> element("#wizard-next") |> render_click()
+      view |> element("#wizard-next") |> render_click()
       assert has_element?(view, "#wizard-review", "!ticket")
-      assert has_element?(view, "#wizard-review", "cheat")
+      assert has_element?(view, "#wizard-review", "Friendly fire")
 
-      view |> form("#wizard-form") |> render_submit()
+      view |> element("#wizard-finish") |> render_click()
       assert_redirect(view, ~p"/servers/#{server.id}/tickets")
 
       settings = Tickets.get_settings(server.id)
       assert settings.enabled
-      assert settings.commands == ["!ticket", "!adm"]
-      assert settings.category_priorities == %{"cheat" => "urgent"}
+      assert settings.commands == ["!ticket"]
+      assert settings.category_priorities["Friendly fire"] == "high"
+    end
+
+    test "the commands step sets the wait, the audience and the blocks", %{
+      conn: conn,
+      server: server
+    } do
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/setup")
+
+      view
+      |> form("#wizard-form",
+        settings: %{
+          cooldown_choice: "5",
+          audience: "vip",
+          ask_reason: "true",
+          ignore_case: "false"
+        }
+      )
+      |> render_change()
+
+      view |> element("button[phx-click=max_open][phx-value-delta='1']") |> render_click()
+      view |> element("button[phx-click=toggle_adding_block]") |> render_click()
+      view |> element("#flag-add") |> render_submit(%{"flag" => "sem_ticket"})
+      assert has_element?(view, "#wizard-form", "sem_ticket")
+
+      view |> element("#wizard-save-exit") |> render_click()
+      assert_redirect(view, ~p"/inbox")
+
+      settings = Tickets.get_settings(server.id)
+      assert settings.cooldown_seconds == 300
+      assert settings.audience == "vip"
+      assert settings.ask_reason
+      refute settings.ignore_case
+      assert settings.max_open_per_player == 2
+      assert settings.blocked_flags == ["sem_ticket"]
     end
 
     test "a step with an error does not move on", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/setup")
 
-      view |> form("#wizard-form", settings: %{commands_text: " "}) |> render_change()
-      html = view |> element("button", "Next") |> render_click()
+      view |> element("#command-chips button[phx-value-command='!admin']") |> render_click()
+      html = view |> element("#wizard-next") |> render_click()
 
       assert html =~ "add at least one command"
-      assert has_element?(view, "#wizard-title", "Commands")
+      assert has_element?(view, "#wizard-title", "How the player calls an admin")
     end
 
     test "from the global inbox it starts by picking servers", %{conn: conn, server: server} do
       other = server_fixture(%{name: "EU #2"})
       {:ok, view, _html} = live(conn, ~p"/tickets/setup")
-      assert has_element?(view, "#wizard-title", "Servers")
+      assert has_element?(view, "#wizard-title", "Which servers take tickets")
 
       view
-      |> form("#server-picker")
+      |> element("#server-picker")
       |> render_change(%{"server_ids" => ["", to_string(server.id), to_string(other.id)]})
 
-      for _step <- 1..5, do: view |> element("button", "Next") |> render_click()
-      view |> form("#wizard-form") |> render_submit()
+      for _step <- 1..5, do: view |> element("#wizard-next") |> render_click()
+      view |> element("#wizard-finish") |> render_click()
 
       assert Tickets.get_settings(server.id).enabled
       assert Tickets.get_settings(other.id).enabled
     end
   end
 
-  describe "settings tabs" do
-    test "sections switch without losing what was typed", %{conn: conn, server: server} do
+  describe "settings panels" do
+    test "every panel is on the page and saved together", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
+
+      for panel <- ~w(categories autoclose discord replies messages hours) do
+        assert has_element?(view, "#settings-#{panel}")
+      end
 
       view
       |> form("#ticket-settings-form", settings: %{commands_text: "!help"})
       |> render_change()
 
-      view |> element("#settings-sections button[data-section=limits]") |> render_click()
-
-      assert has_element?(view, "#settings-section-limits:not(.hidden)")
-      assert has_element?(view, "#settings-section-general.hidden")
-      assert has_element?(view, "#unsaved")
+      assert has_element?(view, "#unsaved", "1")
 
       view |> form("#ticket-settings-form") |> render_submit()
       assert Tickets.get_settings(server.id).commands == ["!help"]
+      refute has_element?(view, "#unsaved")
     end
 
-    test "a failed save opens the section with the error", %{conn: conn, server: server} do
+    test "a failed save opens the settings with the error", %{conn: conn, server: server} do
       {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
-      view |> element("#settings-sections button[data-section=limits]") |> render_click()
+
+      html =
+        view
+        |> form("#ticket-settings-form", settings: %{commands_text: ""})
+        |> render_submit(%{"settings" => %{"enabled" => "true"}})
+
+      assert html =~ "add at least one command"
+      assert has_element?(view, "#settings-more[open]")
+      refute Tickets.get_settings(server.id).enabled
+    end
+
+    test "discard goes back to what is saved", %{conn: conn, server: server} do
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/tickets/settings")
 
       view
-      |> form("#ticket-settings-form", settings: %{enabled: "true", commands_text: ""})
-      |> render_submit()
+      |> form("#ticket-settings-form", settings: %{commands_text: "!other"})
+      |> render_change()
 
-      assert has_element?(view, "#settings-section-general:not(.hidden)")
-      assert has_element?(view, "#settings-sections button[data-section=general] span", "1")
+      view |> element("#settings-discard") |> render_click()
+
+      refute has_element?(view, "#unsaved")
+      assert has_element?(view, "#settings_commands_text[value='!admin']")
     end
   end
 

@@ -12,6 +12,14 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
   one that matters most: it is the only one an attacker cannot escape by
   renting more addresses.
 
+  "Esqueci a senha" posts to `/login` too, but it is not a sign in and does
+  not spend the sign in counters. A request for a link counts against its own
+  pair - by address, and by the e-mail it asks for (trimmed and downcased, so
+  `Ana@X.com ` and `ana@x.com` are one bucket) - and choosing the new password
+  from a link counts by address only, the link itself being the secret. A
+  refusal shows the "Esqueci a senha" form again; it says nothing about the
+  address, so it cannot tell whether an account has it.
+
   Failing is a plain 401 with the same wording as a wrong password, plus a
   `Retry-After`. Saying "too many attempts for this account" would confirm the
   account exists, which is exactly what the login page works to avoid telling
@@ -23,6 +31,7 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
 
   use Gettext, backend: HllConditionalActionsWeb.Gettext
 
+  alias HllConditionalActions.Accounts.PasswordReset
   alias HllConditionalActions.RateLimit
 
   # Generous enough that a person who forgot which password they used is not
@@ -30,9 +39,15 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
   # single address, and 20 an hour against one account. Overridable so the
   # test suite can sign in as often as it likes, and so a deployment behind a
   # single office NAT can raise the address limit.
+  # The reset limits sit on top of the per address mail limit in
+  # `HllConditionalActions.Accounts.PasswordReset` (which quietly stops
+  # sending): these stop somebody walking the form through many addresses,
+  # or hammering one, before any lookup happens.
   @defaults [
     ip: [limit: 10, window_ms: 60_000],
-    username: [limit: 20, window_ms: 3_600_000]
+    username: [limit: 20, window_ms: 3_600_000],
+    reset_ip: [limit: 10, window_ms: 60_000],
+    reset_email: [limit: 10, window_ms: 3_600_000]
   ]
 
   @behaviour Plug
@@ -41,6 +56,27 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
   def init(opts), do: opts
 
   @impl Plug
+  def call(%Plug.Conn{method: "POST", params: %{"reset" => reset}} = conn, _opts) do
+    email =
+      case reset do
+        %{"email" => email} -> PasswordReset.normalize(email)
+        _other -> ""
+      end
+
+    # A blank address sends nothing, and would otherwise put every blank
+    # submission in one bucket; the address counter still covers it.
+    by_email =
+      if email == "",
+        do: [],
+        else: [RateLimit.check("login_reset:email:#{email}", limits(:reset_email))]
+
+    throttle_reset(conn, [reset_ip_check(conn) | by_email], email)
+  end
+
+  def call(%Plug.Conn{method: "POST", params: %{"reset_password" => _attrs}} = conn, _opts) do
+    throttle_reset(conn, [reset_ip_check(conn)], "")
+  end
+
   def call(%Plug.Conn{method: "POST"} = conn, _opts) do
     username = conn.params |> get_in(["user", "username"]) |> normalize()
 
@@ -58,6 +94,17 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
   end
 
   def call(conn, _opts), do: conn
+
+  defp reset_ip_check(conn),
+    do: RateLimit.check("login_reset:ip:#{client_ip(conn)}", limits(:reset_ip))
+
+  # As for signing in, every counter is spent before deciding.
+  defp throttle_reset(conn, checks, email) do
+    case Enum.find(checks, &match?({:error, :rate_limited, _seconds}, &1)) do
+      nil -> conn
+      {:error, :rate_limited, seconds} -> refuse_reset(conn, seconds, email)
+    end
+  end
 
   # `|| []` rather than a default argument: a deployment that sets the key to
   # nil to "turn it off" would otherwise crash the limiter into failing open,
@@ -96,7 +143,9 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
   # normally just the one — but reading the first entry is also what keeps this
   # right in front of a proxy that appends, where anything after the first was
   # added by a hop closer to us.
-  defp client_ip(conn) do
+  @doc "The client's address, honouring the proxy header when configured to."
+  @spec client_ip(Plug.Conn.t()) :: String.t()
+  def client_ip(conn) do
     if trust_proxy_headers?() do
       case get_req_header(conn, "x-forwarded-for") do
         [value | _rest] -> value |> String.split(",") |> List.first() |> String.trim()
@@ -125,6 +174,23 @@ defmodule HllConditionalActionsWeb.Plugs.LoginRateLimit do
         gettext("Too many sign in attempts. Try again in %{seconds} seconds.", seconds: seconds),
       username: username,
       first_run?: false
+    )
+    |> halt()
+  end
+
+  defp refuse_reset(conn, seconds, email) do
+    conn
+    |> put_resp_header("retry-after", to_string(seconds))
+    |> put_resp_header("cache-control", "no-store")
+    |> put_status(:too_many_requests)
+    |> put_view(html: HllConditionalActionsWeb.SessionHTML)
+    |> render(:new,
+      mode: :forgot,
+      error:
+        gettext("Too many password reset requests. Try again in %{seconds} seconds.",
+          seconds: seconds
+        ),
+      email: email
     )
     |> halt()
   end

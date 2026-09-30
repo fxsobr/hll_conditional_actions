@@ -917,6 +917,7 @@ defmodule HllConditionalActionsWeb.Labels do
   def permission(:manage_integrations), do: gettext("Manage Discord integrations")
   def permission(:view_tickets), do: gettext("See player tickets")
   def permission(:manage_tickets), do: gettext("Answer and close player tickets")
+  def permission(:manage_players), do: gettext("Act on players")
   def permission(:manage_users), do: gettext("Manage users")
   def permission(:manage_roles), do: gettext("Manage roles and permissions")
 
@@ -931,6 +932,135 @@ defmodule HllConditionalActionsWeb.Labels do
   def permission_group(:support), do: gettext("Support")
   def permission_group(:platform), do: gettext("Platform")
 
+  # ── VIP shop ─────────────────────────────────────────────────────────────
+
+  @doc "The name of a social network, as the storefront shows it."
+  @spec social_network(String.t()) :: String.t()
+  def social_network("discord"), do: "Discord"
+  def social_network("instagram"), do: "Instagram"
+  def social_network("youtube"), do: "YouTube"
+  def social_network("twitch"), do: "Twitch"
+  def social_network("tiktok"), do: "TikTok"
+  def social_network("x"), do: "X"
+  def social_network("facebook"), do: "Facebook"
+  def social_network("website"), do: gettext("Website")
+  def social_network(other), do: other
+
+  @doc "The name of a storefront theme."
+  @spec shop_theme(String.t()) :: String.t()
+  def shop_theme("tactical"), do: gettext("Tactical")
+  def shop_theme("crimson"), do: gettext("Crimson")
+  def shop_theme("midnight"), do: gettext("Midnight")
+  def shop_theme("desert"), do: gettext("Desert")
+  def shop_theme("arctic"), do: gettext("Arctic")
+  def shop_theme(other), do: other
+
+  @doc "The name of a storefront hero layout."
+  @spec shop_hero(String.t()) :: String.t()
+  def shop_hero("cover"), do: gettext("Cover")
+  def shop_hero("split"), do: gettext("Split")
+  def shop_hero("minimal"), do: gettext("Minimal")
+  def shop_hero(other), do: other
+
+  @doc "The label of an editable storefront heading."
+  @spec shop_title_field(String.t()) :: String.t()
+  def shop_title_field("benefits"), do: gettext("Benefits title")
+  def shop_title_field("packages"), do: gettext("Packages title")
+  def shop_title_field("packages_subtitle"), do: gettext("Text below the packages title")
+  def shop_title_field("servers"), do: gettext("Servers title")
+  def shop_title_field("faq"), do: gettext("Questions title")
+  def shop_title_field("cta"), do: gettext("Closing call title")
+  def shop_title_field("cta_subtitle"), do: gettext("Closing call text")
+  def shop_title_field(other), do: other
+
+  @doc "The label of an editable sign in or sign up text."
+  @spec shop_auth_text(String.t()) :: String.t()
+  def shop_auth_text("login_title"), do: gettext("Sign in title")
+  def shop_auth_text("login_subtitle"), do: gettext("Sign in text")
+  def shop_auth_text("register_title"), do: gettext("Sign up title")
+  def shop_auth_text("register_subtitle"), do: gettext("Sign up text")
+  def shop_auth_text("panel_title"), do: gettext("Headline over the image")
+  def shop_auth_text("panel_text"), do: gettext("Text over the image")
+  def shop_auth_text(other), do: other
+
+  @doc "The name of a storefront section."
+  @spec shop_section(String.t()) :: String.t()
+  def shop_section("benefits"), do: gettext("Benefits")
+  def shop_section("packages"), do: gettext("Packages")
+  def shop_section("servers"), do: gettext("Servers")
+  def shop_section("faq"), do: gettext("Frequently asked questions")
+  def shop_section("cta"), do: gettext("Closing call to action")
+  def shop_section(other), do: other
+
+  @doc "The name of a payment provider."
+  @spec payment_provider(String.t()) :: String.t()
+  def payment_provider("stripe"), do: "Stripe"
+  def payment_provider("mercado_pago"), do: "Mercado Pago"
+  def payment_provider("paypal"), do: "PayPal"
+  def payment_provider("dodo"), do: "Dodo Payments"
+  def payment_provider(other), do: other
+
+  @doc "What a payment provider is good for, for its card."
+  @spec payment_provider_description(String.t()) :: String.t()
+  def payment_provider_description("stripe"),
+    do: gettext("Cards, Apple Pay and Google Pay, worldwide.")
+
+  def payment_provider_description("mercado_pago"),
+    do: gettext("Pix, cards and boleto, for players in Latin America.")
+
+  def payment_provider_description("dodo"),
+    do: gettext("Pix, cards and local methods, with taxes handled for you.")
+
+  def payment_provider_description(_other), do: ""
+
+  @doc "The label of a payment credential field."
+  @spec payment_field(String.t()) :: String.t()
+  def payment_field("secret_key"), do: gettext("Secret key")
+  def payment_field("webhook_secret"), do: gettext("Webhook signing secret")
+  def payment_field("access_token"), do: gettext("Access token")
+  def payment_field("client_id"), do: gettext("Client ID")
+  def payment_field("client_secret"), do: gettext("Client secret")
+  def payment_field("api_key"), do: gettext("API key")
+  def payment_field(other), do: other
+
+  @doc "The label of a VIP order status."
+  @spec order_status(String.t()) :: String.t()
+  def order_status("pending"), do: gettext("Waiting for payment")
+  def order_status("paid"), do: gettext("Paid, granting VIP")
+  def order_status("fulfilled"), do: gettext("VIP granted")
+  def order_status("partial"), do: gettext("Granted on some servers")
+  def order_status("failed"), do: gettext("Paid, VIP failed")
+  def order_status("canceled"), do: gettext("Canceled")
+  def order_status(other), do: other
+
+  @doc "The label of a repeat purchase mode."
+  @spec stacking(String.t()) :: String.t()
+  def stacking("extend"), do: gettext("Add the days to the VIP that is left")
+  def stacking("replace"), do: gettext("Start the package from the day of purchase")
+  def stacking(other), do: other
+
+  @doc "The label of an email service."
+  @spec email_provider(String.t()) :: String.t()
+  def email_provider("smtp"), do: gettext("SMTP server")
+  def email_provider("sendgrid"), do: "SendGrid"
+  def email_provider("brevo"), do: "Brevo"
+  def email_provider(other), do: other
+
+  @doc "The label of an SMTP encryption mode."
+  @spec smtp_tls(String.t()) :: String.t()
+  def smtp_tls("starttls"), do: gettext("STARTTLS (port 587)")
+  def smtp_tls("ssl"), do: gettext("SSL/TLS (port 465)")
+  def smtp_tls("none"), do: gettext("None (port 25)")
+  def smtp_tls(other), do: other
+
+  @doc "The label of a shop email template."
+  @spec email_template(String.t()) :: String.t()
+  def email_template("welcome"), do: gettext("Welcome, after signing up")
+  def email_template("purchase"), do: gettext("Receipt, when the VIP is granted")
+  def email_template("expiring"), do: gettext("Reminder, before the VIP ends")
+  def email_template("reset"), do: gettext("Password reset link")
+  def email_template(other), do: other
+
   @doc """
   The name of a marketplace module.
   """
@@ -940,6 +1070,7 @@ defmodule HllConditionalActionsWeb.Labels do
   def feature(:progression), do: gettext("Achievements and seasons")
   def feature(:stats), do: gettext("Leaderboard and matches")
   def feature(:live_feed), do: gettext("Live feed")
+  def feature(:vip_shop), do: gettext("VIP shop")
 
   @doc """
   What a marketplace module adds, for its card.
@@ -962,6 +1093,12 @@ defmodule HllConditionalActionsWeb.Labels do
 
   def feature_description(:live_feed),
     do: gettext("Watch kills, chat and connections as they happen on the server.")
+
+  def feature_description(:vip_shop),
+    do:
+      gettext(
+        "Sell VIP packages on a public page: players sign in, link their player and pay with Stripe, Dodo Payments or Mercado Pago. VIP is granted on every server of the package."
+      )
 
   @doc """
   Permissions grouped for the role form.

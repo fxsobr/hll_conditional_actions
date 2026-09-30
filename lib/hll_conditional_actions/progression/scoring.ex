@@ -52,40 +52,61 @@ defmodule HllConditionalActions.Progression.Scoring do
     total = before.total + value
     matches = before.matches + 1
 
+    per_match? = scoring == :average or (scoring == :weighted and per_match?(season))
+
     %{
       before
       | total: total,
         matches: matches,
-        score: if(scoring == :average, do: div(total, matches), else: total)
+        score: if(per_match?, do: div(total, matches), else: total)
     }
   end
 
   defp match_value(:weighted, season, player) do
-    Enum.reduce(@weighted_metrics, 0, fn metric, sum ->
+    @weighted_metrics
+    |> Enum.reduce(0, fn metric, sum ->
       sum + weight(season.weights, metric) * Metrics.match_value(player, metric)
     end)
+    |> round()
   end
 
   defp match_value(_sum_or_average, season, player),
     do: Metrics.match_value(player, season.metric)
 
-  @doc "A stat's weight in a weighted season (0 when not set)."
-  @spec weight(map() | nil, atom()) :: non_neg_integer()
+  @doc """
+  A stat's weight in a weighted season (0 when not set). Weights may have
+  one or two decimals ("0,6" or "0.6"); a whole weight stays an integer.
+
+      iex> alias HllConditionalActions.Progression.Scoring
+      iex> {Scoring.weight(%{"kills" => "0,6"}, :kills), Scoring.weight(%{"kills" => "2"}, :kills)}
+      {0.6, 2}
+  """
+  @spec weight(map() | nil, atom()) :: number()
   def weight(weights, metric) do
     case Map.get(weights || %{}, to_string(metric)) do
-      value when is_integer(value) and value > 0 ->
-        value
-
-      value when is_binary(value) ->
-        case Integer.parse(value) do
-          {int, _rest} when int > 0 -> int
-          _other -> 0
-        end
-
-      _unset ->
-        0
+      value when is_integer(value) and value > 0 -> value
+      value when is_float(value) and value > 0 -> tidy(value)
+      value when is_binary(value) -> parse_weight(value)
+      _unset -> 0
     end
   end
+
+  defp parse_weight(value) do
+    case value |> String.trim() |> String.replace(",", ".") |> Float.parse() do
+      {number, _rest} when number > 0 -> number |> min(100.0) |> tidy()
+      _other -> 0
+    end
+  end
+
+  # Two decimals at most, and 2.0 is just 2.
+  defp tidy(number) do
+    rounded = Float.round(number * 1.0, 2)
+    if rounded == trunc(rounded), do: trunc(rounded), else: rounded
+  end
+
+  @doc "Whether a combined season ranks by points per match."
+  @spec per_match?(map()) :: boolean()
+  def per_match?(season), do: Map.get(season, :per_match) == true
 
   defp blank(score), do: %{score: score, total: 0, matches: 0, wins: 0, losses: 0}
 

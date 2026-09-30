@@ -12,7 +12,10 @@ config :hll_conditional_actions, HllConditionalActions.Repo,
   port: String.to_integer(System.get_env("DATABASE_PORT", "5432")),
   database: "hll_conditional_actions_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  # TEST_POOL_SIZE keeps several test runs sharing one Postgres under its
+  # connection limit.
+  pool_size:
+    String.to_integer(System.get_env("TEST_POOL_SIZE", "#{System.schedulers_online() * 2}"))
 
 # Jobs run inline so a test can assert on their effect without waiting for a
 # queue, and the cron plugin is off so nothing fires on its own.
@@ -83,4 +86,15 @@ config :phoenix,
 # The limiter itself is covered by its own test, which sets these low.
 config :hll_conditional_actions, :login_rate_limit,
   ip: [limit: 1_000_000, window_ms: 60_000],
-  username: [limit: 1_000_000, window_ms: 3_600_000]
+  username: [limit: 1_000_000, window_ms: 3_600_000],
+  reset_ip: [limit: 1_000_000, window_ms: 60_000],
+  reset_email: [limit: 1_000_000, window_ms: 3_600_000]
+
+config :hll_conditional_actions, HllConditionalActions.Mailer, adapter: Swoosh.Adapters.Test
+
+# Payment providers and Discord sign in are stubbed the same way as CRCON.
+config :hll_conditional_actions, :payment_req_options,
+  plug: {Req.Test, HllConditionalActions.VipShop.Payments}
+
+config :hll_conditional_actions, :discord_oauth_req_options,
+  plug: {Req.Test, HllConditionalActionsWeb.ShopDiscordController}

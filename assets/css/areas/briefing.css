@@ -1,0 +1,287 @@
+/* Styles of the briefing area of the overhaul. Utilities first; add rules here only for what
+   Tailwind classes cannot express. */
+
+/* ── The page grid ───────────────────────────────────────────────────────
+   One grid, three arrangements (Briefing, TabletBriefing, MobileBriefing
+   boards). The page computes the areas for each width from the blocks the
+   viewer may see (`--areas-sm/md/xl`), so a missing block leaves no hole. */
+.briefing-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: var(--areas-sm);
+}
+
+@media (min-width: 48rem) {
+  .briefing-grid {
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: var(--areas-md);
+  }
+}
+
+@media (min-width: 80rem) {
+  .briefing-grid {
+    gap: 1.25rem;
+    grid-template-columns: 28.75rem minmax(0, 1fr);
+    grid-template-areas: var(--areas-xl);
+  }
+
+  .briefing-grid > [data-area="greet"],
+  .briefing-grid > [data-area="kpis"] {
+    min-height: 11.5rem;
+  }
+
+  .briefing-grid > [data-area="suggest"],
+  .briefing-grid > [data-area="chart"] {
+    min-height: 25rem;
+  }
+
+  .briefing-grid > [data-area="greet"] > section,
+  .briefing-grid > [data-area="kpis"] > section {
+    height: 100%;
+  }
+}
+
+.briefing-grid > [data-area="greet"] { grid-area: greet; }
+.briefing-grid > [data-area="kpis"] { grid-area: kpis; }
+.briefing-grid > [data-area="chips"] { grid-area: chips; }
+.briefing-grid > [data-area="week"] { grid-area: week; }
+.briefing-grid > [data-area="suggest"] { grid-area: suggest; }
+.briefing-grid > [data-area="chart"] { grid-area: chart; }
+.briefing-grid > [data-area="needs"] { grid-area: needs; }
+.briefing-grid > [data-area="servers"] { grid-area: servers; }
+
+/* ── Ready to go live ────────────────────────────────────────────────────
+   In the light theme the suggestion is the page's one dark panel
+   (BriefingLight board): the dark tones are re-derived inside it. */
+:root:not(.dark) .briefing-suggestion {
+  --color-base-100: #16170f;
+  --color-base-300: #2c2e24;
+  --color-base-content: #f3f2ec;
+  --color-secondary: #24251d;
+  --color-accent: #c3b3ff;
+  --color-primary: #d2f36b;
+  --color-axis: #ff9f5a;
+  --color-muted: #9a9c92;
+  --color-subtle: #b3b4ab;
+
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  border-color: transparent;
+}
+
+/* ── First-run track ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .briefing-pulse {
+    animation: briefing-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes briefing-pulse {
+  0%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* A recipe to start the first rule from: a raised chip. */
+.briefing-recipe {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 9999px;
+  background: var(--color-base-100);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition:
+    border-color 150ms,
+    transform 150ms;
+}
+
+.briefing-recipe:hover {
+  border-color: color-mix(in oklab, var(--color-primary) 55%, var(--color-base-300));
+}
+
+.briefing-recipe:active {
+  transform: translateY(1px);
+}
+
+/* ── Period menu ─────────────────────────────────────────────────────────── */
+.briefing-period > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* ── Fires chart ─────────────────────────────────────────────────────────
+   Bars per day under a smoothed line. The SVG stretches to the panel
+   (preserveAspectRatio="none"), so strokes keep their width with
+   non-scaling-stroke. `--chart` is the tone of the series drawn; the
+   light theme draws the line in ink over a lime area, with no bars. */
+.briefing-chart {
+  --chart: var(--color-primary);
+  --chart-line: var(--color-base-content);
+  --chart-area: color-mix(in oklab, var(--color-primary-300) 45%, transparent);
+  --chart-bar: transparent;
+  --chart-bar-peak: transparent;
+}
+
+.dark .briefing-chart {
+  --chart-line: var(--chart);
+  --chart-area: color-mix(in oklab, var(--chart) 7%, transparent);
+  --chart-bar: #262822;
+  --chart-bar-peak: #3a3d30;
+}
+
+.briefing-chart--error {
+  --chart: var(--color-error);
+  --chart-line: var(--color-error);
+  --chart-area: color-mix(in oklab, var(--color-error) 18%, transparent);
+}
+
+.briefing-chart--accent {
+  --chart: var(--color-accent);
+  --chart-line: var(--color-accent);
+  --chart-area: color-mix(in oklab, var(--color-accent) 22%, transparent);
+}
+
+.dark .briefing-chart--error,
+.dark .briefing-chart--accent {
+  --chart-area: color-mix(in oklab, var(--chart) 8%, transparent);
+}
+
+.briefing-chart-grid {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-base-300) 70%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.briefing-chart-bar {
+  fill: var(--chart-bar);
+}
+
+.briefing-chart-bar.is-peak {
+  fill: var(--chart-bar-peak);
+}
+
+.briefing-chart-area {
+  fill: var(--chart-area);
+  pointer-events: none;
+}
+
+.briefing-chart-line {
+  fill: none;
+  stroke: var(--chart-line);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.briefing-chart-peak {
+  stroke: var(--chart-line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* The hover layer: one column per day. Its tooltip shows while hovered;
+   until then, the busiest day's tooltip stays up. */
+.briefing-chart-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px dashed var(--chart-line);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.briefing-chart-hit:hover .briefing-chart-guide {
+  opacity: 0.6;
+}
+
+.briefing-chart-hit.is-peak .briefing-chart-guide {
+  opacity: 0;
+}
+
+.briefing-chart-tip {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.875rem;
+  background: var(--color-base-100);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+}
+
+.dark .briefing-chart-tip {
+  border-color: #3a3d30;
+  background: #2a2c24;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.briefing-chart-tip.is-left {
+  left: 0;
+  transform: none;
+}
+
+.briefing-chart-tip.is-right {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.briefing-chart-tip.is-peak,
+.briefing-chart-hit:hover .briefing-chart-tip {
+  opacity: 1;
+}
+
+.briefing-chart-hits:hover .briefing-chart-tip.is-peak {
+  opacity: 0;
+}
+
+.briefing-chart-hits .briefing-chart-hit:hover .briefing-chart-tip.is-peak {
+  opacity: 1;
+}
+
+.briefing-chart-dot {
+  background: var(--chart);
+}
+
+/* ── Empty states ────────────────────────────────────────────────────────
+   The dashed outline drawings of the States board. */
+.briefing-empty-stroke {
+  fill: none;
+  stroke: var(--color-base-300);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.briefing-empty-line {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-base-300) 60%, var(--color-muted));
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}

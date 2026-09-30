@@ -88,7 +88,7 @@ defmodule HllConditionalActionsWeb.RuleTestingLiveTest do
       |> form("#why-not-form", %{why: %{player: "Zed"}})
       |> render_submit()
 
-    assert html =~ "Condition failed"
+    assert has_element?(view, "#why-not-steps-stop", "the conditions did not match")
     assert html =~ "42"
   end
 
@@ -123,15 +123,16 @@ defmodule HllConditionalActionsWeb.RuleTestingLiveTest do
 
   describe "recipe wizard" do
     test "creates the answered rule in simulation", %{conn: conn} do
-      {:ok, view, html} = live(conn, ~p"/rules/new?recipe=team_kill_ladder")
-      assert html =~ "In one sentence"
+      {:ok, view, _html} = live(conn, ~p"/rules/new?recipe=team_kill_ladder")
+      assert has_element?(view, "#recipe-wizard-sentence")
 
-      html =
-        view
-        |> form("#recipe-wizard-form", %{answers: %{limit: "3", final_action: "kick_player"}})
-        |> render_change()
+      view
+      |> form("#recipe-wizard-form", %{answers: %{limit: "3", final_action: "kick_player"}})
+      |> render_change()
 
-      assert html =~ "team kill number 3"
+      # The answers read back as chips inside the sentence.
+      assert has_element?(view, "#recipe-wizard-sentence", "team kill number 3")
+      assert has_element?(view, "#recipe-wizard-sentence .wizard-chip", "3")
 
       view
       |> form("#recipe-wizard-form", %{answers: %{limit: "3", final_action: "kick_player"}})
@@ -149,11 +150,10 @@ defmodule HllConditionalActionsWeb.RuleTestingLiveTest do
       |> form("#recipe-wizard-form", %{answers: %{message: "Olá {player_name}"}})
       |> render_change()
 
-      view |> element("button", "Customize") |> render_click()
+      view |> element("button", "Open in the builder") |> render_click()
       # The wizard hands the answers to the page, which renders the builder.
-      html = render(view)
-      assert html =~ "Save rule"
-      assert html =~ "Olá {player_name}"
+      assert has_element?(view, "#rule-form")
+      assert render(view) =~ "Olá {player_name}"
     end
   end
 

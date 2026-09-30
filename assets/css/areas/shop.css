@@ -1,0 +1,987 @@
+/* The public VIP shop (`HllConditionalActionsWeb.ShopComponents`).
+
+   The admin picks one of five themes (`HllConditionalActions.VipShop.Design`):
+   Tático (the default, which follows the visitor's light or dark scheme),
+   Carmesim, Meia-noite, Deserto and Ártico. Each theme is a set of custom
+   properties on `.shop`; every piece of the storefront paints with them, so a
+   theme restyles every page at once. An admin's own accent colour overrides
+   `--sh-accent` / `--sh-on-accent` inline, and the tints are mixed from it.
+
+   The "on image" properties (`--sh-img-*`) colour what sits on artwork: the
+   hero, the server cards, the closing call and the auth screens' picture. 
+
+   Everything sits in the components layer, so a utility on the same element
+   (hidden, sm:flex...) still wins. */
+
+@layer components {
+  .shop {
+    /* Ground, surfaces, lines. */
+    --sh-ground: #0f100e;
+    --sh-ground-art: none;
+    --sh-panel: #181916;
+    --sh-panel-art: none;
+    --sh-raised: #20211d;
+    --sh-well: #141512;
+    --sh-border: #2a2b26;
+    --sh-border-strong: #2e3029;
+    --sh-line: #22241f;
+    --sh-line-style: solid;
+    --sh-step: #3a3d30;
+    --sh-card-shadow: none;
+    --sh-panel-border: transparent;
+
+    /* Text. */
+    --sh-text: #f3f2ec;
+    --sh-text-2: #b3b4ab;
+    --sh-text-3: #8c8e85;
+
+    /* The accent: buttons, links, highlights. */
+    --sh-accent: #d2f36b;
+    --sh-on-accent: #1a2006;
+    --sh-on-accent-2: color-mix(in oklab, var(--sh-on-accent) 78%, var(--sh-accent));
+    --sh-accent-fill: var(--sh-accent);
+    --sh-accent-soft: color-mix(in oklab, var(--sh-accent) 16%, transparent);
+    --sh-accent-tile: color-mix(in oklab, var(--sh-accent) 12%, transparent);
+    --sh-accent-tile-border: transparent;
+    --sh-accent-text: var(--sh-accent);
+    --sh-link: var(--sh-accent);
+    --sh-link-hover: color-mix(in oklab, var(--sh-accent) 70%, white);
+    --sh-highlight: var(--sh-accent);
+    --sh-highlight-shadow: none;
+    --sh-cta-shadow: none;
+    --sh-focus: color-mix(in oklab, var(--sh-accent) 60%, transparent);
+
+    /* States. */
+    --sh-warn: #f4c95d;
+    --sh-warn-soft: rgba(244, 201, 93, 0.14);
+    --sh-seed: #7fd6c2;
+    --sh-danger: #ff7b72;
+    --sh-person: #8cc4ff;
+    --sh-person-soft: rgba(140, 196, 255, 0.14);
+
+    /* Shapes. */
+    --sh-r-hero: 2rem;
+    --sh-r-card: 1.5rem;
+    --sh-r-panel: 1.75rem;
+    --sh-r-btn: 999px;
+    --sh-r-chip: 999px;
+    --sh-r-pill: 999px;
+    --sh-r-tile: 1rem;
+    --sh-r-logo: 0.875rem;
+    --sh-r-input: 1rem;
+    --sh-dash: solid;
+
+    /* The logo tile. */
+    --sh-logo-bg: #20211d;
+    --sh-logo-border: #2e3029;
+    --sh-logo-fg: var(--sh-accent);
+
+    /* On images. */
+    --sh-img-bg: #181916;
+    --sh-img-text: #f3f2ec;
+    --sh-img-text-2: #cfcfc6;
+    --sh-img-text-3: #b3b4ab;
+    --sh-img-accent: var(--sh-accent);
+    --sh-img-scrim: linear-gradient(
+      90deg,
+      rgba(15, 16, 14, 0.94) 0%,
+      rgba(15, 16, 14, 0.72) 42%,
+      rgba(15, 16, 14, 0.1) 100%
+    );
+    --sh-img-fade: linear-gradient(180deg, rgba(15, 16, 14, 0) 55%, rgba(15, 16, 14, 0.7) 100%);
+    --sh-img-card-scrim: linear-gradient(
+      180deg,
+      rgba(15, 16, 14, 0.35) 0%,
+      rgba(15, 16, 14, 0.92) 78%
+    );
+    --sh-img-tint: transparent;
+    --sh-img-tint-blend: normal;
+    --sh-img-tint-opacity: 0;
+    --sh-img-ring: none;
+    --sh-img-glass: rgba(15, 16, 14, 0.78);
+    --sh-img-glass-border: rgba(243, 242, 236, 0.12);
+    --sh-img-glass-shadow: none;
+    --sh-img-caption-bg: transparent;
+    --sh-img-warn: #f4c95d;
+    --sh-img-warn-soft: rgba(244, 201, 93, 0.16);
+    --sh-img-button: #f3f2ec;
+    --sh-img-on-button: #141512;
+    --sh-live: var(--sh-img-accent);
+    --sh-live-glow: none;
+    --sh-live-shape: 999px;
+
+    background: var(--sh-ground-art), var(--sh-ground);
+    background-attachment: fixed;
+    color: var(--sh-text);
+  }
+
+  /* Tático, light: blue signal on cool paper; the artwork stays dark. */
+  :root:not(.dark) .shop-theme-tactical {
+    --sh-ground: #eef3f6;
+    --sh-panel: #ffffff;
+    --sh-raised: #f3f7f9;
+    --sh-well: #f3f7f9;
+    --sh-border: #dce3e8;
+    --sh-border-strong: #dce3e8;
+    --sh-line: #e6ebef;
+    --sh-step: #c9d3da;
+    --sh-card-shadow: 0 1px 2px rgba(16, 32, 48, 0.06);
+
+    --sh-text: #16170f;
+    --sh-text-2: #46505a;
+    --sh-text-3: #5f6a74;
+
+    --sh-accent: #1f66b8;
+    --sh-on-accent: #ffffff;
+    --sh-on-accent-2: #dce9f8;
+    --sh-accent-tile: #dce9f8;
+    --sh-link-hover: #174e8f;
+
+    --sh-warn: #6a4b00;
+    --sh-warn-soft: #fcefc8;
+    --sh-danger: #c23b32;
+    --sh-person: #1f66b8;
+    --sh-person-soft: #dce9f8;
+
+    --sh-logo-bg: #ffffff;
+    --sh-logo-border: #dce3e8;
+
+    --sh-img-accent: #8cc4ff;
+  }
+
+  /* Carmesim: deep wine, coral signal, a red edge on the hero. */
+  .shop-theme-crimson {
+    --sh-ground: #140b0c;
+    --sh-ground-art:
+      radial-gradient(circle at 12% 62%, rgba(140, 28, 40, 0.22) 0%, rgba(20, 11, 12, 0) 38%),
+      radial-gradient(circle at 92% 88%, rgba(140, 28, 40, 0.18) 0%, rgba(20, 11, 12, 0) 34%);
+    --sh-panel: #1f1213;
+    --sh-raised: #2a1718;
+    --sh-well: #180d0e;
+    --sh-border: #3a2224;
+    --sh-border-strong: #4a262a;
+    --sh-line: #2e1b1d;
+    --sh-step: #4a262a;
+    --sh-panel-border: #2e1b1d;
+
+    --sh-text: #f6e9e8;
+    --sh-text-2: #cdb5b3;
+    --sh-text-3: #a88e8c;
+
+    --sh-accent: #ff6b6b;
+    --sh-on-accent: #2a0708;
+    --sh-on-accent-2: #4a0f12;
+    --sh-accent-soft: rgba(255, 107, 107, 0.18);
+    --sh-accent-tile: rgba(255, 107, 107, 0.14);
+    --sh-accent-text: #ff9a94;
+    --sh-link: #ff8a84;
+    --sh-link-hover: #ffb0ab;
+    --sh-highlight: linear-gradient(165deg, #ff7f76 0%, var(--sh-accent) 55%, #f2616b 100%);
+    --sh-highlight-shadow: 0 18px 40px rgba(255, 107, 107, 0.22);
+    --sh-cta-shadow: 0 10px 30px rgba(255, 107, 107, 0.28);
+    --sh-r-tile: 999px;
+
+    --sh-logo-bg: linear-gradient(160deg, #3a1c1f 0%, #241314 100%);
+    --sh-logo-border: #4a262a;
+
+    --sh-img-bg: #1f1213;
+    --sh-img-text: #f6e9e8;
+    --sh-img-text-2: #e8d3d1;
+    --sh-img-text-3: #cdb5b3;
+    --sh-img-accent: #ff9a94;
+    --sh-img-scrim: linear-gradient(
+      90deg,
+      rgba(20, 11, 12, 0.95) 0%,
+      rgba(26, 12, 14, 0.76) 42%,
+      rgba(60, 14, 20, 0.12) 100%
+    );
+    --sh-img-fade: linear-gradient(180deg, rgba(20, 11, 12, 0) 55%, rgba(20, 11, 12, 0.72) 100%);
+    --sh-img-card-scrim: linear-gradient(
+      180deg,
+      rgba(20, 11, 12, 0.35) 0%,
+      rgba(20, 11, 12, 0.92) 78%
+    );
+    --sh-img-tint: #7a1522;
+    --sh-img-tint-blend: color;
+    --sh-img-tint-opacity: 0.6;
+    --sh-img-ring: inset 0 0 0 1px rgba(255, 107, 107, 0.14);
+    --sh-img-glass: rgba(20, 11, 12, 0.8);
+    --sh-img-glass-border: rgba(255, 107, 107, 0.2);
+    --sh-live: #ff6b6b;
+    --sh-live-glow: 0 0 0 3px rgba(255, 107, 107, 0.2);
+  }
+
+  /* Meia-noite: navy with a dot grid, periwinkle signal that glows. */
+  .shop-theme-midnight {
+    --sh-ground: #0a0e1a;
+    --sh-ground-art:
+      radial-gradient(circle at 85% 0%, rgba(92, 110, 220, 0.22) 0%, rgba(10, 14, 26, 0) 40%),
+      radial-gradient(rgba(230, 234, 245, 0.05) 1px, rgba(10, 14, 26, 0) 1px) 0 0 / 28px 28px;
+    --sh-panel: #111728;
+    --sh-panel-art: linear-gradient(180deg, #141b30 0%, #111728 100%);
+    --sh-raised: #19203a;
+    --sh-well: #0d1222;
+    --sh-border: #263052;
+    --sh-border-strong: #2e3862;
+    --sh-line: #1f2742;
+    --sh-step: #2e3862;
+    --sh-panel-border: #1f2742;
+
+    --sh-text: #e6eaf5;
+    --sh-text-2: #aeb6ce;
+    --sh-text-3: #8b94b2;
+
+    --sh-accent: #8ca8ff;
+    --sh-on-accent: #0a1233;
+    --sh-on-accent-2: #26336b;
+    --sh-accent-fill: linear-gradient(135deg, #9db5ff 0%, var(--sh-accent) 60%, #a59cff 100%);
+    --sh-accent-soft: rgba(140, 168, 255, 0.18);
+    --sh-accent-tile: rgba(140, 168, 255, 0.12);
+    --sh-accent-tile-border: rgba(140, 168, 255, 0.24);
+    --sh-accent-text: #b3c5ff;
+    --sh-link: #9db5ff;
+    --sh-link-hover: #c2d1ff;
+    --sh-highlight: linear-gradient(155deg, #a9beff 0%, var(--sh-accent) 50%, #a39bff 100%);
+    --sh-highlight-shadow: 0 0 0 1px rgba(157, 181, 255, 0.5), 0 20px 50px rgba(90, 120, 255, 0.28);
+    --sh-cta-shadow: 0 0 0 1px rgba(157, 181, 255, 0.4), 0 10px 34px rgba(110, 140, 255, 0.32);
+
+    --sh-logo-bg: linear-gradient(160deg, #222b4d 0%, #141a30 100%);
+    --sh-logo-border: #2e3862;
+    --sh-logo-fg: #9db5ff;
+
+    --sh-img-bg: #111728;
+    --sh-img-text: #e6eaf5;
+    --sh-img-text-2: #d2d8ea;
+    --sh-img-text-3: #aeb6ce;
+    --sh-img-accent: #b3c5ff;
+    --sh-img-scrim: linear-gradient(
+      90deg,
+      rgba(10, 14, 26, 0.95) 0%,
+      rgba(12, 17, 34, 0.78) 42%,
+      rgba(20, 30, 70, 0.18) 100%
+    );
+    --sh-img-fade: linear-gradient(180deg, rgba(10, 14, 26, 0) 55%, rgba(10, 14, 26, 0.74) 100%);
+    --sh-img-card-scrim: linear-gradient(
+      180deg,
+      rgba(10, 14, 26, 0.35) 0%,
+      rgba(10, 14, 26, 0.92) 78%
+    );
+    --sh-img-tint: #1b2c7a;
+    --sh-img-tint-blend: color;
+    --sh-img-tint-opacity: 0.7;
+    --sh-img-ring: inset 0 0 0 1px rgba(140, 168, 255, 0.18);
+    --sh-img-glass: rgba(10, 14, 26, 0.8);
+    --sh-img-glass-border: rgba(140, 168, 255, 0.22);
+    --sh-live: #7fe3f0;
+    --sh-live-glow: 0 0 8px rgba(127, 227, 240, 0.8);
+  }
+
+  /* Deserto: sand on dark earth, square corners, dashes and stencilled type. */
+  .shop-theme-desert {
+    --sh-ground: #1c160e;
+    --sh-ground-art:
+      repeating-linear-gradient(
+        135deg,
+        rgba(232, 184, 114, 0.025) 0px,
+        rgba(232, 184, 114, 0.025) 2px,
+        rgba(28, 22, 14, 0) 2px,
+        rgba(28, 22, 14, 0) 14px
+      ),
+      linear-gradient(180deg, #211a10 0%, #1c160e 100%);
+    --sh-panel: #282015;
+    --sh-raised: #362b1d;
+    --sh-well: #211a10;
+    --sh-border: #4a3b28;
+    --sh-border-strong: #574630;
+    --sh-line: #4a3b28;
+    --sh-line-style: dashed;
+    --sh-step: #574630;
+    --sh-panel-border: #3a2e1f;
+
+    --sh-text: #f4e8d6;
+    --sh-text-2: #d6c5aa;
+    --sh-text-3: #b5a283;
+
+    --sh-accent: #e8b872;
+    --sh-on-accent: #2a1b05;
+    --sh-on-accent-2: #4e3610;
+    --sh-accent-soft: rgba(232, 184, 114, 0.18);
+    --sh-accent-tile: rgba(232, 184, 114, 0.1);
+    --sh-accent-tile-border: rgba(232, 184, 114, 0.45);
+    --sh-accent-text: #f0c88c;
+    --sh-link-hover: #f4d2a0;
+    --sh-highlight: linear-gradient(170deg, #f0c888 0%, var(--sh-accent) 55%, #dda85e 100%);
+    --sh-highlight-shadow: 0 6px 0 #9a6a2a;
+    --sh-cta-shadow: 0 4px 0 #9a6a2a;
+
+    --sh-r-hero: 1.25rem;
+    --sh-r-card: 1.125rem;
+    --sh-r-panel: 1.25rem;
+    --sh-r-btn: 0.875rem;
+    --sh-r-chip: 0.5rem;
+    --sh-r-pill: 0.375rem;
+    --sh-r-tile: 0.625rem;
+    --sh-r-logo: 0.625rem;
+    --sh-r-input: 0.75rem;
+    --sh-dash: dashed;
+
+    --sh-logo-bg: #e8b872;
+    --sh-logo-border: #e8b872;
+    --sh-logo-fg: #2a1b05;
+
+    --sh-img-bg: #282015;
+    --sh-img-text: #f4e8d6;
+    --sh-img-text-2: #eadcc4;
+    --sh-img-text-3: #d6c5aa;
+    --sh-img-accent: #e8b872;
+    --sh-img-scrim: linear-gradient(
+      90deg,
+      rgba(28, 22, 14, 0.95) 0%,
+      rgba(34, 26, 15, 0.76) 42%,
+      rgba(60, 40, 15, 0.1) 100%
+    );
+    --sh-img-fade: linear-gradient(180deg, rgba(28, 22, 14, 0) 55%, rgba(28, 22, 14, 0.72) 100%);
+    --sh-img-card-scrim: linear-gradient(
+      180deg,
+      rgba(28, 22, 14, 0.35) 0%,
+      rgba(28, 22, 14, 0.92) 78%
+    );
+    --sh-img-tint: #9a6424;
+    --sh-img-tint-blend: multiply;
+    --sh-img-tint-opacity: 0.4;
+    --sh-img-glass: rgba(28, 22, 14, 0.84);
+    --sh-img-glass-border: rgba(232, 184, 114, 0.3);
+    --sh-live-shape: 2px;
+  }
+
+  /* Ártico: bright and airy, the hero washed light. */
+  .shop-theme-arctic {
+    --sh-ground: #eef3f6;
+    --sh-ground-art:
+      radial-gradient(circle at 90% 70%, rgba(127, 184, 240, 0.22) 0%, rgba(238, 243, 246, 0) 40%),
+      linear-gradient(180deg, #f6f9fb 0%, #eaf1f5 100%);
+    --sh-panel: #ffffff;
+    --sh-raised: #f3f7f9;
+    --sh-well: #f3f7f9;
+    --sh-border: #e3eaef;
+    --sh-border-strong: #d6e0e7;
+    --sh-line: #e3eaef;
+    --sh-step: #c9d3da;
+    --sh-card-shadow: 0 1px 2px rgba(16, 32, 48, 0.05), 0 10px 30px rgba(16, 32, 48, 0.04);
+    --sh-panel-border: #e3eaef;
+
+    --sh-text: #101820;
+    --sh-text-2: #3c4a56;
+    --sh-text-3: #5a6874;
+
+    --sh-accent: #1f66b8;
+    --sh-on-accent: #ffffff;
+    --sh-on-accent-2: #e6f0fb;
+    --sh-accent-soft: #e1ecf8;
+    --sh-accent-tile: linear-gradient(160deg, #e8f2fc 0%, #d6e7f8 100%);
+    --sh-accent-text: #1a5aa3;
+    --sh-link-hover: #174e8e;
+    --sh-highlight: linear-gradient(160deg, var(--sh-accent) 0%, #1c60ae 55%, #1a5aa3 100%);
+    --sh-highlight-shadow: 0 18px 44px rgba(31, 102, 184, 0.3);
+    --sh-cta-shadow: 0 8px 24px rgba(31, 102, 184, 0.28);
+
+    --sh-warn: #6a4b00;
+    --sh-warn-soft: #fcefc8;
+    --sh-danger: #c23b32;
+    --sh-person: #1f66b8;
+    --sh-person-soft: #e1ecf8;
+
+    --sh-logo-bg: #101820;
+    --sh-logo-border: #101820;
+    --sh-logo-fg: #ffffff;
+
+    --sh-img-bg: #dce7ee;
+    --sh-img-text: #101820;
+    --sh-img-text-2: #3c4a56;
+    --sh-img-text-3: #3c4a56;
+    --sh-img-accent: #1a5aa3;
+    --sh-img-scrim: linear-gradient(
+      90deg,
+      rgba(246, 249, 251, 0.97) 0%,
+      rgba(246, 249, 251, 0.9) 46%,
+      rgba(238, 243, 246, 0.12) 100%
+    );
+    --sh-img-fade: linear-gradient(
+      180deg,
+      rgba(246, 249, 251, 0) 60%,
+      rgba(246, 249, 251, 0.55) 100%
+    );
+    --sh-img-card-scrim: linear-gradient(
+      180deg,
+      rgba(246, 249, 251, 0.2) 0%,
+      rgba(246, 249, 251, 0.95) 78%
+    );
+    --sh-img-tint: #9cc8f5;
+    --sh-img-tint-blend: soft-light;
+    --sh-img-tint-opacity: 0.7;
+    --sh-img-ring: 0 1px 2px rgba(16, 32, 48, 0.06), 0 16px 40px rgba(31, 102, 184, 0.1);
+    --sh-img-glass: rgba(255, 255, 255, 0.92);
+    --sh-img-glass-border: rgba(214, 224, 231, 0.9);
+    --sh-img-glass-shadow: 0 10px 30px rgba(16, 32, 48, 0.12);
+    --sh-img-caption-bg: rgba(255, 255, 255, 0.88);
+    --sh-img-warn: #6a4b00;
+    --sh-img-warn-soft: #fcefc8;
+    --sh-img-button: #101820;
+    --sh-img-on-button: #ffffff;
+    --sh-live: #22a05e;
+  }
+
+  .shop-theme-arctic .shop-live-label {
+    color: #1d6b42;
+  }
+
+  /* ── Surfaces ─────────────────────────────────────────────────────────────── */
+
+  .shop-panel {
+    background: var(--sh-panel-art), var(--sh-panel);
+    border: 1px solid var(--sh-panel-border);
+    box-shadow: var(--sh-card-shadow);
+  }
+
+  .shop-card {
+    background: var(--sh-panel);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-r-card);
+    box-shadow: var(--sh-card-shadow);
+  }
+
+  .shop-raised {
+    background: var(--sh-raised);
+  }
+
+  .shop-divider {
+    height: 0;
+    border-top: 1px var(--sh-line-style) var(--sh-line);
+  }
+
+  .shop-hairline {
+    border-color: var(--sh-line);
+    border-style: var(--sh-line-style);
+  }
+
+  .shop-logo {
+    background: var(--sh-logo-bg);
+    border: 1px solid var(--sh-logo-border);
+    border-radius: var(--sh-r-logo);
+    color: var(--sh-logo-fg);
+  }
+
+  .shop-tile {
+    background: var(--sh-accent-tile);
+    border: 1px solid var(--sh-accent-tile-border);
+    border-radius: var(--sh-r-tile);
+    color: var(--sh-accent);
+  }
+
+  /* ── Buttons, chips, pills ────────────────────────────────────────────────── */
+
+  .shop-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    border-radius: var(--sh-r-btn);
+    font-weight: 600;
+    transition:
+      filter 0.15s,
+      transform 0.15s,
+      background-color 0.15s,
+      border-color 0.15s;
+  }
+
+  .shop-btn:focus-visible,
+  .shop-field:focus-within,
+  .shop-choice:focus-within {
+    outline: 2px solid var(--sh-focus);
+    outline-offset: 2px;
+  }
+
+  .shop-btn:active {
+    transform: translateY(1px);
+  }
+
+  .shop-btn-accent {
+    background: var(--sh-accent-fill);
+    color: var(--sh-on-accent);
+    box-shadow: var(--sh-cta-shadow);
+  }
+
+  .shop-btn-accent:hover {
+    filter: brightness(1.06);
+  }
+
+  .shop-btn-secondary {
+    background: var(--sh-raised);
+    border: 1px solid var(--sh-border-strong);
+    color: var(--sh-text);
+  }
+
+  :root:not(.dark) .shop-theme-tactical .shop-btn-secondary {
+    background: #ffffff;
+  }
+
+  .shop-btn-secondary:hover {
+    border-color: var(--sh-text-3);
+  }
+
+  .shop-btn-quiet {
+    background: var(--sh-panel);
+    border: 1px solid var(--sh-border);
+    color: var(--sh-text);
+    box-shadow: var(--sh-card-shadow);
+  }
+
+  .shop-btn-quiet:hover {
+    border-color: var(--sh-text-3);
+  }
+
+  .shop-btn-light {
+    background: var(--sh-img-button);
+    color: var(--sh-img-on-button);
+  }
+
+  .shop-btn-light:hover {
+    filter: brightness(0.94);
+  }
+
+  .shop-btn[disabled],
+  .shop-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+    filter: none;
+  }
+
+  .shop-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--sh-r-chip);
+    border: 1px var(--sh-dash) var(--sh-border);
+    background: var(--sh-panel);
+    color: var(--sh-text-2);
+  }
+
+  .shop-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--sh-r-pill);
+  }
+
+  .shop-pill-accent {
+    background: var(--sh-accent-soft);
+    color: var(--sh-accent-text);
+  }
+
+  .shop-pill-warn {
+    background: var(--sh-warn-soft);
+    color: var(--sh-warn);
+  }
+
+  .shop-pill-person {
+    background: var(--sh-person-soft);
+    color: var(--sh-person);
+  }
+
+  .shop-link {
+    color: var(--sh-link);
+    font-weight: 600;
+  }
+
+  .shop-link:hover {
+    color: var(--sh-link-hover);
+  }
+
+  .shop-nav-link {
+    border-radius: var(--sh-r-btn);
+    color: var(--sh-text-2);
+    transition: color 0.15s, background-color 0.15s;
+  }
+
+  .shop-theme-desert .shop-nav-link {
+    border-radius: 0.625rem;
+  }
+
+  .shop-nav-link:hover {
+    color: var(--sh-text);
+    background: color-mix(in oklab, var(--sh-text) 6%, transparent);
+  }
+
+  .shop-dot {
+    display: inline-block;
+    flex-shrink: 0;
+    border-radius: var(--sh-live-shape);
+    background: currentColor;
+  }
+
+  /* ── Forms ───────────────────────────────────────────────────────────────── */
+
+  .shop-field {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    border-radius: var(--sh-r-input);
+    border: 1px solid var(--sh-border-strong);
+    background: var(--sh-raised);
+    color: var(--sh-text-3);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .shop-field:focus-within {
+    outline: none;
+    border-color: color-mix(in oklab, var(--sh-accent) 60%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--sh-accent) 10%, transparent);
+  }
+
+  .shop-field.is-ok {
+    border-color: color-mix(in oklab, var(--sh-accent) 60%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--sh-accent) 10%, transparent);
+  }
+
+  .shop-field.is-error {
+    border-color: var(--sh-danger);
+  }
+
+  .shop-field input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--sh-text);
+    outline: none;
+  }
+
+  .shop-field input::placeholder {
+    color: var(--sh-text-3);
+  }
+
+  .shop-field input:focus {
+    box-shadow: none;
+  }
+
+  .shop-field input::-webkit-search-cancel-button {
+    filter: grayscale(1);
+  }
+
+  .shop-choice {
+    border-radius: 1rem;
+    border: 1px solid var(--sh-border);
+    transition: border-color 0.15s, background-color 0.15s;
+    cursor: pointer;
+  }
+
+  .shop-choice:hover {
+    border-color: var(--sh-text-3);
+  }
+
+  .shop-choice.is-on {
+    background: var(--sh-raised);
+    border-color: color-mix(in oklab, var(--sh-accent) 55%, transparent);
+  }
+
+  .shop-radio {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    margin: 0;
+    accent-color: var(--sh-accent);
+  }
+
+  /* The on/off switch: a hidden checkbox and its track. */
+  .shop-switch {
+    position: relative;
+    display: flex;
+    width: 2.75rem;
+    height: 1.625rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    padding: 3px;
+    background: var(--sh-border-strong);
+    transition: background-color 0.15s;
+  }
+
+  .shop-switch::after {
+    content: "";
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--sh-text-2);
+    transition: transform 0.15s, background-color 0.15s;
+  }
+
+  input:checked + .shop-switch {
+    background: var(--sh-accent);
+  }
+
+  input:checked + .shop-switch::after {
+    transform: translateX(1.125rem);
+    background: var(--sh-on-accent);
+  }
+
+  input:focus-visible + .shop-switch {
+    outline: 2px solid var(--sh-focus);
+    outline-offset: 2px;
+  }
+
+  .shop-meter {
+    height: 5px;
+    border-radius: 3px;
+    background: var(--sh-border-strong);
+  }
+
+  .shop-meter.is-on {
+    background: var(--sh-accent);
+  }
+
+  .shop-meter.is-weak {
+    background: var(--sh-danger);
+  }
+
+  .shop-meter.is-fair {
+    background: var(--sh-warn);
+  }
+
+  /* ── Hero and artwork ────────────────────────────────────────────────────── */
+
+  .shop-art {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--sh-img-bg);
+    color: var(--sh-img-text);
+  }
+
+  .shop-art > img.shop-art-img {
+    position: absolute;
+    inset: 0;
+    z-index: -3;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* The theme's colour wash over the picture. */
+  .shop-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: var(--sh-img-tint);
+    mix-blend-mode: var(--sh-img-tint-blend);
+    opacity: var(--sh-img-tint-opacity);
+    pointer-events: none;
+  }
+
+  .shop-art-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sh-img-fade), var(--sh-img-scrim);
+    pointer-events: none;
+  }
+
+  .shop-art-card-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sh-img-card-scrim);
+    pointer-events: none;
+  }
+
+  .shop-hero {
+    border-radius: var(--sh-r-hero);
+    box-shadow: var(--sh-img-ring);
+  }
+
+  .shop-hero-deco {
+    display: none;
+    pointer-events: none;
+  }
+
+  /* Carmesim: a red edge down the left of the hero. */
+  .shop-theme-crimson .shop-hero-deco.is-edge {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(180deg, #ff6b6b 0%, #b8323e 100%);
+  }
+
+  /* Meia-noite: a thin light line along the top. */
+  .shop-theme-midnight .shop-hero-deco.is-edge {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      rgba(140, 168, 255, 0) 0%,
+      rgba(140, 168, 255, 0.7) 50%,
+      rgba(140, 168, 255, 0) 100%
+    );
+  }
+
+  /* Deserto: the corner brackets of a viewfinder. */
+  .shop-theme-desert .shop-hero-deco.is-corner {
+    display: block;
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border: 0 solid #e8b872;
+  }
+
+  .shop-theme-desert .shop-hero-deco.is-tl {
+    top: 20px;
+    left: 20px;
+    border-top-width: 2px;
+    border-left-width: 2px;
+  }
+
+  .shop-theme-desert .shop-hero-deco.is-tr {
+    top: 20px;
+    right: 20px;
+    border-top-width: 2px;
+    border-right-width: 2px;
+    border-color: rgba(244, 232, 214, 0.6);
+  }
+
+  .shop-theme-desert .shop-hero-deco.is-bl {
+    bottom: 20px;
+    left: 20px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+  }
+
+  .shop-caption {
+    border-radius: 999px;
+    background: var(--sh-img-caption-bg);
+    color: var(--sh-img-text-2);
+  }
+
+  .shop-theme-arctic .shop-caption {
+    padding: 0 0.625rem;
+    height: 1.625rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .shop-glass {
+    background: var(--sh-img-glass);
+    border: 1px solid var(--sh-img-glass-border);
+    box-shadow: var(--sh-img-glass-shadow);
+    color: var(--sh-img-text);
+  }
+
+  .shop-img-pill {
+    background: color-mix(in oklab, var(--sh-img-accent) 16%, transparent);
+    color: var(--sh-img-accent);
+  }
+
+  .shop-theme-midnight .shop-img-pill {
+    border: 1px solid rgba(140, 168, 255, 0.3);
+  }
+
+  .shop-theme-arctic .shop-img-pill {
+    background: #e1ecf8;
+  }
+
+  .shop-img-warn {
+    background: var(--sh-img-warn-soft);
+    color: var(--sh-img-warn);
+  }
+
+  .shop-img-seed {
+    background: rgba(127, 214, 194, 0.18);
+    color: #7fd6c2;
+  }
+
+  .shop-theme-arctic .shop-img-seed {
+    background: #d9f3ec;
+    color: #1c6b58;
+  }
+
+  .shop-live {
+    color: var(--sh-live);
+  }
+
+  .shop-live .shop-dot {
+    box-shadow: var(--sh-live-glow);
+  }
+
+  /* ── The highlighted package ─────────────────────────────────────────────── */
+
+  .shop-highlight {
+    position: relative;
+    background: var(--sh-highlight);
+    color: var(--sh-on-accent);
+    border-radius: var(--sh-r-card);
+    box-shadow: var(--sh-highlight-shadow);
+  }
+
+  .shop-highlight .shop-on-2 {
+    color: var(--sh-on-accent-2);
+  }
+
+  .shop-highlight .shop-divider {
+    border-top-color: color-mix(in oklab, var(--sh-on-accent) 20%, transparent);
+  }
+
+  .shop-highlight-badge {
+    background: var(--sh-on-accent);
+    color: var(--sh-accent-text);
+  }
+
+  .shop-theme-tactical .shop-highlight-badge {
+    color: var(--sh-accent);
+  }
+
+  .shop-highlight-btn {
+    background: var(--sh-on-accent);
+    color: var(--sh-accent-text);
+  }
+
+  .shop-theme-tactical .shop-highlight-btn {
+    color: var(--sh-accent);
+  }
+
+  .shop-highlight-btn:hover {
+    filter: brightness(1.15);
+  }
+
+  :root:not(.dark) .shop-theme-tactical .shop-highlight-badge,
+  :root:not(.dark) .shop-theme-tactical .shop-highlight-btn,
+  .shop-theme-arctic .shop-highlight-badge,
+  .shop-theme-arctic .shop-highlight-btn {
+    background: #ffffff;
+    color: var(--sh-accent);
+  }
+
+  /* ── Deserto's stencilled labels ─────────────────────────────────────────── */
+
+  .shop-theme-desert .shop-stencil {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .shop-theme-desert .shop-eyebrow {
+    font-family: var(--font-mono);
+    color: var(--sh-accent);
+    letter-spacing: 0.12em;
+  }
+
+  .shop-theme-desert .shop-img-pill {
+    border: 1px dashed rgba(232, 184, 114, 0.6);
+    background: rgba(232, 184, 114, 0.18);
+    color: #f0c88c;
+  }
+}

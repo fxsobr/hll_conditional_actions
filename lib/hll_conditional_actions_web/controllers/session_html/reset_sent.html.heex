@@ -1,0 +1,44 @@
+<AuthLayout.shell flash={@flash} art={:reset} return_to={~p"/login?forgot=1"} width={:wide}>
+  <:top>
+    <AuthLayout.top_pill href={~p"/login"} id="reset-back">
+      {gettext("Back to sign in")}
+    </AuthLayout.top_pill>
+  </:top>
+
+  <%!-- The same whether or not an account has this address: saying which
+        would tell anybody who is registered here. --%>
+  <article id="reset-sent" class="auth-box auth-box--sent">
+    <div class="flex items-center gap-4">
+      <span class="auth-icon-tile"><AuthLayout.glyph name={:mail} class="size-[1.625rem]" /></span>
+      <h1 class="auth-title auth-title--sent">{gettext("Check your e-mail")}</h1>
+    </div>
+
+    <p class="auth-sub">
+      <AuthLayout.around
+        text={
+          gettext(
+            "If there is an account with %{email}, the link arrives in a few minutes and is valid for %{minutes} minutes. Cannot find it? Look in the spam folder.",
+            email: AuthLayout.hole(),
+            minutes: HllConditionalActions.Accounts.PasswordReset.max_age_minutes()
+          )
+        }
+        class="font-mono text-base-content"
+        value={masked(@email)}
+      />
+    </p>
+
+    <div class="flex flex-wrap items-center gap-2.5">
+      <.form for={%{}} as={:reset} action={~p"/login"} id="reset-resend-form">
+        <input type="hidden" name="reset[email]" value={@email} />
+        <AuthLayout.resend_button id="reset-resend" seconds={@resend_seconds} />
+      </.form>
+      <.link
+        href={~p"/login?forgot=1"}
+        id="reset-other-email"
+        class="auth-soft-button auth-soft-button--strong"
+      >
+        {gettext("Use another e-mail")}
+      </.link>
+    </div>
+  </article>
+</AuthLayout.shell>

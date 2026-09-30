@@ -41,32 +41,31 @@ defmodule HllConditionalActionsWeb.CoreComponents do
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
-      role="alert"
-      class={[
-        "pointer-events-auto flex w-full items-start gap-3 rounded-box border p-4 text-sm shadow-lg",
-        @kind == :info && "border-info/30 bg-base-100 text-base-content",
-        @kind == :error && "border-error/40 bg-base-100 text-base-content"
-      ]}
+      role={if @kind == :error, do: "alert", else: "status"}
+      class={["toast", @kind == :error && "toast--error"]}
       {@rest}
     >
-      <.icon
-        :if={@kind == :info}
-        name="hero-information-circle"
-        class="size-5 shrink-0 text-info"
-      />
-      <.icon
-        :if={@kind == :error}
-        name="hero-exclamation-circle"
-        class="size-5 shrink-0 text-error"
-      />
-      <div class="min-w-0 flex-1">
-        <p :if={@title} class="font-semibold">{@title}</p>
-
-        <p>{msg}</p>
+      <span class="toast-mark" aria-hidden="true">
+        <.icon :if={@kind == :info} name="hero-check" class="size-4" />
+        <span :if={@kind == :error}>!</span>
+      </span>
+      <div class="flex min-w-0 flex-1 flex-col gap-px">
+        <strong :if={@title} class="text-sm font-semibold">{@title}</strong>
+        <span class={[
+          if(@title, do: "text-xs", else: "text-sm font-semibold"),
+          @title && @kind == :error && "text-error",
+          @title && @kind == :info && "text-muted"
+        ]}>
+          {msg}
+        </span>
       </div>
 
-      <button type="button" class="group cursor-pointer self-start" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+      <button
+        type="button"
+        class="group flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted"
+        aria-label={gettext("close")}
+      >
+        <.icon name="hero-x-mark" class="size-4 group-hover:text-base-content" />
       </button>
     </div>
     """

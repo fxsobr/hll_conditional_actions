@@ -36,7 +36,9 @@ defmodule HllConditionalActions.Tickets do
   alias HllConditionalActions.Servers.Server
   alias HllConditionalActions.Tickets.Announcement
   alias HllConditionalActions.Tickets.Context
+  alias HllConditionalActions.Tickets.Eligibility
   alias HllConditionalActions.Tickets.Message
+  alias HllConditionalActions.Tickets.Reported
   alias HllConditionalActions.Tickets.Settings
   alias HllConditionalActions.Tickets.Ticket
 
@@ -112,15 +114,33 @@ defmodule HllConditionalActions.Tickets do
       :nomatch
   """
   @spec match_command(String.t() | nil, [String.t()]) :: {:ok, String.t()} | :nomatch
-  def match_command(nil, _commands), do: :nomatch
-
   def match_command(message, commands) do
-    message = String.trim(message)
+    case find_command(message, commands, true) do
+      {:ok, _command, text} -> {:ok, text}
+      :nomatch -> :nomatch
+    end
+  end
 
-    [first | rest] = String.split(message, ~r/\s+/, parts: 2)
+  @doc """
+  Like `match_command/2`, and also says which command it was. With
+  `ignore_case` false, `!ADMIN` no longer counts as `!admin`.
 
-    if String.downcase(first) in commands,
-      do: {:ok, rest |> List.first("") |> String.trim()},
+      iex> alias HllConditionalActions.Tickets
+      iex> Tickets.find_command("!AJUDA tk", ["!admin", "!ajuda"], true)
+      {:ok, "!ajuda", "tk"}
+      iex> Tickets.find_command("!AJUDA tk", ["!admin", "!ajuda"], false)
+      :nomatch
+  """
+  @spec find_command(String.t() | nil, [String.t()], boolean()) ::
+          {:ok, String.t(), String.t()} | :nomatch
+  def find_command(nil, _commands, _ignore_case), do: :nomatch
+
+  def find_command(message, commands, ignore_case) do
+    [first | rest] = message |> String.trim() |> String.split(~r/\s+/, parts: 2)
+    word = if ignore_case == false, do: first, else: String.downcase(first)
+
+    if word in (commands || []),
+      do: {:ok, word, rest |> List.first("") |> String.trim()},
       else: :nomatch
   end
 
@@ -135,6 +155,9 @@ defmodule HllConditionalActions.Tickets do
     * `{:added, ticket}` - the line joined the player's open ticket
     * `:cooldown` - a command came too soon after the player's last ticket
     * `:rate_limited` - the player hit the server's tickets-per-hour limit
+    * `:offline` - outside office hours, on a server that takes no tickets then
+    * `:not_allowed` - the player may not open tickets here (see
+      `HllConditionalActions.Tickets.Eligibility`)
     * `:duplicate` - the stream delivered this line before
     * `:ignored` - neither a command nor from a player with a ticket
   """
@@ -145,6 +168,8 @@ defmodule HllConditionalActions.Tickets do
           | {:closed, Ticket.t() | nil}
           | :cooldown
           | :rate_limited
+          | :offline
+          | :not_allowed
           | :duplicate
           | :ignored
   def handle_chat(server, settings, event, opts \\ [])
@@ -162,46 +187,115 @@ defmodule HllConditionalActions.Tickets do
 
   def handle_chat(_server, _settings, _event, _opts), do: :ignored
 
+  # The player's open tickets, newest first: a line without a command joins
+  # the newest; a command opens another while the server allows more than
+  # one at a time.
   defp route_chat(server, settings, event, log_key, opts) do
-    open = open_ticket(server.id, event.player_id)
+    open = open_tickets(server.id, event.player_id)
+    newest = List.first(open)
+    room? = length(open) < max_open(settings)
 
-    case {match_command(event.chat_message, settings.commands), open} do
-      {{:ok, text}, open} when text != "" ->
-        handle_command(server, settings, event, {text, log_key, opts}, open)
+    case find_command(event.chat_message, settings.commands, settings.ignore_case) do
+      {:ok, command, text} when text != "" ->
+        opts = Keyword.put(opts, :command, command)
+        handle_command(server, settings, event, {text, log_key, opts}, {newest, room?})
 
-      {{:ok, ""}, nil} ->
-        open_if_allowed(server, settings, event, "", log_key, opts)
+      {:ok, command, ""} when is_nil(newest) or room? ->
+        open_if_allowed(
+          server,
+          settings,
+          event,
+          "",
+          log_key,
+          Keyword.put(opts, :command, command)
+        )
 
-      {{:ok, ""}, %Ticket{} = ticket} ->
-        {:added, ticket}
+      {:ok, _command, ""} ->
+        {:added, newest}
 
-      {:nomatch, %Ticket{} = ticket} ->
-        {:added, add_player_line(ticket, event, String.trim(event.chat_message || ""), log_key)}
+      :nomatch when not is_nil(newest) ->
+        line = String.trim(event.chat_message || "")
+        {:added, add_player_line(newest, event, line, log_key, settings)}
 
-      {:nomatch, nil} ->
+      :nomatch ->
         :ignored
     end
   end
 
-  defp handle_command(server, settings, event, {text, log_key, opts}, open) do
+  defp max_open(%Settings{max_open_per_player: max}) when is_integer(max) and max > 1, do: max
+  defp max_open(_settings), do: 1
+
+  defp handle_command(server, settings, event, {text, log_key, opts}, {open, room?}) do
     case player_command(text, settings) do
       :status -> {:status, tell_status(server, settings, event, open)}
       :close -> {:closed, close_by_player(open)}
-      nil -> command_text(server, settings, event, text, log_key, opts, open)
+      nil -> command_text(server, settings, event, {text, log_key, opts}, {open, room?})
     end
   end
 
-  defp command_text(server, settings, event, text, log_key, opts, nil),
-    do: open_if_allowed(server, settings, event, text, log_key, opts)
+  defp command_text(server, settings, event, {text, log_key, opts}, {open, room?})
+       when is_nil(open) or room?,
+       do: open_if_allowed(server, settings, event, text, log_key, opts)
 
-  defp command_text(_server, _settings, event, text, log_key, _opts, ticket),
-    do: {:added, add_player_line(ticket, event, text, log_key)}
+  # Calling again while the ticket is open adds to it, and the player is
+  # reminded it is still waiting.
+  defp command_text(server, settings, event, {text, log_key, _opts}, {ticket, _room?}) do
+    ticket = add_player_line(ticket, event, text, log_key, settings)
+    notify_player(server, ticket, settings, already_open_text())
+    {:added, ticket}
+  end
+
+  @doc false
+  def already_open_text,
+    do:
+      in_default_locale(fn ->
+        gettext("You already have ticket \#{ticket_id} open. Wait for the admin's answer.")
+      end)
+
+  defp cooldown_text,
+    do:
+      in_default_locale(fn ->
+        gettext("Wait a few minutes before calling an admin again.")
+      end)
 
   defp open_if_allowed(server, settings, event, text, log_key, opts) do
+    outside? = not in_hours?(settings, server.timezone, DateTime.utc_now())
+
     cond do
-      cooling_down?(server.id, event.player_id, settings) -> :cooldown
-      over_hourly_limit?(server.id, event.player_id, settings) -> :rate_limited
-      true -> open_new(server, settings, event, text, log_key, opts)
+      cooling_down?(server.id, event.player_id, settings) ->
+        refuse(server, settings, event, cooldown_text())
+        :cooldown
+
+      over_hourly_limit?(server.id, event.player_id, settings) ->
+        :rate_limited
+
+      outside? and settings.accept_offline == false ->
+        refuse(server, settings, event, settings.offline_message)
+        :offline
+
+      true ->
+        case Eligibility.check(server, settings, event.player_id) do
+          :ok ->
+            opts = Keyword.put(opts, :outside_hours, outside?)
+            open_new(server, settings, event, text, log_key, opts)
+
+          {:denied, reason} ->
+            refuse(server, settings, event, Eligibility.message(reason, settings))
+            :not_allowed
+        end
+    end
+  end
+
+  # Tells a player why no ticket was opened, when there is something to say.
+  defp refuse(server, settings, event, text) do
+    case String.trim(text || "") do
+      "" ->
+        :ok
+
+      text ->
+        target = %Ticket{player_id: event.player_id, player_name: event.player_name}
+        {_delivery, _error} = deliver(server, target, render_notice(text, target, settings))
+        :ok
     end
   end
 
@@ -246,35 +340,77 @@ defmodule HllConditionalActions.Tickets do
   end
 
   @doc """
-  Splits a category off the ticket text: the first word, when the server
-  lists it as a category.
+  Splits a category off the ticket text: the category's name at the start
+  (ignoring case, the longest name that fits), or its number in the list the
+  player was shown ("2 he keeps team killing").
 
       iex> alias HllConditionalActions.Tickets
-      iex> settings = %HllConditionalActions.Tickets.Settings{category_priorities: %{"tk" => "high", "cheat" => "urgent"}}
+      iex> settings = %HllConditionalActions.Tickets.Settings{category_priorities: %{"tk" => "high", "cheat" => "urgent", "Tiro amigo" => "high"}, category_order: ["cheat", "tk", "Tiro amigo"]}
       iex> Tickets.split_category("Cheat aimbot on the hill", settings)
       {"cheat", "aimbot on the hill"}
+      iex> Tickets.split_category("tiro amigo no tanque", settings)
+      {"Tiro amigo", "no tanque"}
+      iex> Tickets.split_category("2 on the bridge", settings)
+      {"tk", "on the bridge"}
       iex> Tickets.split_category("help me", settings)
       {nil, "help me"}
   """
   @spec split_category(String.t(), Settings.t()) :: {String.t() | nil, String.t()}
   def split_category(text, %Settings{} = settings) do
     categories = Settings.categories(settings)
+    lower = String.downcase(text)
 
-    case String.split(text, ~r/\s+/, parts: 2) do
-      [first | rest] ->
-        if String.downcase(first) in categories,
-          do: {String.downcase(first), rest |> List.first("") |> String.trim()},
-          else: {nil, text}
+    named =
+      categories
+      |> Enum.sort_by(&(-String.length(&1)))
+      |> Enum.find(fn name ->
+        name = String.downcase(name)
+        lower == name or String.starts_with?(lower, name <> " ")
+      end)
 
-      [] ->
+    cond do
+      named ->
+        {named, text |> String.slice(String.length(named)..-1//1) |> String.trim()}
+
+      numbered = numbered_category(text, categories) ->
+        [_number | rest] = String.split(text, ~r/\s+/, parts: 2)
+        {numbered, rest |> List.first("") |> String.trim()}
+
+      true ->
         {nil, text}
     end
+  end
+
+  # "2" or "2 the rest": the second category of the list the player was shown.
+  defp numbered_category(text, categories) do
+    with [first | _rest] <- String.split(text, ~r/\s+/, parts: 2),
+         {number, ""} <- Integer.parse(first),
+         true <- number >= 1 do
+      Enum.at(categories, number - 1)
+    else
+      _other -> nil
+    end
+  end
+
+  @doc """
+  The categories as the player reads them in game: "1 tk, 2 cheat".
+
+      iex> alias HllConditionalActions.Tickets
+      iex> Tickets.category_menu(%HllConditionalActions.Tickets.Settings{category_priorities: %{"tk" => "high", "cheat" => "urgent"}, category_order: ["tk", "cheat"]})
+      "1 tk, 2 cheat"
+  """
+  @spec category_menu(Settings.t()) :: String.t()
+  def category_menu(%Settings{} = settings) do
+    settings
+    |> Settings.categories()
+    |> Enum.with_index(1)
+    |> Enum.map_join(", ", fn {name, index} -> "#{index} #{name}" end)
   end
 
   @doc """
   Whether a moment falls inside the server's office hours. Always true when
   the server has none. A window that ends before it starts runs past
-  midnight (20:00 to 02:00).
+  midnight (20:00 to 02:00), and several windows a day are fine.
 
       iex> alias HllConditionalActions.Tickets
       iex> settings = %HllConditionalActions.Tickets.Settings{hours_enabled: true, hours_start: ~T[20:00:00], hours_end: ~T[02:00:00], hours_days: [1, 2, 3, 4, 5, 6, 7]}
@@ -282,45 +418,32 @@ defmodule HllConditionalActions.Tickets do
       true
       iex> Tickets.in_hours?(settings, "Etc/UTC", ~U[2026-09-26 12:00:00Z])
       false
+      iex> ranges = %HllConditionalActions.Tickets.Settings{hours_enabled: true, hours_ranges: %{"3" => [["12:00", "14:00"], ["19:00", "24:00"]]}}
+      iex> {Tickets.in_hours?(ranges, "Etc/UTC", ~U[2026-09-30 13:00:00Z]), Tickets.in_hours?(ranges, "Etc/UTC", ~U[2026-09-30 16:00:00Z])}
+      {true, false}
   """
   @spec in_hours?(Settings.t(), String.t() | nil, DateTime.t()) :: boolean()
-  def in_hours?(%Settings{hours_enabled: true} = settings, timezone, %DateTime{} = at)
-      when not is_nil(settings.hours_start) and not is_nil(settings.hours_end) do
-    local =
-      case DateTime.shift_zone(at, timezone || "Etc/UTC") do
-        {:ok, local} -> local
-        {:error, _reason} -> at
-      end
+  def in_hours?(%Settings{hours_enabled: true} = settings, timezone, %DateTime{} = at) do
+    case Settings.schedule(settings) do
+      schedule when map_size(schedule) == 0 ->
+        true
 
-    case window_day(local, settings.hours_start, settings.hours_end) do
-      nil -> false
-      day -> day in (settings.hours_days || [])
+      schedule ->
+        local =
+          case DateTime.shift_zone(at, timezone || "Etc/UTC") do
+            {:ok, local} -> local
+            {:error, _reason} -> at
+          end
+
+        minute = local.hour * 60 + local.minute
+
+        schedule
+        |> Map.get(Date.day_of_week(local), [])
+        |> Enum.any?(fn {start, stop} -> minute >= start and minute < stop end)
     end
   end
 
   def in_hours?(_settings, _timezone, _at), do: true
-
-  # The weekday whose hours a moment falls in, or nil outside them. Past
-  # midnight, the hours belong to the day they started on.
-  defp window_day(local, start, finish) do
-    time = DateTime.to_time(local)
-    after_start? = Time.compare(time, start) != :lt
-    before_end? = Time.compare(time, finish) == :lt
-
-    cond do
-      Time.compare(start, finish) != :gt ->
-        if after_start? and before_end?, do: Date.day_of_week(local)
-
-      after_start? ->
-        Date.day_of_week(local)
-
-      before_end? ->
-        local |> DateTime.to_date() |> Date.add(-1) |> Date.day_of_week()
-
-      true ->
-        nil
-    end
-  end
 
   @doc """
   What identifies a chat line across a stream reconnect: the stream's own id
@@ -352,12 +475,17 @@ defmodule HllConditionalActions.Tickets do
     )
   end
 
-  defp open_ticket(server_id, player_id) do
-    Repo.one(
+  # The player's tickets still open on the server, newest first.
+  defp open_tickets(server_id, player_id) do
+    Repo.all(
       from t in Ticket,
-        where: t.server_id == ^server_id and t.player_id == ^player_id and t.status != :closed
+        where: t.server_id == ^server_id and t.player_id == ^player_id and t.status != :closed,
+        order_by: [desc: t.inserted_at, desc: t.id]
     )
   end
+
+  defp open_ticket(server_id, player_id),
+    do: server_id |> open_tickets(player_id) |> List.first()
 
   defp cooling_down?(_server_id, _player_id, %Settings{cooldown_seconds: seconds})
        when seconds in [nil, 0],
@@ -390,6 +518,9 @@ defmodule HllConditionalActions.Tickets do
 
   defp open_new(server, settings, event, text, log_key, opts) do
     {category, text} = split_category(text, settings)
+    recent = Keyword.get(opts, :recent, [])
+    context = Context.capture(recent, event)
+    reported = Reported.detect(context, event, text, recent)
 
     # A bare command still says something: keep what the player typed.
     body = if text == "", do: String.trim(event.chat_message), else: text
@@ -401,24 +532,48 @@ defmodule HllConditionalActions.Tickets do
       source: :chat,
       category: category,
       priority: priority_for(category, settings),
-      context: Context.capture(Keyword.get(opts, :recent, []), event)
+      context: context,
+      opened_with: Keyword.get(opts, :command),
+      outside_hours: Keyword.get(opts, :outside_hours, false),
+      reported_player_id: reported && reported.id,
+      reported_player_name: reported && reported.name
     }
 
-    case insert_ticket(attrs, %{author: :player, body: body, log_key: log_key}) do
+    case insert_ticket(attrs, %{author: :player, body: body, log_key: log_key},
+           max_open: max_open(settings)
+         ) do
       {:ok, ticket} ->
-        notify_player(server, ticket, settings, greeting(server, settings))
-        announce(server, settings, ticket, body)
-        Phoenix.PubSub.broadcast(PubSub, @topic, {:ticket_opened, ticket})
-        {:opened, broadcast(ticket)}
+        opened(server, settings, ticket, text, body, attrs.outside_hours)
 
       # Another line from the same player won the race; join that ticket.
-      {:error, _changeset} ->
-        case open_ticket(server.id, event.player_id) do
-          nil -> :ignored
-          ticket -> {:added, add_player_line(ticket, event, text, log_key)}
-        end
+      {:error, _reason} ->
+        join_open(server, settings, event, text, log_key)
     end
   end
+
+  defp opened(server, settings, ticket, text, body, outside_hours) do
+    notify_player(server, ticket, settings, greeting(settings, outside_hours))
+
+    if text == "" and settings.ask_reason,
+      do: notify_player(server, ticket, settings, ask_reason_text())
+
+    ticket = announce(server, settings, ticket, body)
+    Phoenix.PubSub.broadcast(PubSub, @topic, {:ticket_opened, ticket})
+    {:opened, broadcast(ticket)}
+  end
+
+  defp join_open(server, settings, event, text, log_key) do
+    case open_ticket(server.id, event.player_id) do
+      nil -> :ignored
+      ticket -> {:added, add_player_line(ticket, event, text, log_key, settings)}
+    end
+  end
+
+  defp ask_reason_text,
+    do:
+      in_default_locale(fn ->
+        gettext("Tell us what happened: type it here in the chat and it joins your ticket.")
+      end)
 
   @doc """
   The priority a new ticket opens with: its category's, or the server's
@@ -432,21 +587,26 @@ defmodule HllConditionalActions.Tickets do
   @spec priority_for(String.t() | nil, Settings.t()) :: atom()
   def priority_for(nil, settings), do: Ticket.parse_priority(settings.default_priority)
 
-  def priority_for(category, settings),
-    do:
-      Ticket.parse_priority(
-        Map.get(settings.category_priorities || %{}, category, settings.default_priority)
-      )
+  def priority_for(category, settings) do
+    name = Settings.find_category(settings, category)
 
-  # Outside office hours the player is told nobody is around.
-  defp greeting(server, settings) do
-    if in_hours?(settings, server.timezone, DateTime.utc_now()),
-      do: settings.received_message,
-      else: settings.offline_message || settings.received_message
+    Ticket.parse_priority(
+      Map.get(settings.category_priorities || %{}, name, settings.default_priority)
+    )
   end
 
-  defp insert_ticket(attrs, first_message) do
+  # Outside office hours the player is told nobody is around.
+  defp greeting(settings, false), do: settings.received_message
+  defp greeting(settings, true), do: settings.offline_message || settings.received_message
+
+  # Opening is serialised per player, so two lines racing each other cannot
+  # open more tickets than the server allows at once.
+  defp insert_ticket(attrs, first_message, opts \\ []) do
+    max = Keyword.get(opts, :max_open)
+
     Repo.transaction(fn ->
+      if max, do: ensure_room(attrs, max)
+
       with {:ok, ticket} <-
              %Ticket{}
              |> Ticket.open_changeset(Map.put(attrs, :last_activity_at, now()))
@@ -459,17 +619,28 @@ defmodule HllConditionalActions.Tickets do
     end)
   end
 
-  defp add_player_line(ticket, _event, "", _log_key), do: ticket
+  defp ensure_room(attrs, max) do
+    lock = :erlang.phash2({:ticket_open, attrs.server_id, attrs.player_id})
+    Repo.query!("SELECT pg_advisory_xact_lock($1)", [lock])
 
-  defp add_player_line(ticket, event, text, log_key) do
+    if length(open_tickets(attrs.server_id, attrs.player_id)) >= max,
+      do: Repo.rollback(:full)
+  end
+
+  defp add_player_line(ticket, _event, "", _log_key, _settings), do: ticket
+
+  defp add_player_line(ticket, event, text, log_key, settings) do
     case insert_message(ticket, %{author: :player, body: text, log_key: log_key}) do
       {:ok, _message} ->
         ticket
-        |> Ticket.update_changeset(%{
-          status: :open,
-          player_name: event.player_name || ticket.player_name,
-          last_activity_at: now()
-        })
+        |> Ticket.update_changeset(
+          %{
+            status: :open,
+            player_name: event.player_name || ticket.player_name,
+            last_activity_at: now()
+          }
+          |> Map.merge(picked_category(ticket, text, settings))
+        )
         |> Repo.update!()
         |> broadcast()
 
@@ -478,6 +649,24 @@ defmodule HllConditionalActions.Tickets do
         ticket
     end
   end
+
+  # A ticket without a category takes one when the player answers with its
+  # number (or its name) alone.
+  defp picked_category(%Ticket{category: nil} = ticket, text, %Settings{} = settings) do
+    case split_category(text, settings) do
+      {category, ""} when is_binary(category) ->
+        priority = priority_for(category, settings)
+
+        if Ticket.rank(priority) > Ticket.rank(ticket.priority),
+          do: %{category: category, priority: priority},
+          else: %{category: category}
+
+      _other ->
+        %{}
+    end
+  end
+
+  defp picked_category(_ticket, _text, _settings), do: %{}
 
   # ── Rules ──────────────────────────────────────────────────────────────────
 
@@ -510,7 +699,7 @@ defmodule HllConditionalActions.Tickets do
         }
 
         with {:ok, ticket} <- insert_ticket(attrs, %{author: :system, body: note}) do
-          announce(server, get_settings(server.id), ticket, note)
+          ticket = announce(server, get_settings(server.id), ticket, note)
           Phoenix.PubSub.broadcast(PubSub, @topic, {:ticket_opened, ticket})
           {:opened, broadcast(ticket)}
         end
@@ -531,8 +720,32 @@ defmodule HllConditionalActions.Tickets do
 
   def open_from_rule(_server, _player, _opts), do: {:error, :no_player}
 
-  defp announce(server, settings, ticket, text),
-    do: Announcement.new_ticket(server, settings, ticket, text)
+  # Announces a new ticket on Discord and notes when, for the settings page.
+  # Outside office hours only urgent tickets go out, and only when the
+  # server asks for it.
+  defp announce(server, settings, ticket, text) do
+    if settings.discord_webhook_id && announce?(server, settings, ticket) do
+      :ok = Announcement.new_ticket(server, settings, ticket, text)
+
+      ticket
+      |> Ticket.update_changeset(%{announced_at: now()})
+      |> Repo.update!()
+    else
+      ticket
+    end
+  end
+
+  defp announce?(server, settings, ticket) do
+    outside? =
+      ticket.outside_hours or
+        (ticket.source == :rule and not in_hours?(settings, server.timezone, DateTime.utc_now()))
+
+    cond do
+      not settings.hours_enabled -> true
+      not outside? -> true
+      true -> ticket.priority == :urgent and settings.offline_alert_urgent != false
+    end
+  end
 
   # ── Admin actions ──────────────────────────────────────────────────────────
 
@@ -542,11 +755,15 @@ defmodule HllConditionalActions.Tickets do
   The line is stored even if CRCON refuses it - the player may have left -
   with the delivery outcome, so the admin sees it did not arrive.
   """
-  @spec reply(Ticket.t(), User.t(), String.t()) ::
+  @spec reply(Ticket.t(), User.t(), String.t(), keyword()) ::
           {:ok, Message.t()} | {:error, :closed | :empty | Ecto.Changeset.t()}
-  def reply(%Ticket{status: :closed}, _user, _body), do: {:error, :closed}
+  def reply(ticket, user, body, opts \\ [])
 
-  def reply(%Ticket{} = ticket, %User{} = user, body) do
+  def reply(%Ticket{status: :closed}, _user, _body, _opts), do: {:error, :closed}
+
+  # `quick_reply:` names the quick reply the answer started from, so each
+  # one counts how often it is used.
+  def reply(%Ticket{} = ticket, %User{} = user, body, opts) do
     case String.trim(body || "") do
       "" ->
         {:error, :empty}
@@ -554,7 +771,9 @@ defmodule HllConditionalActions.Tickets do
       text ->
         server = Repo.get!(Server, ticket.server_id)
         settings = get_settings(ticket.server_id)
-        {delivery, error} = deliver(server, ticket, in_game_reply(settings, user, text))
+
+        {delivery, error} =
+          deliver(server, ticket, in_game_reply(settings, user, text, ticket, server))
 
         with {:ok, message} <-
                insert_message(ticket, %{
@@ -562,7 +781,8 @@ defmodule HllConditionalActions.Tickets do
                  user_id: user.id,
                  body: text,
                  delivery: delivery,
-                 delivery_error: error
+                 delivery_error: error,
+                 quick_reply: Keyword.get(opts, :quick_reply)
                }) do
           ticket
           |> Ticket.update_changeset(%{
@@ -590,11 +810,27 @@ defmodule HllConditionalActions.Tickets do
       iex> Tickets.in_game_reply(%HllConditionalActions.Tickets.Settings{}, %{name: nil, username: "ana"}, "Hi")
       "Hi"
   """
-  @spec in_game_reply(Settings.t(), map(), String.t()) :: String.t()
-  def in_game_reply(%Settings{reply_prefix: prefix}, user, text) do
+  @spec in_game_reply(Settings.t(), map(), String.t(), map() | nil, map() | nil) :: String.t()
+  def in_game_reply(
+        %Settings{reply_prefix: prefix} = settings,
+        user,
+        text,
+        ticket \\ nil,
+        server \\ nil
+      ) do
+    vars = %{
+      "admin" => admin_name(user),
+      "admin_name" => admin_name(user),
+      "message" => text
+    }
+
     case String.trim(prefix || "") do
-      "" -> text
-      prefix -> String.replace(prefix, "{admin}", admin_name(user)) <> " " <> text
+      "" ->
+        text
+
+      prefix ->
+        filled = fill(prefix, notice_vars(ticket || %{}, settings, server) |> Map.merge(vars))
+        if String.contains?(prefix, "{message}"), do: filled, else: filled <> " " <> text
     end
   end
 
@@ -633,18 +869,80 @@ defmodule HllConditionalActions.Tickets do
   @doc """
   Reopens a closed ticket. Fails if the player already opened a new one.
   """
-  @spec reopen(Ticket.t()) :: {:ok, Ticket.t()} | {:error, Ecto.Changeset.t()}
+  @spec reopen(Ticket.t()) :: {:ok, Ticket.t()} | {:error, :full | Ecto.Changeset.t()}
   def reopen(%Ticket{} = ticket) do
+    settings = get_settings(ticket.server_id)
+
+    if length(open_tickets(ticket.server_id, ticket.player_id)) >= max_open(settings) do
+      {:error, :full}
+    else
+      ticket
+      |> Ticket.update_changeset(%{
+        status: :open,
+        closed_at: nil,
+        closed_by_id: nil,
+        close_reason: nil,
+        last_activity_at: now()
+      })
+      |> Repo.update()
+      |> tap_ok(&broadcast/1)
+    end
+  end
+
+  @doc """
+  Sets the player a ticket is about (the one being reported), or clears it
+  with a nil id.
+  """
+  @spec set_reported(Ticket.t(), String.t() | nil, String.t() | nil) ::
+          {:ok, Ticket.t()} | {:error, Ecto.Changeset.t()}
+  def set_reported(%Ticket{} = ticket, player_id, name) do
+    id = if is_binary(player_id), do: String.trim(player_id)
+    id = if id in [nil, ""], do: nil, else: id
+
     ticket
     |> Ticket.update_changeset(%{
-      status: :open,
-      closed_at: nil,
-      closed_by_id: nil,
-      close_reason: nil,
-      last_activity_at: now()
+      reported_player_id: id,
+      reported_player_name: id && (blank_to_nil(name) || id)
     })
     |> Repo.update()
     |> tap_ok(&broadcast/1)
+  end
+
+  @doc """
+  Works out, once, who an older ticket is about, from the names in its
+  context (see `HllConditionalActions.Tickets.Reported.infer/1`), and keeps
+  it. The ticket as it is when nothing is sure.
+  """
+  @spec infer_reported(Ticket.t()) :: Ticket.t()
+  def infer_reported(%Ticket{reported_player_id: nil, source: :chat, context: [_ | _]} = ticket) do
+    case Reported.infer(ticket) do
+      %{id: id, name: name} ->
+        case set_reported(ticket, id, name) do
+          {:ok, updated} ->
+            %{
+              ticket
+              | reported_player_id: updated.reported_player_id,
+                reported_player_name: updated.reported_player_name
+            }
+
+          {:error, _changeset} ->
+            ticket
+        end
+
+      nil ->
+        ticket
+    end
+  end
+
+  def infer_reported(ticket), do: ticket
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(text) when is_binary(text) do
+    case String.trim(text) do
+      "" -> nil
+      text -> text
+    end
   end
 
   @doc "Changes a ticket's priority."
@@ -760,25 +1058,31 @@ defmodule HllConditionalActions.Tickets do
   The CRCON actions an admin can take from a ticket.
   """
   @spec player_actions() :: [atom()]
-  def player_actions, do: [:punish, :kick, :watch, :temp_ban]
+  def player_actions, do: [:message, :punish, :kick, :watch, :temp_ban]
 
   @doc """
   Runs a CRCON action on the ticket's player - or on another player the
   ticket is about, when `target_id` is given (the one being reported) - and
   records it in the conversation, so the next admin sees what was done.
+
+  Acting on a player needs `:manage_players`; answering the ticket alone
+  does not grant it.
   """
   @spec act(Ticket.t(), User.t(), atom(), String.t(), String.t() | nil, keyword()) ::
           {:ok, Message.t()}
-          | {:error, :empty_reason | :unknown_action | :bad_duration | String.t()}
+          | {:error, :forbidden | :empty_reason | :unknown_action | :bad_duration | String.t()}
   def act(%Ticket{} = ticket, %User{} = user, action, reason, target_id \\ nil, opts \\ []) do
     hours = Keyword.get(opts, :duration_hours, 2)
     reason = String.trim(reason || "")
     target = if blank?(target_id), do: ticket.player_id, else: String.trim(target_id)
 
-    with :ok <- check_action(action, reason, hours) do
+    with :ok <- check_action(user, action, reason, hours) do
       server = Repo.get!(Server, ticket.server_id)
 
-      case run_player_action(server, action, target, "#{reason} - #{admin_name(user)}", hours) do
+      # A message goes as written; a penalty is signed, as the player sees it.
+      text = if action == :message, do: reason, else: "#{reason} - #{admin_name(user)}"
+
+      case run_player_action(server, action, target, text, hours) do
         {:ok, _result} ->
           {:ok, message} =
             insert_message(ticket, %{
@@ -800,9 +1104,10 @@ defmodule HllConditionalActions.Tickets do
     end
   end
 
-  defp check_action(action, reason, hours) do
+  defp check_action(user, action, reason, hours) do
     cond do
       action not in player_actions() -> {:error, :unknown_action}
+      not Accounts.can?(user, :manage_players) -> {:error, :forbidden}
       reason == "" -> {:error, :empty_reason}
       action == :temp_ban and not valid_hours?(hours) -> {:error, :bad_duration}
       true -> :ok
@@ -810,6 +1115,9 @@ defmodule HllConditionalActions.Tickets do
   end
 
   defp valid_hours?(hours), do: is_integer(hours) and hours in 1..8760
+
+  defp run_player_action(server, :message, player_id, text, _hours),
+    do: Crcon.message_player(server, player_id, text)
 
   defp run_player_action(server, :punish, player_id, reason, _hours),
     do: Crcon.punish(server, player_id, reason)
@@ -824,12 +1132,17 @@ defmodule HllConditionalActions.Tickets do
     do: Crcon.temp_ban(server, player_id, hours, reason)
 
   # Stored as data, read by admins of any language: kept as CRCON's own verbs.
+  defp action_note(:message, _hours), do: "MESSAGE"
   defp action_note(:punish, _hours), do: "PUNISH"
   defp action_note(:kick, _hours), do: "KICK"
   defp action_note(:watch, _hours), do: "WATCHLIST"
   defp action_note(:temp_ban, hours), do: "TEMPBAN #{hours}h"
 
   defp target_label(%Ticket{player_id: id} = ticket, id), do: ticket.player_name || id
+
+  defp target_label(%Ticket{reported_player_id: id} = ticket, id),
+    do: ticket.reported_player_name || id
+
   defp target_label(_ticket, target), do: target
 
   defp blank?(value), do: String.trim(value || "") == ""
@@ -842,6 +1155,7 @@ defmodule HllConditionalActions.Tickets do
   @spec close_stale() :: non_neg_integer()
   def close_stale do
     now = now()
+    warn_before_close(now)
 
     stale =
       Repo.all(
@@ -857,6 +1171,38 @@ defmodule HllConditionalActions.Tickets do
     Enum.each(stale, &close(&1, nil, "inactivity"))
     length(stale)
   end
+
+  # An hour before a silent ticket closes on its own, the player is told, on
+  # the servers that ask for it - once per silence.
+  defp warn_before_close(now) do
+    due =
+      Repo.all(
+        from t in Ticket,
+          join: s in Settings,
+          on: s.server_id == t.server_id,
+          where: t.status != :closed and s.warn_before_close and s.auto_close_hours > 1,
+          where:
+            t.last_activity_at <
+              fragment("?::timestamp - make_interval(hours => ?)", ^now, s.auto_close_hours - 1),
+          where: is_nil(t.close_warned_at) or t.close_warned_at < t.last_activity_at
+      )
+
+    Enum.each(due, fn ticket ->
+      server = Repo.get!(Server, ticket.server_id)
+      settings = get_settings(ticket.server_id)
+      notify_player(server, ticket, settings, close_warning_text())
+
+      ticket |> Ticket.update_changeset(%{close_warned_at: now}) |> Repo.update!()
+    end)
+  end
+
+  defp close_warning_text,
+    do:
+      in_default_locale(fn ->
+        gettext(
+          "Your ticket \#{ticket_id} closes in 1 hour without news. Write here if you still need help."
+        )
+      end)
 
   # ── Queries ────────────────────────────────────────────────────────────────
 
@@ -1167,7 +1513,7 @@ defmodule HllConditionalActions.Tickets do
         :ok
 
       text ->
-        text = render_notice(text, ticket, settings)
+        text = render_notice(text, ticket, settings, server)
         {delivery, error} = deliver(server, ticket, text)
 
         insert_message(ticket, %{
@@ -1181,20 +1527,52 @@ defmodule HllConditionalActions.Tickets do
     end
   end
 
-  @doc """
-  Fills a notice template: `{player}` becomes the player's name and
-  `{command}` the server's first ticket command.
+  @doc ~S"""
+  Fills a notice template. `{player_name}` (or `{player}`) becomes the
+  player's name, `{ticket_id}` the ticket's number, `{category}` its
+  category, `{categories}` the numbered list the player can answer with,
+  `{server_name}` the server and `{command}` the server's first ticket
+  command.
 
       iex> alias HllConditionalActions.Tickets
       iex> settings = %HllConditionalActions.Tickets.Settings{commands: ["!ticket", "!adm"]}
       iex> Tickets.render_notice("Hi {player}, type {command} again", %{player_name: "Sarge"}, settings)
       "Hi Sarge, type !ticket again"
+      iex> Tickets.render_notice("Chamado \#{ticket_id} aberto, {player_name}.", %{id: 214, player_name: "Kowalski"}, settings)
+      "Chamado #214 aberto, Kowalski."
   """
-  @spec render_notice(String.t(), map(), Settings.t()) :: String.t()
-  def render_notice(template, ticket, %Settings{commands: commands}) do
-    template
-    |> String.replace("{player}", ticket.player_name || "")
-    |> String.replace("{command}", List.first(commands || [], ""))
+  @spec render_notice(String.t(), map(), Settings.t(), map() | nil) :: String.t()
+  def render_notice(template, ticket, %Settings{} = settings, server \\ nil),
+    do: fill(template, notice_vars(ticket, settings, server))
+
+  @doc """
+  The placeholders a message template can use, with what they become for a
+  ticket.
+  """
+  @spec notice_vars(map(), Settings.t(), map() | nil) :: %{String.t() => String.t()}
+  def notice_vars(ticket, %Settings{} = settings, server) do
+    name = Map.get(ticket, :player_name) || ""
+
+    %{
+      "player" => name,
+      "player_name" => name,
+      "command" => List.first(settings.commands || [], ""),
+      "ticket_id" => ticket |> Map.get(:id) |> to_string(),
+      "category" => Map.get(ticket, :category) || "",
+      "categories" => category_menu(settings),
+      "server_name" => (server && Map.get(server, :name)) || ""
+    }
+  end
+
+  @doc """
+  Replaces each `{name}` of a template with its value; unknown names stay.
+
+      iex> HllConditionalActions.Tickets.fill("{a} and {b}", %{"a" => "1"})
+      "1 and {b}"
+  """
+  @spec fill(String.t(), %{String.t() => String.t()}) :: String.t()
+  def fill(template, vars) do
+    Regex.replace(~r/\{([a-z_]+)\}/, template, fn whole, name -> Map.get(vars, name, whole) end)
   end
 
   defp deliver(server, ticket, text) do

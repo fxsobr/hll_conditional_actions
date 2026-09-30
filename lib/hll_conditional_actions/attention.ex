@@ -71,7 +71,8 @@ defmodule HllConditionalActions.Attention do
         rule_items(rules, servers) ++
         failure_items(user, server_ids) ++
         review_items(user, server_ids) ++
-        go_live_items(user, rules)
+        go_live_items(user, rules) ++
+        shop_items(user)
 
     handled = handled_keys(Enum.map(all, & &1.key))
     {done, open} = Enum.split_with(all, &MapSet.member?(handled, &1.key))
@@ -202,6 +203,25 @@ defmodule HllConditionalActions.Attention do
     end)
   end
 
+  # A paid VIP that did not reach every server: money was taken, so it is
+  # the most urgent thing a shop admin can be told.
+  defp shop_items(user) do
+    if Accounts.can?(user, :manage_integrations) do
+      Enum.map(HllConditionalActions.VipShop.failed_orders(), fn order ->
+        %{
+          key: "vip_order:#{order.id}:#{order.status}",
+          kind: :vip_failed,
+          severity: :error,
+          at: order.updated_at,
+          subject: %{order: order},
+          resolvable?: true
+        }
+      end)
+    else
+      []
+    end
+  end
+
   defp review_items(user, server_ids) do
     since = DateTime.add(DateTime.utc_now(), -@review_window_days, :day)
 
@@ -238,13 +258,15 @@ defmodule HllConditionalActions.Attention do
 
     counts = simulated_counts(user, Enum.map(candidates, & &1.id))
 
-    for rule <- candidates, Map.get(counts, rule.id, 0) >= @simulation_runs do
+    for rule <- candidates,
+        {runs, last} = Map.get(counts, rule.id, {0, nil}),
+        runs >= @simulation_runs do
       %{
         key: "go_live:#{rule.id}",
         kind: :ready_to_go_live,
         severity: :info,
-        at: nil,
-        subject: %{rule: rule, runs: counts[rule.id]},
+        at: last,
+        subject: %{rule: rule, runs: runs},
         resolvable?: true
       }
     end
@@ -257,7 +279,7 @@ defmodule HllConditionalActions.Attention do
     |> Rules.scoped_executions()
     |> where([e], e.rule_id in ^rule_ids and e.status == :simulated)
     |> group_by([e], e.rule_id)
-    |> select([e], {e.rule_id, count(e.id)})
+    |> select([e], {e.rule_id, {count(e.id), max(e.executed_at)}})
     |> Repo.all()
     |> Map.new()
   end

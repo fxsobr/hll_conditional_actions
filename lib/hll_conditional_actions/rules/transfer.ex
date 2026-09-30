@@ -170,11 +170,25 @@ defmodule HllConditionalActions.Rules.Transfer do
   end
 
   defp dump_condition(condition) do
-    %{
+    base = %{
       "field" => to_string(condition.field),
       "operator" => to_string(condition.operator),
       "value" => condition.value
     }
+
+    # Groups travel only when the rule uses them, so a flat rule exports as
+    # it always did.
+    case condition do
+      %{group: group, group_operator: operator}
+      when (is_integer(group) and group > 0) or not is_nil(operator) ->
+        Map.merge(base, %{
+          "group" => group || 0,
+          "group_operator" => operator && to_string(operator)
+        })
+
+      _flat ->
+        base
+    end
   end
 
   # A Discord action travels with the webhook's *name*: the id means nothing
@@ -218,7 +232,7 @@ defmodule HllConditionalActions.Rules.Transfer do
   defp load_exemptions(_exemptions), do: %{}
 
   defp load_condition(condition) when is_map(condition) do
-    Map.take(condition, ~w(field operator value))
+    Map.take(condition, ~w(field operator value group group_operator))
   end
 
   defp load_condition(_condition), do: %{}

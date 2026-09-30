@@ -1,0 +1,739 @@
+/* Styles of the players area (Players, PlayersLight, Player, PlayerLight and
+   MobilePlayer boards). Utilities first; rules here only for what Tailwind
+   classes cannot express: the list grid, the chips of both schemes, the
+   timeline and the phone action bar. */
+
+/* ── The list ─────────────────────────────────────────────────────────────── */
+
+.players-header-button {
+  display: inline-flex;
+  height: 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem 0 1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 150ms;
+}
+
+.players-header-button:hover {
+  border-color: var(--color-line-strong);
+}
+
+:root:not(.dark) .players-header-button {
+  background: var(--color-overlay);
+}
+
+@media (max-width: 39.99rem) {
+  .players-header-button {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+.players-search {
+  display: flex;
+  height: 4.25rem;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0 0.75rem 0 1.625rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 9999px;
+  background: var(--color-base-100);
+  color: var(--color-muted);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+:root:not(.dark) .players-search {
+  border-color: var(--color-line-raised);
+}
+
+.players-search:focus-within {
+  border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 16%, transparent);
+}
+
+.players-search-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-base-content);
+  font-size: 1.125rem;
+  outline: none;
+}
+
+.players-search-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.players-search-input::placeholder {
+  color: var(--color-muted);
+}
+
+.players-search-kbd {
+  align-items: center;
+  padding: 0.4375rem 0.625rem;
+  border-radius: 0.625rem;
+  background: var(--color-secondary);
+  color: var(--color-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+@media (max-width: 47.99rem) {
+  .players-search {
+    height: 3.5rem;
+    padding: 0 1rem 0 1.25rem;
+  }
+
+  .players-search-input {
+    font-size: 1rem;
+  }
+}
+
+.players-chip {
+  display: inline-flex;
+  height: 2.375rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 150ms, background-color 150ms;
+}
+
+.players-chip:hover {
+  border-color: var(--color-line-strong);
+}
+
+:root:not(.dark) .players-chip {
+  background: var(--color-overlay);
+}
+
+.players-chip-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.players-chip[aria-current="true"] {
+  border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.players-chip[aria-current="true"] .players-chip-count {
+  color: inherit;
+}
+
+/* The light board inverts the active chip instead of tinting it. */
+:root:not(.dark) .players-chip[aria-current="true"] {
+  border-color: var(--color-inverse);
+  background: var(--color-inverse);
+  color: var(--color-on-inverse);
+}
+
+.players-chip--add,
+:root:not(.dark) .players-chip--add {
+  padding: 0 0.875rem;
+  border-style: dashed;
+  border-color: var(--color-line-strong);
+  background: transparent;
+  color: var(--color-subtle);
+}
+
+.players-sort {
+  display: inline-flex;
+  height: 2.375rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.875rem;
+  border-radius: 9999px;
+  color: var(--color-subtle);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.players-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  min-width: 13rem;
+  padding: 0.375rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-line-raised);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-popover);
+}
+
+.players-menu--end {
+  left: auto;
+  right: 0;
+}
+
+.players-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-base-content);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.players-menu-item:hover {
+  background: var(--color-secondary);
+}
+
+.players-menu-item--danger {
+  color: var(--color-error);
+}
+
+.players-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0.625rem 1.25rem 0.875rem;
+  border-radius: var(--radius-panel);
+  background: var(--color-base-100);
+  box-shadow: var(--shadow-card);
+}
+
+.dark .players-panel {
+  box-shadow: none;
+}
+
+/* One player per row. Every width is the board's; narrower screens drop
+   the columns an admin needs least, a phone keeps the name alone. */
+.players-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.125rem;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.players-grid > [class*="players-col-"] {
+  display: none;
+}
+
+.players-grid--head {
+  display: none;
+  padding: 0.75rem 0.625rem;
+  border-bottom: 1px solid var(--color-line-soft);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.players-row {
+  padding: 0.5625rem 0.625rem;
+  border-bottom: 1px solid var(--color-line-soft);
+  color: var(--color-base-content);
+  font-size: 0.875rem;
+  transition: background-color 150ms;
+}
+
+.players-row:hover {
+  background: color-mix(in oklab, var(--color-secondary) 70%, transparent);
+}
+
+.players-row-phone-now {
+  display: flex;
+  margin-top: 0.25rem;
+}
+
+@media (min-width: 48rem) {
+  .players-grid--head {
+    display: grid;
+  }
+
+  .players-row-phone-now {
+    display: none;
+  }
+
+  .players-grid {
+    grid-template-columns: minmax(0, 1fr) 11rem 6rem 5.75rem 7.375rem 1.125rem;
+  }
+
+  .players-grid > .players-col-now,
+  .players-grid > .players-col-time,
+  .players-grid > .players-col-penalties,
+  .players-grid > .players-col-seen {
+    display: block;
+  }
+}
+
+@media (min-width: 80rem) {
+  .players-grid {
+    grid-template-columns: minmax(0, 1fr) 11rem 3.875rem 6rem 4.875rem 5.75rem 4.625rem 7.375rem 1.125rem;
+  }
+
+  .players-grid > .players-col-level,
+  .players-grid > .players-col-sessions,
+  .players-grid > .players-col-rules {
+    display: block;
+  }
+}
+
+@media (min-width: 88rem) {
+  .players-grid {
+    grid-template-columns: minmax(0, 1fr) 11rem 3.875rem 6rem 4.875rem 5.75rem 4.625rem 7.375rem 10.625rem 1.125rem;
+  }
+
+  .players-grid > .players-col-marks {
+    display: flex;
+  }
+}
+
+.players-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.players-dot--off {
+  border: 1.5px solid var(--color-muted);
+}
+
+.players-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.players-mark--neutral {
+  background: var(--color-secondary);
+  color: var(--color-subtle);
+}
+
+.players-mark--engine {
+  background: color-mix(in oklab, var(--color-accent) 13%, transparent);
+  color: var(--color-accent);
+}
+
+.players-mark--axis {
+  background: color-mix(in oklab, var(--color-axis) 14%, transparent);
+  color: var(--color-axis);
+}
+
+.players-mark--primary {
+  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.players-mark--error {
+  background: color-mix(in oklab, var(--color-error) 14%, transparent);
+  color: var(--color-error);
+}
+
+.players-avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.players-avatar--sm {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.players-avatar--md {
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+}
+
+.players-avatar--lg {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 1.625rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.players-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem 0.625rem 0;
+  border-top: 1px solid var(--color-line-soft);
+}
+
+.players-more {
+  height: 2.5rem;
+  padding: 0 1.125rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.players-more:hover {
+  border-color: var(--color-line-strong);
+}
+
+/* ── The player 360 ───────────────────────────────────────────────────────── */
+
+.player-card {
+  border-radius: var(--radius-panel);
+  background: var(--color-base-100);
+  box-shadow: var(--shadow-card);
+}
+
+.dark .player-card {
+  box-shadow: none;
+}
+
+.player-action {
+  display: inline-flex;
+  height: 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.125rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 150ms;
+}
+
+.player-action:hover {
+  border-color: var(--color-line-strong);
+}
+
+:root:not(.dark) .player-action {
+  background: var(--color-overlay);
+}
+
+.player-action--ban,
+:root:not(.dark) .player-action--ban {
+  padding: 0 1.25rem;
+  border-color: transparent;
+  background: var(--color-axis);
+  color: #2a1405;
+  font-weight: 600;
+}
+
+:root:not(.dark) .player-action--ban {
+  background: #e0782f;
+}
+
+.player-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.player-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 9999px;
+  background: var(--color-base-100);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+:root:not(.dark) .player-tabs {
+  border: 1px solid var(--color-base-300);
+}
+
+.player-tab {
+  display: inline-flex;
+  height: 2.375rem;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 1.125rem;
+  border-radius: 9999px;
+  color: var(--color-subtle);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.player-tab[aria-selected="true"] {
+  background: var(--color-inverse);
+  color: var(--color-on-inverse);
+  font-weight: 600;
+}
+
+.player-tab--wide {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .player-tab--wide {
+    display: inline-flex;
+  }
+}
+
+.player-tab-count {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+}
+
+.player-tab[aria-selected="true"] .player-tab-count {
+  color: inherit;
+  opacity: 0.7;
+}
+
+@media (max-width: 47.99rem) {
+  .player-tabs {
+    width: 100%;
+  }
+
+  .player-tab {
+    height: 2.5rem;
+    padding: 0 0.625rem;
+  }
+
+  .player-tab[aria-selected="true"] {
+    flex-grow: 1;
+    justify-content: center;
+  }
+}
+
+.player-filter {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+:root:not(.dark) .player-filter {
+  background: var(--color-overlay);
+}
+
+.player-filter[aria-pressed="true"] {
+  border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+:root:not(.dark) .player-filter[aria-pressed="true"] {
+  border-color: var(--color-inverse);
+  background: var(--color-inverse);
+  color: var(--color-on-inverse);
+}
+
+/* The timeline: time, the event's tile, then what happened. On a phone the
+   time moves into the second line. */
+.player-timeline-row {
+  display: grid;
+  grid-template-columns: 5.625rem 1.75rem minmax(0, 1fr);
+  column-gap: 0.875rem;
+  align-items: start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-line-soft);
+}
+
+.player-timeline-row:last-child {
+  border-bottom: 0;
+}
+
+.player-timeline-when {
+  padding-top: 0.1875rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 47.99rem) {
+  .player-timeline-row {
+    grid-template-columns: 1.875rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    padding: 0.6875rem 0;
+  }
+
+  .player-timeline-row > .player-timeline-when {
+    display: none;
+  }
+}
+
+.player-timeline-phone-when {
+  display: none;
+}
+
+@media (max-width: 47.99rem) {
+  .player-timeline-phone-when {
+    display: inline;
+  }
+}
+
+/* The last ten matches: kills in bars, team kills under them. */
+.player-matches {
+  display: grid;
+  height: 6.875rem;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.player-match {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.player-match-kills {
+  border-radius: 6px;
+  background: var(--color-line-strong);
+}
+
+:root:not(.dark) .player-match-kills {
+  background: var(--color-line-raised);
+}
+
+.player-match-kills--live {
+  background: var(--color-primary);
+}
+
+:root:not(.dark) .player-match-kills--live {
+  background: var(--color-inverse);
+}
+
+.player-match-tk {
+  border-radius: 3px;
+  background: var(--color-axis);
+}
+
+:root:not(.dark) .player-match-tk {
+  background: #e0782f;
+}
+
+.player-rule-bar {
+  display: flex;
+  width: 5.625rem;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  background: var(--color-base-300);
+}
+
+/* Phone: the actions stay at the bottom of the screen (MobilePlayer). */
+.player-phone-actions {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.75rem 1rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--color-line-soft);
+  background: var(--color-base-200);
+}
+
+.player-phone-action {
+  display: flex;
+  height: 3.75rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3125rem;
+  border-radius: 1.125rem;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.player-phone-action--ban {
+  border-color: transparent;
+  background: var(--color-axis);
+  color: #2a1405;
+  font-weight: 600;
+}
+
+@media (min-width: 48rem) {
+  .player-phone-actions {
+    display: none;
+  }
+}
+
+/* The durations of a ban, as radio chips. */
+.player-duration {
+  height: 2.125rem;
+  padding: 0 0.875rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.player-duration[aria-checked="true"] {
+  border-color: var(--color-axis);
+  background: color-mix(in oklab, var(--color-axis) 14%, transparent);
+  color: var(--color-axis);
+  font-weight: 600;
+}
+
+.player-field {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-line-raised);
+  background: var(--color-secondary);
+  color: var(--color-base-content);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  resize: none;
+}
+
+.player-field:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+  box-shadow: none;
+}

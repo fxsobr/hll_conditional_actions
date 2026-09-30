@@ -1,142 +1,247 @@
 defmodule HllConditionalActionsWeb.FeedLive do
   @moduledoc """
-  Live feed of what CRCON is reporting, across every server.
+  The live feed on a page of its own: every line CRCON reports, for one
+  server (`/servers/:server_id/feed`) or across every server the admin can
+  see (`/feed`).
 
-  Useful for writing rules: it shows the exact events the engine sees, so you
-  can confirm a trigger fires before wiring an action to it.
+  Useful for writing rules: it shows the exact events the engine sees, with
+  the rule that acted on a line as a pill on that line, so you can confirm a
+  trigger fires before wiring an action to it. It is the cockpit's feed
+  panel at full height - the same rows (`LiveComponents.feed_row/1`), the
+  same chips (everything, kills, chat, only where rules acted) and pause -
+  and opens on the last lines of each server's log.
 
-  Events arrive as PubSub messages and are kept in a LiveView stream capped at
-  a few hundred entries, so a busy fleet cannot grow the socket without bound.
+  Rows live in a bounded buffer (`HllConditionalActionsWeb.LiveFeedRows`)
+  and a LiveView stream capped at a few hundred entries, so a busy fleet
+  cannot grow the socket without bound.
   """
 
   use HllConditionalActionsWeb, :live_view
+
+  import HllConditionalActionsWeb.LiveComponents
 
   # Enforced server side on mount; the sidebar merely hides the link.
   on_mount {HllConditionalActionsWeb.UserAuth, {:ensure_permission, :view_live_feed}}
 
   alias HllConditionalActions.Crcon.LogStream
+  alias HllConditionalActions.Engine
+  alias HllConditionalActions.LiveFeed
   alias HllConditionalActions.Servers
+  alias HllConditionalActionsWeb.LiveFeedRows
 
   @limit 300
+  @seed_lines 60
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     servers = Servers.list_servers_for(socket.assigns[:current_user])
     scope = Enum.find(servers, &(to_string(&1.id) == params["server_id"]))
+    watched = if scope, do: [scope], else: servers
 
-    if connected?(socket), do: Enum.each(servers, &LogStream.subscribe(&1.id))
+    if connected?(socket) do
+      Enum.each(watched, fn server ->
+        LogStream.subscribe(server.id)
+        Engine.subscribe(server.id)
+      end)
+    end
 
     {:ok,
      socket
      |> assign(:page_title, gettext("Live feed"))
      |> assign(:servers, Map.new(servers, &{&1.id, &1}))
-     |> assign(:paused?, false)
-     |> assign(:type_filter, nil)
      |> assign(:scope, scope)
-     |> assign(:server_filter, scope && to_string(scope.id))
+     |> assign(:server_filter, nil)
+     |> assign(:paused?, false)
+     |> assign(:filter, "all")
+     |> assign(:buffer, LiveFeedRows.new(@limit))
      |> assign(:count, 0)
-     |> stream(:events, [], limit: @limit)}
+     |> assign(:rule_cache, %{})
+     |> assign(:seeded?, not connected?(socket) or watched == [])
+     |> stream_configure(:events, dom_id: & &1.id)
+     |> stream(:events, [])
+     |> seed(watched)}
   end
+
+  # ── Events ─────────────────────────────────────────────────────────────────
 
   @impl Phoenix.LiveView
   def handle_event("toggle_pause", _params, socket) do
-    {:noreply, update(socket, :paused?, &(not &1))}
+    socket = update(socket, :paused?, &(not &1))
+    {:noreply, if(socket.assigns.paused?, do: socket, else: restream(socket))}
+  end
+
+  def handle_event("feed_filter", %{"filter" => filter}, socket) do
+    {:noreply, socket |> assign(:filter, LiveFeedRows.parse_filter(filter)) |> restream()}
+  end
+
+  def handle_event("filter_server", params, socket) do
+    {:noreply,
+     socket
+     |> assign(:server_filter, blank_to_nil(params["server_id"]))
+     |> restream()}
   end
 
   def handle_event("clear", _params, socket) do
-    {:noreply, socket |> stream(:events, [], reset: true) |> assign(:count, 0)}
-  end
-
-  def handle_event("filter", params, socket) do
     {:noreply,
      socket
-     |> assign(:type_filter, blank_to_nil(params["type"]))
-     |> assign(
-       :server_filter,
-       if(socket.assigns.scope,
-         do: to_string(socket.assigns.scope.id),
-         else: blank_to_nil(params["server_id"])
-       )
-     )}
+     |> assign(:buffer, LiveFeedRows.new(@limit))
+     |> assign(:count, 0)
+     |> stream(:events, [], reset: true)}
   end
+
+  # ── Messages ───────────────────────────────────────────────────────────────
 
   @impl Phoenix.LiveView
   def handle_info({:crcon_event, event}, socket) do
-    if socket.assigns.paused? or not visible?(event, socket) do
-      {:noreply, socket}
-    else
-      {:noreply,
-       socket
-       |> stream_insert(:events, to_row(event, socket), at: 0, limit: @limit)
-       |> update(:count, &(&1 + 1))}
-    end
+    key = LiveFeed.event_key(event)
+    count = socket.assigns.count + 1
+    server = Map.get(socket.assigns.servers, event.server_id)
+
+    row =
+      event_row(event, LiveFeedRows.row_id(key, "live-#{count}"),
+        server_name: server && server.name
+      )
+      |> Map.put(:server_id, event.server_id)
+      |> LiveFeedRows.with_session(socket.assigns.buffer.rows)
+
+    {:noreply,
+     socket
+     |> assign(:count, count)
+     |> update(:buffer, &LiveFeedRows.add(&1, row))
+     |> show_new(row)}
+  end
+
+  def handle_info({:rule_fired, execution}, socket) do
+    {rule, socket} = rule_for(socket, execution.rule_id)
+    annotation = LiveFeed.annotation(execution, rule)
+
+    socket =
+      case LiveFeedRows.annotate(
+             socket.assigns.buffer,
+             LiveFeed.execution_event_key(execution),
+             annotation
+           ) do
+        {:ok, row, buffer} ->
+          socket |> assign(:buffer, buffer) |> show_changed(row)
+
+        :error ->
+          row = execution |> execution_row(rule) |> Map.put(:server_id, execution.server_id)
+          socket |> update(:buffer, &LiveFeedRows.add(&1, row)) |> show_new(row)
+      end
+
+    {:noreply, socket}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
-  defp visible?(event, socket) do
-    type_ok? =
-      is_nil(socket.assigns.type_filter) or
-        to_string(event.type) == socket.assigns.type_filter
+  # The rules the feed has named, read once each: a sweep at the end of a
+  # match brings one execution per player.
+  defp rule_for(socket, rule_id) do
+    case Map.fetch(socket.assigns.rule_cache, rule_id) do
+      {:ok, rule} ->
+        {rule, socket}
 
-    server_ok? =
-      is_nil(socket.assigns.server_filter) or
-        to_string(event.server_id) == socket.assigns.server_filter
-
-    type_ok? and server_ok?
+      :error ->
+        rule = HllConditionalActions.Repo.get(HllConditionalActions.Rules.Rule, rule_id)
+        {rule, update(socket, :rule_cache, &Map.put(&1, rule_id, rule))}
+    end
   end
 
-  # The stream needs a stable dom id; the raw log has no id of its own, so
-  # derive one from the counter.
-  defp to_row(event, socket) do
-    server = Map.get(socket.assigns.servers, event.server_id)
+  @impl Phoenix.LiveView
+  def handle_async(:seed, {:ok, rows}, socket) do
+    ids = MapSet.new(rows, & &1.id)
+    live = Enum.reject(socket.assigns.buffer.rows, &MapSet.member?(ids, &1.id))
 
-    %{
-      id: "event-#{socket.assigns.count}",
-      type: event.type,
-      action: event.action,
-      server_name: server && server.name,
-      player_name: event.player_name,
-      target_player_name: event.target_player_name,
-      weapon: event.weapon,
-      message: event.chat_message,
-      occurred_at: event.occurred_at
-    }
+    {:noreply,
+     socket
+     |> assign(:buffer, LiveFeedRows.reset(socket.assigns.buffer, live ++ rows))
+     |> assign(:seeded?, true)
+     |> restream()}
   end
+
+  def handle_async(:seed, _failed, socket), do: {:noreply, assign(socket, :seeded?, true)}
+
+  # The last lines of each server's log, with what the rules did on them.
+  defp seed(socket, servers) do
+    if connected?(socket) and servers != [] do
+      names = Map.new(servers, &{&1.id, &1.name})
+
+      start_async(socket, :seed, fn -> seed_all(servers, names) end)
+    else
+      socket
+    end
+  end
+
+  defp seed_all(servers, names) do
+    servers
+    |> Task.async_stream(&seed_rows(&1, names),
+      max_concurrency: 4,
+      timeout: :timer.seconds(20),
+      on_timeout: :kill_task
+    )
+    |> Enum.flat_map(fn
+      {:ok, rows} -> rows
+      _failed -> []
+    end)
+    |> Enum.sort_by(&DateTime.to_unix(&1.occurred_at, :microsecond), :desc)
+  end
+
+  defp seed_rows(server, names) do
+    events =
+      case LiveFeed.recent_events(server, @seed_lines) do
+        {:ok, events} -> events
+        {:error, _error} -> []
+      end
+
+    since = events |> List.last() |> then(&(&1 && &1.occurred_at))
+
+    executions =
+      if since,
+        do: LiveFeed.executions(server.id, since: since, limit: @seed_lines),
+        else: []
+
+    events
+    |> LiveFeedRows.seed(executions, LiveFeed.tickets_for(server.id, events), server_names: names)
+    |> Enum.map(&Map.put(&1, :server_id, server.id))
+  end
+
+  # ── Rows ───────────────────────────────────────────────────────────────────
+
+  defp restream(socket) do
+    rows =
+      socket.assigns.buffer
+      |> LiveFeedRows.visible(socket.assigns.filter)
+      |> Enum.filter(&on_server?(&1, socket))
+
+    stream(socket, :events, rows, reset: true)
+  end
+
+  defp show_new(%{assigns: %{paused?: true}} = socket, _row), do: socket
+
+  defp show_new(socket, row) do
+    if LiveFeedRows.matches?(row, socket.assigns.filter) and on_server?(row, socket),
+      do: stream_insert(socket, :events, row, at: 0, limit: @limit),
+      else: socket
+  end
+
+  defp show_changed(%{assigns: %{paused?: true}} = socket, _row), do: socket
+  defp show_changed(%{assigns: %{filter: "acted"}} = socket, _row), do: restream(socket)
+
+  defp show_changed(socket, row) do
+    if on_server?(row, socket) and
+         LiveFeedRows.shown?(socket.assigns.buffer, socket.assigns.filter, row.id, @limit),
+       do: stream_insert(socket, :events, row),
+       else: socket
+  end
+
+  defp on_server?(_row, %{assigns: %{server_filter: nil}}), do: true
+  defp on_server?(row, socket), do: to_string(row[:server_id]) == socket.assigns.server_filter
 
   defp blank_to_nil(nil), do: nil
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
 
-  defp type_options do
-    [
-      :player_connected,
-      :player_disconnected,
-      :player_kill,
-      :player_team_kill,
-      :player_chat,
-      :team_switch,
-      :match_start,
-      :match_end,
-      :admin_action
-    ]
-    |> Enum.map(&{Labels.event_type(&1), to_string(&1)})
-  end
-
-  defp event_tone(:player_team_kill), do: "error"
-  defp event_tone(:player_kill), do: "warning"
-  defp event_tone(:player_chat), do: "info"
-  defp event_tone(:player_connected), do: "success"
-  defp event_tone(type) when type in [:match_start, :match_end], do: "primary"
-  defp event_tone(_type), do: "ghost"
-
-  defp describe(%{type: :player_chat} = row), do: row.message
-
-  defp describe(%{type: type} = row) when type in [:player_kill, :player_team_kill] do
-    "#{row.player_name} → #{row.target_player_name} (#{row.weapon})"
-  end
-
-  defp describe(row), do: row.player_name
+  # ── Render ─────────────────────────────────────────────────────────────────
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -151,16 +256,7 @@ defmodule HllConditionalActionsWeb.FeedLive do
     >
       <:actions>
         <.button
-          type="button"
-          size="sm"
-          variant={if @paused?, do: "soft", else: "ghost"}
-          color={if @paused?, do: "warning", else: "gray"}
-          icon={if @paused?, do: "hero-play", else: "hero-pause"}
-          phx-click="toggle_pause"
-          aria-pressed={to_string(@paused?)}
-          label={if @paused?, do: gettext("Resume"), else: gettext("Pause")}
-        />
-        <.button
+          id="feed-clear"
           type="button"
           size="sm"
           variant="ghost"
@@ -171,75 +267,64 @@ defmodule HllConditionalActionsWeb.FeedLive do
         />
       </:actions>
 
-      <.filter_bar id="feed-filters" on_change="filter">
-        <.filter_select
-          :if={is_nil(@scope)}
-          name="server_id"
-          label={gettext("Server")}
-          value={@server_filter}
-          prompt={gettext("Every server")}
-          options={Enum.map(@servers, fn {id, server} -> {server.name, id} end)}
-        />
-        <.filter_select
-          name="type"
-          label={gettext("Event")}
-          value={@type_filter}
-          prompt={gettext("Every event")}
-          options={type_options()}
-        />
-
-        <p class="ml-auto px-1 text-xs text-muted" aria-live="polite">
-          <%= if @paused? do %>
-            {gettext("Paused — new events are being dropped.")}
-          <% else %>
-            {ngettext("%{count} event received", "%{count} events received", @count, count: @count)}
-          <% end %>
-        </p>
-      </.filter_bar>
-
-      <.card padded={false}>
-        <div class="max-h-[65vh] overflow-y-auto">
-          <table class="table-collapse app-table app-table-pin" role="log">
-            <thead class="text-xs uppercase tracking-wide text-muted">
-              <tr>
-                <th class="w-24">{gettext("Time")}</th>
-
-                <th class="w-32">{gettext("Event")}</th>
-
-                <th class="w-40">{gettext("Server")}</th>
-
-                <th>{gettext("Details")}</th>
-              </tr>
-            </thead>
-
-            <tbody id="feed" phx-update="stream" class="divide-y divide-base-300">
-              <tr :for={{dom_id, row} <- @streams.events} id={dom_id}>
-                <td data-cell="lead" class="font-mono text-xs text-muted">
-                  <.local_time id={"#{dom_id}-at"} at={row.occurred_at} format="time" />
-                </td>
-
-                <td data-label={gettext("Event")}>
-                  <.tone_badge tone={event_tone(row.type)}>
-                    {Labels.event_type(row.type)}
-                  </.tone_badge>
-                </td>
-
-                <td data-label={gettext("Server")} class="truncate text-xs text-subtle">
-                  {row.server_name}
-                </td>
-
-                <td data-label={gettext("Details")} class="max-w-0 truncate text-sm max-sm:max-w-none">
-                  {describe(row)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <p :if={@count == 0} class="py-10 text-center text-sm text-muted">
-            {gettext("Waiting for events. Nothing has happened on your servers yet.")}
-          </p>
+      <.live_panel id="feed-panel" wide gap="gap-2.5 xl:gap-3.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <form :if={is_nil(@scope)} id="feed-server" phx-change="filter_server">
+            <label>
+              <span class="sr-only">{gettext("Server")}</span>
+              <select
+                name="server_id"
+                class="h-9 rounded-full border border-base-300 bg-white px-3 pr-8 text-xs dark:bg-secondary"
+              >
+                <option value="">{gettext("Every server")}</option>
+                <option
+                  :for={{id, server} <- @servers}
+                  value={id}
+                  selected={to_string(id) == @server_filter}
+                >
+                  {server.name}
+                </option>
+              </select>
+            </label>
+          </form>
+          <span class="grow"></span>
+          <span :if={@paused?} class="text-xs text-warning" aria-live="polite">
+            {gettext("Paused: new lines wait until you resume.")}
+          </span>
+          <.feed_filters
+            id="feed-filters"
+            filter={@filter}
+            paused?={@paused?}
+            pause_event="toggle_pause"
+            filter_event="feed_filter"
+          />
         </div>
-      </.card>
+
+        <div
+          id="feed"
+          phx-update="stream"
+          role="log"
+          aria-label={gettext("Live feed")}
+          class="live-feed flex max-h-[70vh] flex-col overflow-y-auto"
+        >
+          <p id="feed-empty" class="hidden py-10 text-center text-sm text-muted only:block">
+            <%= cond do %>
+              <% not @seeded? -> %>
+                {gettext("Reading the servers' logs…")}
+              <% @filter != "all" -> %>
+                {gettext("Nothing like this in the feed yet.")}
+              <% true -> %>
+                {gettext("Waiting for events. Nothing has happened on your servers yet.")}
+            <% end %>
+          </p>
+          <.feed_row
+            :for={{dom_id, row} <- @streams.events}
+            id={dom_id}
+            row={row}
+            show_server={is_nil(@scope)}
+          />
+        </div>
+      </.live_panel>
     </Layouts.app>
     """
   end

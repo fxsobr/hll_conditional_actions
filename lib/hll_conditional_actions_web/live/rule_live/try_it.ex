@@ -191,79 +191,91 @@ defmodule HllConditionalActionsWeb.RuleLive.TryIt do
   def render(assigns) do
     ~H"""
     <div id={@id}>
-      <.card
-        title={gettext("Try it")}
-        icon="hero-play-circle"
-        subtitle={
-          gettext(
-            "Evaluates the rule as typed here, including unsaved changes, against a saved event or a player connected right now. Nothing is sent to the game."
-          )
-        }
-      >
-        <div class="space-y-3">
-          <.segmented_buttons target={@myself} mode={@mode} />
-
-          <form
-            :if={@mode == "saved"}
-            id="try-it-event-picker"
-            phx-change="pick_event"
-            phx-target={@myself}
-          >
-            <p :if={@events == []} class="text-sm text-subtle">
+      <section class="flex flex-col gap-4 rounded-[1.75rem] bg-base-100 p-5 sm:p-6">
+        <div class="flex items-start gap-3">
+          <.icon_tile icon="hero-play-circle" tone="engine" />
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <h2 class="font-display text-xl font-semibold">{gettext("Try it")}</h2>
+            <p class="text-[0.8125rem] leading-snug text-muted">
               {gettext(
-                "No saved \"%{trigger}\" event yet on these servers. Events are saved as they happen.",
-                trigger: Labels.trigger(@rule.trigger_event)
+                "Evaluates the rule as typed here, including unsaved changes, against a saved event or a player connected right now. Nothing is sent to the game."
               )}
             </p>
-            <label :if={@events != []}>
-              <span class="sr-only">{gettext("Pick a saved event")}</span>
-              <select name="event_id" class="pc-text-input w-full">
-                <option value="">{gettext("Pick a saved event")}</option>
-                <option :for={event <- @events} value={event.id}>
-                  {sample_label(event.sample, server_name(@servers, event.server_id))}
+          </div>
+        </div>
+
+        <.segmented_buttons target={@myself} mode={@mode} />
+
+        <form
+          :if={@mode == "saved"}
+          id="try-it-event-picker"
+          phx-change="pick_event"
+          phx-target={@myself}
+        >
+          <p
+            :if={@events == []}
+            class="rounded-2xl bg-secondary px-4 py-3 text-[0.8125rem] text-subtle"
+          >
+            {gettext(
+              "No saved \"%{trigger}\" event yet on these servers. Events are saved as they happen.",
+              trigger: Labels.trigger(@rule.trigger_event)
+            )}
+          </p>
+          <label :if={@events != []} class="flex flex-col gap-1.5">
+            <span class="text-xs text-muted">{gettext("Pick a saved event")}</span>
+            <select name="event_id" class="pc-text-input w-full">
+              <option value="">{gettext("Pick a saved event")}</option>
+              <option :for={event <- @events} value={event.id}>
+                {sample_label(event.sample, server_name(@servers, event.server_id))}
+              </option>
+            </select>
+          </label>
+        </form>
+
+        <div :if={@mode == "live"} class="flex flex-col gap-2.5">
+          <form id="test-server-picker" phx-change="load_players" phx-target={@myself}>
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs text-muted">{gettext("Pick a server")}</span>
+              <select name="server_id" class="pc-text-input w-full">
+                <option value="">{gettext("Pick a server")}</option>
+                <option
+                  :for={server <- Enum.filter(@servers, &(&1.game == @game))}
+                  value={server.id}
+                  selected={@live_server_id == to_string(server.id)}
+                >
+                  {server.name}
                 </option>
               </select>
             </label>
           </form>
-
-          <div :if={@mode == "live"} class="space-y-2">
-            <form id="test-server-picker" phx-change="load_players" phx-target={@myself}>
-              <label>
-                <span class="sr-only">{gettext("Pick a server")}</span>
-                <select name="server_id" class="pc-text-input w-full">
-                  <option value="">{gettext("Pick a server")}</option>
-                  <option
-                    :for={server <- Enum.filter(@servers, &(&1.game == @game))}
-                    value={server.id}
-                    selected={@live_server_id == to_string(server.id)}
-                  >
-                    {server.name}
-                  </option>
-                </select>
-              </label>
-            </form>
-            <.skeleton :if={@loading?} lines={2} />
-            <form
-              :if={@players != []}
-              id="test-player-picker"
-              phx-change="pick_player"
-              phx-target={@myself}
-            >
-              <label>
-                <span class="sr-only">{gettext("Pick a player")}</span>
-                <select name="player_id" class="pc-text-input w-full">
-                  <option value="">{gettext("Pick a player")}</option>
-                  <option :for={{name, id} <- @players} value={id}>{name}</option>
-                </select>
-              </label>
-            </form>
-          </div>
-
-          <.alert :if={@error} color="warning" variant="soft" with_icon label={@error} />
-          <.event_fields :if={@sample} id="try-it-fields" sample={@sample} target={@myself} />
-          <.diagnosis :if={@diagnosis} diagnosis={@diagnosis} player={@sample.player_name} />
+          <.skeleton :if={@loading?} lines={2} />
+          <form
+            :if={@players != []}
+            id="test-player-picker"
+            phx-change="pick_player"
+            phx-target={@myself}
+          >
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs text-muted">{gettext("Pick a player")}</span>
+              <select name="player_id" class="pc-text-input w-full">
+                <option value="">{gettext("Pick a player")}</option>
+                <option :for={{name, id} <- @players} value={id}>{name}</option>
+              </select>
+            </label>
+          </form>
         </div>
-      </.card>
+
+        <p
+          :if={@error}
+          class="flex items-start gap-2 rounded-2xl bg-warning/10 px-4 py-3 text-[0.8125rem] text-warning ring-1 ring-warning/35"
+          role="alert"
+        >
+          <.icon name="hero-exclamation-triangle" class="mt-px size-4 shrink-0" />
+          {@error}
+        </p>
+        <.event_fields :if={@sample} id="try-it-fields" sample={@sample} target={@myself} />
+        <.diagnosis :if={@diagnosis} diagnosis={@diagnosis} player={@sample.player_name} />
+      </section>
     </div>
     """
   end
@@ -273,7 +285,7 @@ defmodule HllConditionalActionsWeb.RuleLive.TryIt do
 
   defp segmented_buttons(assigns) do
     ~H"""
-    <div class="flex gap-1 rounded-box bg-base-200 p-1 text-xs" role="tablist">
+    <div class="flex gap-1 rounded-full bg-secondary p-1 ring-1 ring-base-300" role="tablist">
       <button
         :for={
           {mode, label} <- [
@@ -288,9 +300,9 @@ defmodule HllConditionalActionsWeb.RuleLive.TryIt do
         phx-value-mode={mode}
         phx-target={@target}
         class={[
-          "flex-1 rounded-field px-2 py-1 transition",
+          "h-9 flex-1 cursor-pointer rounded-full px-3 text-[0.8125rem] transition-colors",
           if(@mode == mode,
-            do: "bg-base-100 font-medium shadow-sm",
+            do: "bg-base-content font-semibold text-base-100",
             else: "text-subtle hover:text-base-content"
           )
         ]}

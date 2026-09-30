@@ -24,6 +24,8 @@ defmodule HllConditionalActions.Discord.Webhook do
     field :url, Encrypted.Binary, redact: true
     field :username, :string
     field :avatar_url, :string
+    # Written by the staff: Discord only reports the channel's id.
+    field :channel_label, :string
     field :remote_name, :string
     field :channel_id, :string
     field :guild_id, :string
@@ -40,8 +42,9 @@ defmodule HllConditionalActions.Discord.Webhook do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(webhook, attrs) do
     webhook
-    |> cast(attrs, [:name, :url, :username, :avatar_url])
+    |> cast(attrs, [:name, :url, :username, :avatar_url, :channel_label])
     |> update_change(:name, &String.trim/1)
+    |> validate_length(:channel_label, max: 100)
     |> update_change(:url, &String.trim/1)
     |> validate_required([:name, :url])
     |> validate_length(:name, max: 80)

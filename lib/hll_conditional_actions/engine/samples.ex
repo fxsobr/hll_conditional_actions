@@ -13,8 +13,9 @@ defmodule HllConditionalActions.Engine.Samples do
   so recording is one counter bump and one insert, and memory is bounded no
   matter how busy a server is. Reads come from memory; new samples are
   also flushed to `HllConditionalActions.Engine.SavedEvents` every few
-  seconds in batches (never a row per kill), which keeps the latest few per
-  trigger on disk and warms the rings again after a restart.
+  seconds in batches (never a row per kill), which keeps a week of them on
+  disk (capped per trigger, see `SavedEvents`) and warms the rings again
+  after a restart.
 
   Only what the evaluator reads is stored. The roster is cut down to the
   player's own squad, which is all the squad conditions look at, so a sample
@@ -249,55 +250,94 @@ defmodule HllConditionalActions.Engine.Samples do
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
   # New samples are written to `SavedEvents` in batches rather than one row
-  # per kill: only the latest `SavedEvents.keep/0` of each trigger survive the
+  # per kill: only the newest `SavedEvents.keep/0` of each trigger survive the
   # prune anyway, so the buffer keeps no more than that either.
+  #
+  # The state is the buffer (`pending`) and, per pair, how many rows were
+  # written since it was last cut back to the cap (`unpruned`; `:unknown`
+  # before its first write after a start, when nothing is known about it). A
+  # pair is pruned when that is unknown or reaches `SavedEvents.prune_slack/0`,
+  # rather than on every flush.
   @flush_ms :timer.seconds(10)
 
   @impl GenServer
   def init(_opts) do
     :ets.new(@table, [:set, :public, :named_table, write_concurrency: true])
+    state = %{pending: %{}, unpruned: %{}}
 
     if persist?() do
       Process.send_after(self(), :flush, @flush_ms)
-      {:ok, %{}, {:continue, :warm}}
+      {:ok, state, {:continue, :warm}}
     else
-      {:ok, %{}}
+      {:ok, state}
     end
   end
 
   # After a restart the ring starts from what was saved, so the builder's
-  # replay has something to judge straight away.
+  # replay has something to judge straight away. Only what fits the ring is
+  # read back.
   @impl GenServer
-  def handle_continue(:warm, pending) do
-    Enum.each(SavedEvents.all_samples(), fn sample ->
+  def handle_continue(:warm, state) do
+    Enum.each(SavedEvents.latest_samples(capacity()), fn sample ->
       if sample.trigger, do: put(sample.server_id, sample.trigger, sample)
     end)
 
-    {:noreply, pending}
+    {:noreply, state}
   rescue
     exception ->
       Logger.warning("[samples] could not load saved events: #{Exception.message(exception)}")
-      {:noreply, pending}
+      {:noreply, state}
   end
 
   @impl GenServer
-  def handle_cast({:persist, sample}, pending) do
+  def handle_cast({:persist, sample}, state) do
     key = {sample.server_id, sample.trigger}
 
-    {:noreply, Map.update(pending, key, [sample], &Enum.take([sample | &1], SavedEvents.keep()))}
+    pending =
+      Map.update(state.pending, key, [sample], &Enum.take([sample | &1], SavedEvents.keep()))
+
+    {:noreply, %{state | pending: pending}}
   end
 
   @impl GenServer
-  def handle_info(:flush, pending) do
+  def handle_info(:flush, state) do
     Process.send_after(self(), :flush, @flush_ms)
 
+    {:noreply, flush(state)}
+  end
+
+  @doc false
+  # The batch write, split out so a test can drive it with a sandboxed
+  # connection instead of the timer.
+  @spec flush(map()) :: map()
+  def flush(%{pending: pending} = state) when map_size(pending) == 0, do: state
+
+  def flush(%{pending: pending, unpruned: unpruned}) do
+    unpruned =
+      Enum.reduce(pending, unpruned, fn {key, samples}, acc ->
+        Map.update(acc, key, :unknown, &add_unpruned(&1, length(samples)))
+      end)
+
+    due =
+      for {key, count} <- unpruned,
+          count == :unknown or count >= SavedEvents.prune_slack(),
+          do: key
+
     try do
-      pending |> Map.values() |> List.flatten() |> Enum.reverse() |> SavedEvents.store()
+      pending
+      |> Map.values()
+      |> List.flatten()
+      |> Enum.reverse()
+      |> SavedEvents.store(prune: due)
+
+      %{pending: %{}, unpruned: Map.merge(unpruned, Map.new(due, &{&1, 0}))}
     rescue
       exception ->
         Logger.warning("[samples] could not save events: #{Exception.message(exception)}")
+        %{pending: %{}, unpruned: unpruned}
     end
-
-    {:noreply, %{}}
   end
+
+  defp add_unpruned(:unknown, _count), do: :unknown
+  defp add_unpruned(total, count), do: total + count
 end

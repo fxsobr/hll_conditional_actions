@@ -7,6 +7,7 @@ defmodule HllConditionalActionsWeb.DiscordLiveTest do
   alias HllConditionalActions.Discord
   alias HllConditionalActions.Discord.Webhook
   alias HllConditionalActions.Repo
+  alias HllConditionalActions.Rules
 
   @url "https://discord.com/api/webhooks/123/abc"
 
@@ -43,8 +44,109 @@ defmodule HllConditionalActionsWeb.DiscordLiveTest do
     {:ok, view, _html} = live(conn, ~p"/discord")
     Req.Test.allow(HllConditionalActions.Discord, self(), view.pid)
 
-    assert view |> element("button", "Send a test") |> render_click() =~ "Test message sent"
+    assert view |> element("#webhook-test") |> render_click() =~ "Test message sent"
     assert Discord.get_webhook(webhook.id).last_delivered_at
+  end
+
+  test "saves the channel label and shows it in the list", %{conn: conn} do
+    webhook = Repo.insert!(%Webhook{name: "Chat", url: @url})
+
+    {:ok, view, _html} = live(conn, ~p"/discord/#{webhook.id}/edit")
+
+    view
+    |> form("#webhook-form", webhook: %{channel_label: "#chat-do-jogo"})
+    |> render_submit()
+
+    assert Discord.get_webhook(webhook.id).channel_label == "#chat-do-jogo"
+    assert view |> element("#webhook-#{webhook.id}-channel") |> render() =~ "#chat-do-jogo"
+  end
+
+  test "shows only the end of the stored URL's token", %{conn: conn} do
+    webhook =
+      Repo.insert!(%Webhook{
+        name: "Chat",
+        url: "https://discord.com/api/webhooks/123/secret-k2Qx"
+      })
+
+    {:ok, view, html} = live(conn, ~p"/discord/#{webhook.id}/edit")
+
+    assert view |> element("#webhook-url-hint") |> render() =~ "k2Qx"
+    refute html =~ "secret-k2Qx"
+  end
+
+  test "opens the failing webhook with its delivery log and the streak", %{conn: conn} do
+    server = server_fixture()
+
+    ok =
+      Repo.insert!(%Webhook{
+        name: "Alerts",
+        url: @url,
+        last_delivered_at: DateTime.utc_now(:second)
+      })
+
+    failing =
+      Repo.insert!(%Webhook{
+        name: "Chat",
+        url: @url,
+        last_error: "Discord rejected the message with HTTP 404 (Unknown Webhook)",
+        last_error_at: DateTime.utc_now(:second)
+      })
+
+    rule =
+      rule_fixture(%{
+        name: "Chat mirror",
+        actions: [
+          %{
+            type: :send_discord_webhook,
+            parameters: %{"webhook_id" => failing.id, "message" => "x"}
+          }
+        ]
+      })
+
+    {:ok, execution} =
+      Rules.record_execution(%{
+        rule_id: rule.id,
+        server_id: server.id,
+        player_name: "Santos",
+        trigger_event: "chat_command",
+        status: :executed,
+        trace: %{"conditions" => [%{"field" => "command", "actual" => "discord"}]}
+      })
+
+    Discord.record_delivery(
+      execution.id,
+      0,
+      :failed,
+      "Discord rejected the message with HTTP 404 (Unknown Webhook)",
+      404
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/discord")
+
+    assert has_element?(view, "#webhook-#{failing.id}[aria-current]")
+    refute has_element?(view, "#webhook-#{ok.id}[aria-current]")
+    assert has_element?(view, "#webhook-error")
+    assert view |> element("#webhook-#{failing.id}") |> render() =~ "Chat mirror"
+
+    log = view |> element("#delivery-log") |> render()
+    assert log =~ "404"
+    assert log =~ "Unknown Webhook"
+    assert log =~ "!discord"
+    assert log =~ "Santos"
+
+    assert view |> element("#webhook-#{failing.id}-last") |> render() =~ "1 failure"
+  end
+
+  test "closing the editor leaves the list", %{conn: conn} do
+    Repo.insert!(%Webhook{name: "Chat", url: @url})
+
+    {:ok, view, _html} = live(conn, ~p"/discord")
+    assert has_element?(view, "#webhook-editor")
+
+    view |> element("#webhook-editor-close") |> render_click()
+
+    refute has_element?(view, "#webhook-editor")
+    assert has_element?(view, "#webhook-help")
   end
 
   test "the rule builder offers the webhooks and previews the message", %{conn: conn} do

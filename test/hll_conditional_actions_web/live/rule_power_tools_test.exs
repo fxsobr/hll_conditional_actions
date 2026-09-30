@@ -133,7 +133,10 @@ defmodule HllConditionalActionsWeb.RulePowerToolsTest do
     html = view |> element("#rule-filters") |> render_change(%{"sort" => "failures"})
 
     [first | _rest] =
-      html |> LazyHTML.from_fragment() |> LazyHTML.query("#rule-list > li") |> Enum.to_list()
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#rule-list [data-rule]")
+      |> Enum.to_list()
 
     assert LazyHTML.attribute(first, "id") == ["rule-#{broken.id}"]
   end
@@ -189,6 +192,116 @@ defmodule HllConditionalActionsWeb.RulePowerToolsTest do
       render_click(view, "add_condition", %{})
 
       assert has_element?(view, ~s|#rule-form[data-dirty="true"]|)
+    end
+  end
+
+  describe "the Regras tools of the overhaul" do
+    test "the recipe gallery opens from the list, on shelves", %{conn: conn, server: server} do
+      rule_fixture(%{name: "Alpha", server_id: server.id})
+
+      {:ok, view, _html} = live(conn, ~p"/rules")
+      view |> element("#rule-recipes-all") |> render_click()
+
+      assert has_element?(
+               view,
+               "#recipe-gallery #recipe-category-protect #recipe-team_kill_ladder"
+             )
+
+      html = view |> form("#recipe-search", %{search: "zzz-nothing"}) |> render_change()
+      assert html =~ "No recipe matches that search."
+    end
+
+    test "the builder's ?recipes=1 link opens the gallery", %{conn: conn, server: server} do
+      {:ok, view, _html} = live(conn, ~p"/servers/#{server.id}/rules?recipes=1")
+      assert has_element?(view, "#recipe-gallery")
+    end
+
+    test "the executions download as CSV", %{conn: conn, server: server} do
+      rule = rule_fixture(%{name: "Alpha", server_id: server.id})
+      record(rule, server, :failed)
+
+      conn = get(conn, ~p"/rules/export?#{[format: "csv", rule_id: rule.id]}")
+
+      assert response_content_type(conn, :csv) =~ "text/csv"
+      body = response(conn, 200)
+      assert body =~ "executed_at,rule,server"
+      assert body =~ "Alpha"
+      assert body =~ "Fulano"
+    end
+
+    test "the executions tab counts each outcome", %{conn: conn, server: server} do
+      rule = rule_fixture(%{name: "Alpha", server_id: server.id})
+      record(rule, server, :failed)
+      record(rule, server, :executed)
+
+      {:ok, view, _html} = live(conn, ~p"/rules/#{rule}?tab=executions")
+
+      assert has_element?(view, "#rule-outcome-failed", "1")
+      assert has_element?(view, "#rule-outcome-executed", "1")
+
+      view |> element("#rule-outcome-failed") |> render_click()
+      assert has_element?(view, "#rule-outcome-failed[aria-pressed=true]")
+    end
+
+    test "the expression edits the rule's conditions as a draft", %{conn: conn, server: server} do
+      rule = rule_fixture(%{name: "Alpha", server_id: server.id, enabled: true})
+
+      {:ok, view, _html} = live(conn, ~p"/rules/#{rule}?tab=definition")
+      assert has_element?(view, "#rule-expression-status", "Valid expression")
+
+      text = ~s(event.type eq "player_connected"
+and server.game eq "hll"
+and player.level ge 10)
+      view |> form("#rule-expression-form", %{expression: text}) |> render_change()
+      assert has_element?(view, "#rule-expression-status", "differs from the visual mode")
+
+      view |> element("#rule-expression-apply") |> render_click()
+
+      draft = Rules.get_rule!(rule.id).draft
+      assert [%{"field" => "player_level", "value" => "10"}] = draft["conditions"]
+    end
+
+    test "a broken expression says where", %{conn: conn, server: server} do
+      rule = rule_fixture(%{name: "Alpha", server_id: server.id})
+
+      {:ok, view, _html} = live(conn, ~p"/rules/#{rule}?tab=definition")
+
+      view
+      |> form("#rule-expression-form", %{expression: ~s(event.type eq "player_connected"
+and player.nope eq 1)})
+      |> render_change()
+
+      assert has_element?(view, "#rule-expression-status", "there is no field called player.nope")
+      assert has_element?(view, "#rule-expression-apply[disabled]")
+    end
+
+    test "an event from the simulator is saved as a test", %{conn: conn, server: server} do
+      rule_fixture(%{name: "Alpha", server_id: server.id})
+
+      {:ok, view, _html} = live(conn, ~p"/rules/simulate?#{[server_id: server.id]}")
+
+      view |> element("#simulate-save") |> render_click()
+      view |> form("#simulate-save-form", %{name: "Knife kill"}) |> render_submit()
+
+      assert [%{name: "Knife kill"}] =
+               HllConditionalActions.Rules.SimulatorTests.list([server.id])
+
+      assert render(view) =~ "Knife kill"
+    end
+
+    test "the versions compare any two", %{conn: conn, user: user} do
+      rule = rule_fixture(%{name: "First"}, actor: user)
+      {:ok, rule} = Rules.publish(rule, %{"name" => "Second"}, actor: user)
+      {:ok, _rule} = Rules.publish(rule, %{"cooldown_seconds" => 120}, actor: user)
+
+      {:ok, view, _html} = live(conn, ~p"/rules/#{rule}?tab=changes")
+      [newest, _middle, oldest] = HllConditionalActions.Rules.Audit.list_versions(rule.id)
+
+      view |> element("#version-row-#{oldest.id}") |> render_click()
+
+      assert has_element?(view, "#version-row-#{oldest.id}[aria-pressed=true]")
+      assert has_element?(view, "#version-row-#{newest.id}[aria-pressed=true]")
+      assert has_element?(view, "#version-diff", "First")
     end
   end
 end

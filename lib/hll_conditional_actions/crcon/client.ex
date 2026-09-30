@@ -76,13 +76,32 @@ defmodule HllConditionalActions.Crcon.Client do
           {:ok, term()} | {:error, Error.t()}
   def request(conn, endpoint, params \\ %{}, opts \\ []) do
     method = Keyword.get_lazy(opts, :method, fn -> method_for(endpoint) end)
+    meta = %{endpoint: endpoint, method: method, server_id: Map.get(conn, :id)}
 
-    conn
-    |> build(endpoint, opts)
-    |> attach_params(method, params)
-    |> Req.request(method: method)
-    |> handle_response(endpoint)
+    # `[:hll_conditional_actions, :crcon, :request, :start | :stop | :exception]`,
+    # read by `HllConditionalActions.Metrics`.
+    :telemetry.span([:hll_conditional_actions, :crcon, :request], meta, fn ->
+      result =
+        conn
+        |> build(endpoint, opts)
+        |> attach_params(method, params)
+        |> Req.request(method: method)
+        |> handle_response(endpoint)
+
+      {result, Map.merge(meta, outcome_metadata(result))}
+    end)
   end
+
+  defp outcome_metadata({:ok, _result}), do: %{outcome: :ok, status: nil, error: nil}
+
+  defp outcome_metadata({:error, %Error{reason: reason, status: status, body: body}}) do
+    %{outcome: reason, status: status, error: transport_reason(body)}
+  end
+
+  # Low cardinality on purpose: the transport's own reason (`:timeout`,
+  # `:econnrefused`), never a message.
+  defp transport_reason(%{__exception__: true, reason: reason}) when is_atom(reason), do: reason
+  defp transport_reason(_body), do: nil
 
   @doc """
   Same as `request/4` but raises on failure.

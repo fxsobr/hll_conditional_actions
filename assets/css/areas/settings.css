@@ -1,0 +1,504 @@
+/* Styles of the settings area of the overhaul. Utilities first; add rules here only for what
+   Tailwind classes cannot express. */
+
+/* The server tiles of the hub: the map art fades into the panel so the name
+   stays readable on any picture. */
+.settings-art-scrim {
+  background: linear-gradient(180deg, rgb(15 16 14 / 0.1) 0%, rgb(15 16 14 / 0.9) 100%);
+}
+
+/* Petal's segmented colour-scheme switch, reshaped into the hub's pill: full
+   width, one third per choice, and a label beside each icon. */
+.settings-scheme.pc-scheme-segmented {
+  display: grid;
+  width: 100%;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-secondary);
+  color: var(--color-subtle);
+}
+
+.settings-scheme .pc-scheme-segmented__option {
+  height: 2.25rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+
+.settings-scheme .pc-scheme-segmented__option:has(:checked) {
+  background: var(--color-base-content);
+  color: var(--color-base-100);
+  font-weight: 600;
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+.settings-scheme .pc-scheme-segmented__icon {
+  width: auto;
+  height: auto;
+}
+
+/* The theme cards of the hub: a miniature of each scheme over its name. The
+   previews keep their own colours whatever the page's scheme is. */
+.settings-scheme-card[aria-checked="true"] {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 12%, transparent);
+  font-weight: 600;
+}
+
+:root:not(.dark) .settings-scheme-card[aria-checked="true"] {
+  border-color: var(--color-base-content);
+  box-shadow: 0 0 0 1px var(--color-base-content);
+}
+
+.settings-scheme-preview {
+  display: flex;
+  height: 3.25rem;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 0.3125rem;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  padding: 0.5rem;
+}
+
+.settings-scheme-preview > span {
+  height: 0.375rem;
+  border-radius: 3px;
+}
+
+.settings-scheme-preview > span:nth-child(1) { width: 60%; }
+.settings-scheme-preview > span:nth-child(2) { width: 80%; }
+.settings-scheme-preview > span:nth-child(3) { width: 36%; background: #d2f36b; }
+
+.settings-scheme-preview--light { background: #efeee8; }
+.settings-scheme-preview--light > span:nth-child(1) { background: #16170f; }
+.settings-scheme-preview--light > span:nth-child(2) { background: #e2e1d8; }
+
+.settings-scheme-preview--dark { background: #0f100e; border: 1px solid #2a2b26; }
+.settings-scheme-preview--dark > span:nth-child(1) { background: #f3f2ec; }
+.settings-scheme-preview--dark > span:nth-child(2) { background: #2a2b26; }
+
+.settings-scheme-preview--system {
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+  background: linear-gradient(90deg, #efeee8 50%, #0f100e 50%);
+}
+
+/* The centred dialog of the Ajustes pages (Servers board): 1080 x 880 on a
+   wide screen, the whole screen on a phone. */
+.settings-dialog {
+  width: min(67.5rem, calc(100vw - 2rem));
+  max-width: none;
+  height: min(55rem, calc(100vh - 2rem));
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-base-300);
+  border-radius: 1.75rem;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.5);
+}
+
+.settings-dialog > div {
+  height: 100%;
+}
+
+.settings-dialog::backdrop {
+  background: rgb(8 9 7 / 0.76);
+}
+
+@media (max-width: 40rem) {
+  .settings-dialog {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    border: 0;
+  }
+}
+
+/* Fields of the Ajustes forms: 46px tall, 14px corners, the raised hairline. */
+.settings-form .pc-text-input,
+.settings-form .pc-select {
+  min-height: 2.875rem;
+  border-radius: 0.875rem;
+  border-color: var(--color-line-raised);
+}
+
+.settings-form .pc-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-subtle);
+}
+
+/* The Ajustes checkboxes: 18px, ticked in the signal colour. */
+.settings-check {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* The six boxes of a TOTP code; green once the code checks out. */
+.settings-digits--ok [data-digit] {
+  border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+}
+
+/* The roles page: the matrix of what each role grants, one column per role. */
+.roles-matrix {
+  display: grid;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+/* The permission editor: area, permission, then the two switches. */
+.roles-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+@media (min-width: 40rem) {
+  .roles-editor-row {
+    grid-template-columns: 10.625rem minmax(0, 1fr) 7.5rem 7.5rem;
+    column-gap: 1rem;
+  }
+}
+
+/* A checkbox drawn as the design's switch. The input stays a real checkbox,
+   so the form posts exactly what it did before. */
+.settings-switch {
+  position: relative;
+  display: inline-flex;
+  width: 2.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.settings-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.settings-switch span {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-base-300);
+  transition: background-color 150ms ease;
+}
+
+.settings-switch span::after {
+  content: "";
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: var(--color-muted);
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.settings-switch input:checked + span {
+  background: var(--color-primary);
+}
+
+.settings-switch input:checked + span::after {
+  transform: translateX(1rem);
+  background: var(--color-primary-content);
+}
+
+.settings-switch input:focus-visible + span {
+  outline: 2px solid color-mix(in oklab, var(--color-primary) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* The bigger switch of the server form (46 x 28). */
+.settings-switch--lg {
+  width: 2.875rem;
+  height: 1.75rem;
+}
+
+.settings-switch--lg span::after {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.settings-switch--lg input:checked + span::after {
+  transform: translateX(1.125rem);
+}
+
+/* Granted through "manage": on, but dashed and not clickable. */
+.settings-switch--implied {
+  cursor: default;
+}
+
+.settings-switch--implied span {
+  border: 1px dashed color-mix(in oklab, var(--color-primary) 60%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 14%, transparent);
+}
+
+.settings-switch--implied span::after {
+  transform: translateX(1rem);
+  background: var(--color-primary);
+}
+
+/* The servers list: the server stretches, the rest keep their width so the
+   columns line up; on a phone only the server and its controls are left. */
+.servers-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+}
+
+@media (min-width: 64rem) {
+  .servers-grid {
+    grid-template-columns:
+      minmax(0, 1.7fr) 6.875rem minmax(0, 1.5fr) minmax(0, 1.2fr) 6.25rem minmax(0, 1fr)
+      2.5rem;
+  }
+}
+
+/* The users table. */
+.users-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+}
+
+@media (min-width: 64rem) {
+  .users-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) 9.5rem 7.5rem 5.75rem 5rem 2.875rem;
+    column-gap: 0.75rem;
+  }
+}
+
+/* The Discord webhooks list. */
+.webhooks-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 1rem;
+}
+
+@media (min-width: 64rem) {
+  .webhooks-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1fr) 6.5rem auto;
+  }
+}
+
+/* The CRCON calls table of the metrics page. */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+
+@media (min-width: 48rem) {
+  .metrics-grid {
+    grid-template-columns: minmax(0, 1.2fr) 4.5rem minmax(0, 1.2fr) 5rem 5rem 5rem minmax(0, 0.7fr);
+  }
+}
+
+/* discord */
+/* The Discord webhooks page: the delivery log well, Discord's badge, the
+   teal sender tint, the table and log grids, and the editor's fields. */
+:root {
+  --discord-well: #f4f3ee;
+  --discord-blurple: #4752c4;
+  --discord-teal-bg: #dcf1ec;
+  --discord-teal: #1e7f6c;
+}
+
+.dark {
+  --discord-well: #141512;
+  --discord-teal-bg: #1e3230;
+  --discord-teal: #7fd6c2;
+}
+
+.discord-avatar-teal {
+  background: var(--discord-teal-bg);
+  color: var(--discord-teal);
+}
+
+/* Display comes from utilities (`grid`), so `max-lg:hidden` still wins. */
+.discord-grid {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (min-width: 64rem) {
+  .discord-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+}
+
+.discord-log-row {
+  display: grid;
+  grid-template-columns: 5.25rem 2.75rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+  row-gap: 0.125rem;
+  align-items: baseline;
+}
+
+.discord-log-source {
+  grid-column: 3;
+}
+
+@media (min-width: 40rem) {
+  .discord-log-row {
+    grid-template-columns: 5.25rem 2.75rem minmax(0, 1fr) auto;
+  }
+
+  .discord-log-source {
+    grid-column: auto;
+    text-align: right;
+  }
+}
+
+.discord-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-subtle);
+}
+
+.pc-text-input.discord-field {
+  height: 2.875rem;
+  border-radius: 0.875rem;
+  border-color: var(--color-line-raised);
+  font-size: 0.875rem;
+}
+
+.pc-text-input.discord-field.font-mono {
+  font-size: 0.8125rem;
+}
+/* end discord */
+
+/* marketplace */
+/* The Modules page (Marketplace boards): cards lifted off the light paper,
+   dashed while a module is only available, each module's solid icon tile,
+   and the warning about the server's CRCON key. */
+.mkt-card,
+.mkt-panel {
+  box-shadow: 0 1px 2px rgba(22, 23, 15, 0.05);
+}
+
+.dark .mkt-card,
+.dark .mkt-panel {
+  box-shadow: none;
+}
+
+.mkt-card--available {
+  border: 1px dashed var(--color-line-strong);
+  box-shadow: none;
+}
+
+.mkt-tile {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1.125rem;
+}
+
+.mkt-tile--rules {
+  background: var(--tone-logo);
+  color: var(--tone-on-logo);
+}
+
+.mkt-tile--tickets {
+  background: var(--color-secondary-800);
+  color: #ffffff;
+}
+
+.dark .mkt-tile--tickets {
+  background: var(--color-secondary-300);
+  color: #1e1535;
+}
+
+.mkt-tile--stats {
+  background: var(--color-allies);
+  color: #ffffff;
+}
+
+.dark .mkt-tile--stats {
+  color: #0b1d33;
+}
+
+.mkt-tile--live_feed {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+.mkt-tile--progression {
+  background: var(--color-warn-fill);
+  color: #2a1e02;
+}
+
+.mkt-tile--vip_shop {
+  background: #e0782f;
+  color: #2a1405;
+}
+
+.dark .mkt-tile--vip_shop {
+  background: var(--color-axis);
+}
+
+.mkt-warn {
+  background: #fcefc8;
+  color: #6a4b00;
+}
+
+.dark .mkt-warn {
+  background: rgba(244, 201, 93, 0.1);
+  color: #e9ddb6;
+}
+
+.dark .mkt-warn-icon {
+  color: var(--color-warning);
+}
+/* /marketplace */
+
+/* metrics */
+/* The CRCON calls table: endpoint, calls, p95 on a phone; every column
+   from a tablet up (Metrics board). */
+.metrics-calls-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5rem 4.75rem;
+  align-items: center;
+  column-gap: 0.875rem;
+  row-gap: 0.375rem;
+}
+
+@media (min-width: 48rem) {
+  .metrics-calls-grid {
+    grid-template-columns: minmax(0, 1.15fr) 5rem minmax(0, 1.35fr) 4.75rem 5.25rem minmax(0, 0.7fr);
+  }
+}
+
+/* A log stream's stretch that is still down. */
+.metrics-hatch {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-error) 0 4px,
+    color-mix(in oklab, var(--color-error) 45%, var(--color-base-100)) 4px 8px
+  );
+}
+/* end metrics */
