@@ -1198,6 +1198,7 @@ defmodule HllConditionalActionsWeb.RuleLive.Form do
             for={@form}
             id="rule-form"
             class="flex min-w-0 flex-col overflow-hidden rounded-[1.75rem] bg-base-100 shadow-card"
+            novalidate
             phx-change="validate"
             phx-submit="save"
             phx-hook=".UnsavedGuard"

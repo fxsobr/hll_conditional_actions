@@ -622,7 +622,10 @@ defmodule HllConditionalActionsWeb.SeasonLive.Form do
         </div>
 
         <div :if={@scoring == :elo} class="flex flex-col gap-3">
-          <RatingComponents.rating_builder name="season[rating]" config={@params["rating"]} />
+          <RatingComponents.rating_builder
+            name="season[rating]"
+            config={Rating.normalize(@params["rating"])}
+          />
           <p class="text-xs text-muted">
             {gettext(
               "A match whose result is unknown changes no rating, so a rating season needs CRCON reachable when matches end."
