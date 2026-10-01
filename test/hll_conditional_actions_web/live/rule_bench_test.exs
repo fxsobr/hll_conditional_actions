@@ -44,6 +44,28 @@ defmodule HllConditionalActionsWeb.RuleBenchTest do
     assert has_element?(view, ~s|#bench-state-off[aria-checked="true"]|)
   end
 
+  # Hidden guard fields (a daily cap of 0 while the cap is off) must not let
+  # the browser's own validation swallow "Publish" without a word: the server
+  # validates and shows its errors.
+  test "the browser never blocks publishing on a hidden field", %{conn: conn} do
+    {:ok, rule} =
+      Rules.create_rule(%{
+        name: "No cap",
+        trigger_event: :chat_command,
+        max_executions_per_player: 0,
+        conditions: [%{field: :command, operator: :equal, value: "season"}],
+        actions: [%{type: :message_player, parameters: %{"message" => "hi"}}]
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/rules/#{rule}/edit")
+    assert has_element?(view, "#rule-form[novalidate]")
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             view |> form("#rule-form") |> render_submit(%{"intent" => "publish"})
+
+    assert to == ~p"/rules/#{rule}"
+  end
+
   test "a second group combines with the first and is saved", %{conn: conn, server: server} do
     {:ok, view, _html} = live(conn, ~p"/rules/new?server_id=#{server.id}")
 

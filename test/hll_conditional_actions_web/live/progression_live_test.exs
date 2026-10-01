@@ -145,6 +145,26 @@ defmodule HllConditionalActionsWeb.ProgressionLiveTest do
       assert weights["support"] == 0.5
     end
 
+    test "a rating season survives the weights arriving as text while typing", %{
+      conn: conn,
+      server: server
+    } do
+      {:ok, view, _html} = live(conn, ~p"/seasons/new")
+
+      view
+      |> form("#season-form", season: %{scoring: "elo", server_ids: ["", server.id]})
+      |> render_change()
+
+      html =
+        view
+        |> form("#season-form",
+          season: %{name: "Temporada #1", rating: %{result_weight: "70"}}
+        )
+        |> render_change()
+
+      assert html =~ "rating-builder"
+    end
+
     test "a rating season across two servers", %{conn: conn, server: server} do
       other = server_fixture(%{name: "EU #2"})
       {:ok, view, _html} = live(conn, ~p"/seasons/new")
