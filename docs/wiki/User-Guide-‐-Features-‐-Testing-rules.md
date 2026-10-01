@@ -137,6 +137,12 @@ usual, with the messages it *would* have sent, but **nothing reaches the
 game**. New rules are published **in simulation** (**Publish in
 simulation**), and rules from recipes always start there.
 
+To move an existing rule between **Simulating** and **Live**, open it in
+the builder (**Edit**), pick the position on the state switch and click
+**Publish edits** — the switch is part of the draft, so nothing changes
+until you publish. **Turn on**, on the rules list or the rule's page,
+switches a rule back on in the mode it had when it was switched off.
+
 In the feed and the history, simulated runs are lavender.
 
 ## Going live
@@ -156,8 +162,7 @@ rule out of simulation as a new version: from then on its actions reach the
 game.
 
 The rules list marks these rules *ready to act*, the Briefing suggests the
-first one, and the Inbox lists them as *Ready to go live* once they have ten
-runs.
+first one, and the Inbox lists them as *Ready to go live*.
 
 In the builder, **Live** stays locked (*Live in N days*) until the three days
 have passed — except for a rule that has already run for real before.

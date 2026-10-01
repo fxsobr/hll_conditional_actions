@@ -11,7 +11,7 @@ Rule automation for [Hell Let Loose](https://www.hellletloose.com/) servers, bui
 ![Phoenix](https://img.shields.io/badge/Phoenix-1.8-FD4F00?logo=phoenixframework&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)  
-![CRCON Discord](https://img.shields.io/discord/685692524442026020?color=%237289da&label=CRCON%20discord)
+![CRCON Discord](https://img.shields.io/badge/CRCON-discord-7289DA?logo=discord&logoColor=white)
 ![License](https://img.shields.io/github/license/fxsobr/hll_conditional_actions)
 ![Last commit](https://img.shields.io/github/last-commit/fxsobr/hll_conditional_actions)
 

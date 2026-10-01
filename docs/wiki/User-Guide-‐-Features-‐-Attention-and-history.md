@@ -59,7 +59,7 @@ Items appear and disappear by themselves as the situation changes:
 | **Rule broken** | A rule can never work, or fails every time | Fix the rule |
 | **Failures** | A rule's actions failed in the last 24 hours | Yes — back on the next failure |
 | **Review** | A rule put a player on the watchlist or flagged them in the last 7 days, for a human to look at | Yes |
-| **Ready to go live** | A rule has simulated for more than 3 days, at least 10 runs, without a failure | Yes |
+| **Ready to go live** | A rule has simulated for 3 days, with some runs and no failure — the same measure as *Ready to act* on its page | Yes |
 | **Rule quiet** | A rule that never fires, or stopped firing | Yes |
 | **Paid VIP not granted** | A [VIP shop](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop) order that could not be delivered on some server | Yes |
 
