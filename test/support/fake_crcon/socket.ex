@@ -36,6 +36,19 @@ defmodule HllConditionalActions.FakeCrcon.Socket do
     {:push, {:text, body}, mode}
   end
 
+  # A CRCON whose connection died without closing: the socket stays open but
+  # nothing comes back, not even a pong (the handler is busy, so Bandit cannot
+  # answer the client's pings).
+  def handle_in({_payload, [opcode: :text]}, :silent) do
+    receive do
+      :never -> :ok
+    after
+      5_000 -> :ok
+    end
+
+    {:ok, :silent}
+  end
+
   def handle_in(_message, mode), do: {:ok, mode}
 
   @impl WebSock

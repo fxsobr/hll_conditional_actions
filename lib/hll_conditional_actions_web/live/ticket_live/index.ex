@@ -67,15 +67,17 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
     filters =
       Map.merge(
         socket.assigns.filters,
-        Map.take(params, ["server_id", "q", "category"])
+        Map.take(params, ["server_id", "q", "category", "sort"])
       )
 
     {:noreply, socket |> assign(:filters, filters) |> load()}
   end
 
+  # Each view opens in its own order: an order picked for the queue makes
+  # little sense for the closed tickets, and the other way round.
   def handle_event("view", %{"view" => view}, socket) do
-    {:noreply,
-     socket |> assign(:filters, Map.put(socket.assigns.filters, "view", view)) |> load()}
+    filters = Map.merge(socket.assigns.filters, %{"view" => view, "sort" => ""})
+    {:noreply, socket |> assign(:filters, filters) |> load()}
   end
 
   def handle_event("claim", %{"id" => id}, socket) do
@@ -99,16 +101,22 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
   defp load(socket) do
     %{filters: filters, server: server, current_user: user} = socket.assigns
     server_id = server_id(server, filters)
+    view = view(filters["view"], user)
+    sort = sort(filters["sort"], view)
 
     tickets =
       Tickets.list_tickets(user,
         server_id: server_id,
-        view: view(filters["view"], user),
+        view: view,
         query: filters["q"],
-        category: filters["category"]
+        category: filters["category"],
+        sort: sort
       )
 
     socket
+    |> assign(:sort, sort)
+    |> assign(:default_sort, Tickets.default_sort(view))
+    |> assign(:sort_options, sort_options(view))
     |> assign(:tickets_empty?, tickets == [])
     |> stream(:tickets, tickets, reset: true, dom_id: &"ticket-#{&1.id}")
     |> assign(:counts, Tickets.view_counts(user, server_id))
@@ -123,6 +131,33 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
 
   defp view("mine", user), do: {:mine, user.id}
   defp view(name, _user), do: Enum.find(Tickets.views(), :active, &(to_string(&1) == name))
+
+  # An unknown or blank choice falls back to the view's own order, and the
+  # closed date only orders anything among closed tickets.
+  defp sort(name, view) do
+    case Enum.find(sort_options(view), &(to_string(&1) == name)) do
+      nil -> Tickets.default_sort(view)
+      sort -> sort
+    end
+  end
+
+  defp sort_options(:closed), do: Tickets.sorts()
+  defp sort_options(_view), do: List.delete(Tickets.sorts(), :closed)
+
+  defp sort_label(:priority), do: gettext("Priority first")
+  defp sort_label(:activity), do: gettext("Latest activity")
+  defp sort_label(:newest), do: gettext("Opened most recently")
+  defp sort_label(:oldest), do: gettext("Opened longest ago")
+  defp sort_label(:closed), do: gettext("Closed most recently")
+
+  # The time on each row is the one the list is ordered by.
+  defp row_time(ticket, :closed), do: ticket.closed_at || ticket.last_activity_at
+  defp row_time(ticket, sort) when sort in [:newest, :oldest], do: ticket.inserted_at
+  defp row_time(ticket, _sort), do: ticket.last_activity_at
+
+  defp row_time_title(:closed), do: gettext("Closed")
+  defp row_time_title(sort) when sort in [:newest, :oldest], do: gettext("Opened")
+  defp row_time_title(_sort), do: gettext("Last activity")
 
   defp view_label(:unassigned), do: gettext("Unassigned")
   defp view_label(:mine), do: gettext("Mine")
@@ -307,6 +342,14 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
             prompt={gettext("All servers")}
             options={Enum.map(@servers, &{&1.name, &1.id})}
           />
+          <%!-- The blank option is the view's own order, named after it. --%>
+          <.filter_select
+            name="sort"
+            label={gettext("Order")}
+            value={if @sort == @default_sort, do: "", else: @sort}
+            prompt={sort_label(@default_sort)}
+            options={for sort <- @sort_options, sort != @default_sort, do: {sort_label(sort), sort}}
+          />
         </.filter_bar>
 
         <.empty_state
@@ -405,8 +448,11 @@ defmodule HllConditionalActionsWeb.TicketLive.Index do
                 >
                   {Labels.ticket_status(ticket.status)}
                 </.pill>
-                <span class="w-20 text-right font-mono text-[0.6875rem] text-muted">
-                  <.local_time id={"ticket-#{ticket.id}-activity"} at={ticket.last_activity_at} />
+                <span
+                  class="w-20 text-right font-mono text-[0.6875rem] text-muted"
+                  title={row_time_title(@sort)}
+                >
+                  <.local_time id={"ticket-#{ticket.id}-activity"} at={row_time(ticket, @sort)} />
                 </span>
                 <span
                   :if={ticket.assigned_to}

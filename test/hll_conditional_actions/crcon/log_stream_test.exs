@@ -57,6 +57,40 @@ defmodule HllConditionalActions.Crcon.LogStreamTest do
     end
   end
 
+  describe "the heartbeat" do
+    setup do
+      Application.put_env(:hll_conditional_actions, :log_stream_heartbeat_ms, 100)
+
+      on_exit(fn ->
+        Application.delete_env(:hll_conditional_actions, :log_stream_heartbeat_ms)
+      end)
+    end
+
+    # The production failure: the VPS lost its network for a minute and every
+    # stream stayed "connected" without receiving another line, so no rule
+    # ran until the modules were reinstalled.
+    test "drops a connection that went silent and reconnects", %{server: server, port: port} do
+      start_fake(port, :silent)
+      LogStream.subscribe(server.id)
+      start_stream(server)
+
+      assert_receive {:crcon_stream_status, _id, :connected}, 5_000
+      assert_receive {:crcon_stream_status, _id, {:error, reason}}, 5_000
+      assert reason =~ "no data from CRCON"
+      assert_receive {:crcon_stream_status, _id, :connecting}, 5_000
+    end
+
+    test "keeps a quiet but healthy connection open", %{server: server, port: port} do
+      # No log lines at all, but the fake answers the pings.
+      start_fake(port, {:logs, []})
+      LogStream.subscribe(server.id)
+      start_stream(server)
+
+      assert_receive {:crcon_stream_status, _id, :connected}, 5_000
+      refute_receive {:crcon_stream_status, _id, {:error, _reason}}, 1_000
+    end
+  end
+
   describe "a CRCON with the log stream disabled" do
     setup %{server: server, port: port} do
       start_fake(port, :disabled)

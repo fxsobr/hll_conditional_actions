@@ -33,6 +33,19 @@ defmodule HllConditionalActions.Crcon.LogStream do
 
   Connection state changes are broadcast as `{:crcon_stream_status, server_id,
   status}` so the UI can show whether a server is live.
+
+  ## Heartbeat
+
+  A connection can die without either end saying so: when the network drops
+  for a minute, the socket stays open here and simply never receives
+  another byte. Nothing in TCP notices on a connection that only listens,
+  so the stream would sit "connected" and silent until restarted by hand -
+  and every rule on the server with it.
+
+  So the client pings CRCON every `heartbeat_ms` (30s) and expects to hear
+  something - a pong, a ping or log lines - at least once every three
+  heartbeats. A stream silent for longer is dropped and reconnected from
+  `last_seen_id`, so no line is lost.
   """
 
   use GenServer, restart: :transient
@@ -48,6 +61,11 @@ defmodule HllConditionalActions.Crcon.LogStream do
   @backoff_max 30_000
   @connect_timeout :timer.seconds(10)
 
+  # How often the client pings CRCON; silence for three of these drops the
+  # connection. See "Heartbeat" in the moduledoc.
+  @heartbeat_ms :timer.seconds(30)
+  @silent_heartbeats 3
+
   @type status :: :disconnected | :connecting | :connected | {:error, String.t()}
 
   defmodule State do
@@ -59,6 +77,8 @@ defmodule HllConditionalActions.Crcon.LogStream do
       :request_ref,
       :last_seen_id,
       :upgrade_status,
+      :heartbeat,
+      :heard_at,
       status: :disconnected,
       backoff: 1_000,
       upgrade_headers: [],
@@ -158,6 +178,21 @@ defmodule HllConditionalActions.Crcon.LogStream do
   @impl GenServer
   def handle_info(:reconnect, state), do: {:noreply, connect(state)}
 
+  # Only the timer of the current connection counts: one left over from a
+  # connection that was already replaced is ignored.
+  def handle_info({:heartbeat, ref}, %State{heartbeat: ref, conn: conn} = state)
+      when not is_nil(conn) do
+    silent_ms = System.monotonic_time(:millisecond) - state.heard_at
+
+    if silent_ms >= heartbeat_ms() * @silent_heartbeats do
+      {:noreply, schedule_reconnect(state, "no data from CRCON for #{div(silent_ms, 1000)}s")}
+    else
+      {:noreply, state |> send_frame({:ping, ""}) |> schedule_heartbeat()}
+    end
+  end
+
+  def handle_info({:heartbeat, _stale}, state), do: {:noreply, state}
+
   # Frames arrive as raw transport messages; Mint turns them into responses.
   def handle_info(message, %State{conn: conn} = state) when not is_nil(conn) do
     case Mint.WebSocket.stream(conn, message) do
@@ -191,7 +226,9 @@ defmodule HllConditionalActions.Crcon.LogStream do
     with {:ok, uri} <- parse_url(state.server.base_url),
          {:ok, conn} <- http_connect(uri),
          {:ok, conn, ref} <- upgrade(conn, uri, state.server.api_key) do
-      %{state | conn: conn, request_ref: ref}
+      # The heartbeat starts with the socket, so an upgrade CRCON never
+      # answers is caught the same way as a stream that went quiet.
+      schedule_heartbeat(%{state | conn: conn, request_ref: ref, heard_at: now_ms()})
     else
       {:error, %Mint.HTTPError{} = error} ->
         schedule_reconnect(state, Exception.message(error))
@@ -300,6 +337,8 @@ defmodule HllConditionalActions.Crcon.LogStream do
 
   defp handle_response({:data, ref, data}, %State{request_ref: ref, websocket: ws} = state)
        when not is_nil(ws) do
+    state = %{state | heard_at: now_ms()}
+
     case Mint.WebSocket.decode(ws, data) do
       {:ok, websocket, frames} ->
         Enum.reduce(frames, %{state | websocket: websocket}, &handle_frame/2)
@@ -419,6 +458,18 @@ defmodule HllConditionalActions.Crcon.LogStream do
 
   # ── Reconnection ───────────────────────────────────────────────────────────
 
+  defp schedule_heartbeat(state) do
+    ref = make_ref()
+    Process.send_after(self(), {:heartbeat, ref}, heartbeat_ms())
+    %{state | heartbeat: ref}
+  end
+
+  defp heartbeat_ms do
+    Application.get_env(:hll_conditional_actions, :log_stream_heartbeat_ms, @heartbeat_ms)
+  end
+
+  defp now_ms, do: System.monotonic_time(:millisecond)
+
   defp schedule_reconnect(state, reason) do
     if state.conn, do: Mint.HTTP.close(state.conn)
 
@@ -434,6 +485,7 @@ defmodule HllConditionalActions.Crcon.LogStream do
       | conn: nil,
         websocket: nil,
         request_ref: nil,
+        heartbeat: nil,
         status: {:error, reason},
         backoff: min(state.backoff * 2, @backoff_max)
     }
