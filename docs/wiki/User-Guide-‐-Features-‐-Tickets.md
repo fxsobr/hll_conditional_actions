@@ -92,7 +92,10 @@ answered ones. The list updates live.
 
 `/tickets` still lists tickets on their own, with the views *Unassigned*,
 *Mine*, *Waiting for an admin*, *Waiting for the player*, *All open* and
-*Closed*.
+*Closed*. Open tickets come priority first; closed ones, most recently closed
+first. **Order** changes that: latest activity, opened most recently, opened
+longest ago (and, on *Closed*, priority first). Each row's time is the one the
+list is ordered by.
 
 ## Answering a ticket
 

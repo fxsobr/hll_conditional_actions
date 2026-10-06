@@ -1207,17 +1207,49 @@ defmodule HllConditionalActions.Tickets do
   # ── Queries ────────────────────────────────────────────────────────────────
 
   @doc """
-  Tickets a user may see, newest activity first.
+  Tickets a user may see.
 
   Filters: `:server_id`, `:status` (`:active` for anything not closed),
-  `:limit`.
+  `:view`, `:query`, `:category`, `:limit`, and `:sort` - one of
+  `sorts/0`, defaulting to `default_sort/1` of the view.
   """
   @spec list_tickets(User.t(), keyword()) :: [Ticket.t()]
   def list_tickets(user, filters \\ []) do
+    sort = Keyword.get(filters, :sort) || default_sort(Keyword.get(filters, :view))
+
     user
     |> scoped()
     |> filter(filters)
-    |> order_by([t],
+    |> sort(sort)
+    |> limit(^Keyword.get(filters, :limit, 200))
+    |> preload([:server, :assigned_to, :messages])
+    |> Repo.all()
+  end
+
+  @sorts [:priority, :activity, :newest, :oldest, :closed]
+
+  @doc """
+  The orders the ticket list offers: higher priority first, latest activity,
+  opened most recently, opened longest ago, closed most recently.
+  """
+  @spec sorts() :: [atom()]
+  def sorts, do: @sorts
+
+  @doc """
+  The order a view opens in: the queue by priority, the closed tickets by
+  when they were closed - their priority no longer says anything.
+
+      iex> HllConditionalActions.Tickets.default_sort(:closed)
+      :closed
+      iex> HllConditionalActions.Tickets.default_sort(:active)
+      :priority
+  """
+  @spec default_sort(term()) :: atom()
+  def default_sort(:closed), do: :closed
+  def default_sort(_view), do: :priority
+
+  defp sort(query, :priority) do
+    order_by(query, [t],
       desc:
         fragment(
           "CASE ? WHEN 'urgent' THEN 3 WHEN 'high' THEN 2 WHEN 'normal' THEN 1 ELSE 0 END",
@@ -1226,10 +1258,14 @@ defmodule HllConditionalActions.Tickets do
       desc: t.last_activity_at,
       desc: t.id
     )
-    |> limit(^Keyword.get(filters, :limit, 200))
-    |> preload([:server, :assigned_to, :messages])
-    |> Repo.all()
   end
+
+  defp sort(query, :activity), do: order_by(query, [t], desc: t.last_activity_at, desc: t.id)
+  defp sort(query, :newest), do: order_by(query, [t], desc: t.inserted_at, desc: t.id)
+  defp sort(query, :oldest), do: order_by(query, [t], asc: t.inserted_at, asc: t.id)
+
+  defp sort(query, :closed),
+    do: order_by(query, [t], desc_nulls_last: t.closed_at, desc: t.last_activity_at, desc: t.id)
 
   @doc """
   How many tickets wait on an admin (status `:open`), per server id.

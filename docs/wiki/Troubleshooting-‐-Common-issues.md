@@ -33,6 +33,13 @@ The log stream is not reaching the app.
 a server the app cannot hold a stream to — usually a proxy in front of CRCON
 closing idle WebSockets.
 
+Since 0.3.4 the app pings CRCON every 30 seconds and reconnects on its own
+when a stream stays silent for 90, resuming where it stopped. Before that, a
+network drop on the host could leave every stream "connected" and silent —
+rules stopped on all servers at once until the modules were reinstalled.
+That workaround is no longer needed: the log shows *no data from CRCON for
+90s* and the stream comes back by itself.
+
 ## "This will never work" on a rule
 
 The CRCON key cannot do what the rule asks. The badge names the permission.

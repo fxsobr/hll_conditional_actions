@@ -96,7 +96,7 @@ msgid "Any condition may hold"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/labels.ex:744
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1335
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1336
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:633
 #, elixir-autogen, elixir-format
 msgid "Applies to"
@@ -324,7 +324,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/labels.ex:795
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:558
 #: lib/hll_conditional_actions_web/live/role_live/index.ex:505
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2151
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2152
 #: lib/hll_conditional_actions_web/live/vip_shop_live/packages.ex:486
 #, elixir-autogen, elixir-format
 msgid "Description"
@@ -332,7 +332,7 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/live/attention_live.ex:246
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:1067
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1394
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1395
 #, elixir-autogen, elixir-format
 msgid "Details"
 msgstr ""
@@ -446,7 +446,7 @@ msgid "Event type"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/labels.ex:746
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1330
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1331
 #, elixir-autogen, elixir-format
 msgid "Every (seconds)"
 msgstr ""
@@ -496,7 +496,7 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/components/briefing_components.ex:2003
 #: lib/hll_conditional_actions_web/labels.ex:743
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2131
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2132
 #: lib/hll_conditional_actions_web/live/server_live/index.ex:452
 #: lib/hll_conditional_actions_web/live/server_live/index.ex:726
 #, elixir-autogen, elixir-format
@@ -538,7 +538,7 @@ msgid "History"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:1057
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1360
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1361
 #, elixir-autogen, elixir-format
 msgid "If"
 msgstr ""
@@ -773,7 +773,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:529
 #: lib/hll_conditional_actions_web/live/discord_live/index.ex:733
 #: lib/hll_conditional_actions_web/live/role_live/index.ex:438
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2098
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2099
 #: lib/hll_conditional_actions_web/live/season_live/form.ex:403
 #: lib/hll_conditional_actions_web/live/server_live/index.ex:723
 #: lib/hll_conditional_actions_web/live/shop_live/register.ex:110
@@ -952,7 +952,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/rule_live/simulate.ex:679
 #: lib/hll_conditional_actions_web/live/rule_live/why_not.ex:289
 #: lib/hll_conditional_actions_web/live/season_live/dashboard.ex:328
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:776
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:779
 #: lib/hll_conditional_actions_web/live/vip_shop_live/purchases.ex:1083
 #, elixir-autogen, elixir-format
 msgid "Player"
@@ -1034,7 +1034,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/components/ticket_settings_form.ex:431
 #: lib/hll_conditional_actions_web/labels.ex:741
 #: lib/hll_conditional_actions_web/labels.ex:798
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2140
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2141
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:635
 #, elixir-autogen, elixir-format
 msgid "Priority"
@@ -1169,7 +1169,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1528
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1543
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:1095
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:376
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:421
 #, elixir-autogen, elixir-format
 msgid "Rule"
 msgstr ""
@@ -1210,7 +1210,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1322
 #: lib/hll_conditional_actions_web/live/role_live/index.ex:238
 #: lib/hll_conditional_actions_web/live/role_live/index.ex:283
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2212
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2213
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:48
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:89
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:694
@@ -1237,8 +1237,8 @@ msgstr ""
 msgid "Save password"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1513
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:1514
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1515
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:488
 #, elixir-autogen, elixir-format
 msgid "Save rule"
@@ -1249,8 +1249,8 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/account_live/show.ex:1040
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:511
 #: lib/hll_conditional_actions_web/live/role_live/index.ex:485
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1483
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1497
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1484
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1498
 #: lib/hll_conditional_actions_web/live/season_live/index.ex:114
 #: lib/hll_conditional_actions_web/live/season_live/show.ex:133
 #: lib/hll_conditional_actions_web/live/server_live/index.ex:916
@@ -1292,7 +1292,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1933
 #: lib/hll_conditional_actions_web/live/rule_live/simulate.ex:621
 #: lib/hll_conditional_actions_web/live/server_live/index.ex:451
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:305
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:340
 #: lib/hll_conditional_actions_web/live/vip_shop_live/email_panel.ex:158
 #, elixir-autogen, elixir-format
 msgid "Server"
@@ -1462,7 +1462,7 @@ msgid "The rule"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:1058
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1377
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1378
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:276
 #, elixir-autogen, elixir-format
 msgid "Then"
@@ -1493,7 +1493,7 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/labels.ex:745
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:522
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1306
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1307
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:632
 #, elixir-autogen, elixir-format
 msgid "Trigger"
@@ -1614,7 +1614,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1527
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1579
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:1055
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1303
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1304
 #: lib/hll_conditional_actions_web/live/vip_shop_live/purchases.ex:369
 #, elixir-autogen, elixir-format
 msgid "When"
@@ -1649,7 +1649,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/ticket_live/conversation.ex:566
 #: lib/hll_conditional_actions_web/live/ticket_live/conversation.ex:579
 #: lib/hll_conditional_actions_web/live/ticket_live/index.ex:35
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:90
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:92
 #: lib/hll_conditional_actions_web/live/ticket_live/metrics.ex:41
 #: lib/hll_conditional_actions_web/live/ticket_live/settings.ex:51
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:82
@@ -2040,7 +2040,7 @@ msgid "A rule watches for something happening on your server and answers it: a w
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/bench_components.ex:1022
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1871
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1872
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Action"
 msgstr ""
@@ -2132,12 +2132,12 @@ msgstr ""
 msgid "State"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2105
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2106
 #, elixir-autogen, elixir-format
 msgid "Warn players who team kill"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2156
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2157
 #, elixir-autogen, elixir-format
 msgid "What is this rule for? Your fellow admins will thank you."
 msgstr ""
@@ -2243,7 +2243,7 @@ msgstr ""
 msgid "Navigation"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1291
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1292
 #, elixir-autogen, elixir-format
 msgid "Still needs your attention:"
 msgstr ""
@@ -2595,8 +2595,8 @@ msgid "Greets every player by name as they connect."
 msgstr ""
 
 #: lib/hll_conditional_actions_web/labels.ex:742
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1753
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2112
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1754
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2113
 #, elixir-autogen, elixir-format
 msgid "Group"
 msgstr ""
@@ -2782,12 +2782,12 @@ msgid_plural "%{count} hours"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2484
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2485
 #, elixir-autogen, elixir-format
 msgid "1 week"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1816
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1817
 #, elixir-autogen, elixir-format
 msgid "Forget an offence after"
 msgstr ""
@@ -2802,7 +2802,7 @@ msgstr ""
 msgid "Off"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2120
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2121
 #, elixir-autogen, elixir-format
 msgid "Seeding, anti-cheat, events…"
 msgstr ""
@@ -3119,7 +3119,7 @@ msgstr[1] ""
 msgid "Behaviour"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1747
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1748
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Condition"
 msgstr ""
@@ -3130,6 +3130,7 @@ msgid "Configure"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:1144
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:348
 #: lib/hll_conditional_actions_web/live/vip_shop_live/packages.ex:626
 #, elixir-autogen, elixir-format
 msgid "Order"
@@ -3713,7 +3714,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:488
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1331
 #: lib/hll_conditional_actions_web/live/season_live/dashboard.ex:329
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:777
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:780
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Matches"
 msgstr ""
@@ -4074,7 +4075,7 @@ msgstr ""
 msgid "Over a career on the server"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:642
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:645
 #, elixir-autogen, elixir-format
 msgid "Prize"
 msgstr ""
@@ -4193,7 +4194,7 @@ msgstr ""
 msgid "Whoever commanded at least 40 minutes of a full match gets VIP for 24 hours and a thank you."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:646
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:649
 #, elixir-autogen, elixir-format
 msgid "Winners"
 msgstr ""
@@ -4216,7 +4217,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/components/layouts.ex:741
 #: lib/hll_conditional_actions_web/components/more_sheet.ex:162
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:292
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:307
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:342
 #, elixir-autogen, elixir-format, fuzzy
 msgid "All servers"
 msgstr ""
@@ -4236,6 +4237,7 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/live/server_live/show.ex:665
 #: lib/hll_conditional_actions_web/live/server_live/show.ex:674
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:148
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Latest activity"
 msgstr ""
@@ -4506,7 +4508,7 @@ msgstr ""
 msgid "A loss never raises a rating, a win never lowers it"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:627
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:630
 #, elixir-autogen, elixir-format
 msgid "A match whose result is unknown changes no rating, so a rating season needs CRCON reachable when matches end."
 msgstr ""
@@ -5073,7 +5075,7 @@ msgstr ""
 msgid "No career recorded on this server yet."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:746
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:749
 #, elixir-autogen, elixir-format
 msgid "No finished match in CRCON's history for these servers yet: the preview shows up after the first ones."
 msgstr ""
@@ -5083,7 +5085,7 @@ msgstr ""
 msgid "No finished match in CRCON's history yet."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:813
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:816
 #, elixir-autogen, elixir-format
 msgid "Nobody played the minimum matches in this stretch."
 msgstr ""
@@ -5093,13 +5095,13 @@ msgstr ""
 msgid "Pick a metric and a goal to see who reaches it."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:742
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:745
 #, elixir-autogen, elixir-format
 msgid "Pick the stat to see the standings."
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:872
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:737
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:740
 #, elixir-autogen, elixir-format
 msgid "Reading the last matches from CRCON..."
 msgstr ""
@@ -5138,7 +5140,7 @@ msgstr ""
 msgid "Assign to me"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:414
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:462
 #, elixir-autogen, elixir-format
 msgid "Assigned to"
 msgstr ""
@@ -5150,7 +5152,8 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/components/ticket_components.ex:987
 #: lib/hll_conditional_actions_web/labels.ex:1149
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:132
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:158
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:167
 #: lib/hll_conditional_actions_web/live/ticket_live/settings.ex:775
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:812
 #, elixir-autogen, elixir-format, fuzzy
@@ -5169,7 +5172,7 @@ msgstr ""
 msgid "Earlier tickets"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:316
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:361
 #, elixir-autogen, elixir-format
 msgid "No tickets"
 msgstr ""
@@ -5179,13 +5182,14 @@ msgstr ""
 msgid "Normal"
 msgstr ""
 
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:159
 #: lib/hll_conditional_actions_web/live/ticket_live/settings.ex:758
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:795
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Opened"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:209
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:244
 #, elixir-autogen, elixir-format
 msgid "Players who called an admin from the game chat"
 msgstr ""
@@ -5272,19 +5276,19 @@ msgstr[1] ""
 msgid "Tickets"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:248
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:283
 #, elixir-autogen, elixir-format
 msgid "Tickets are off on this server: players' commands are ignored."
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/ticket_components.ex:988
 #: lib/hll_conditional_actions_web/labels.ex:1147
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:129
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:164
 #, elixir-autogen, elixir-format
 msgid "Waiting for an admin"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:318
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:363
 #, elixir-autogen, elixir-format
 msgid "When a player types a ticket command in the game chat, the ticket shows up here."
 msgstr ""
@@ -5320,7 +5324,7 @@ msgid "%{player} is waiting for an admin"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/command_palette.ex:710
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:383
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:428
 #: lib/hll_conditional_actions_web/live/ticket_live/metrics.ex:913
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 ticket"
@@ -5405,7 +5409,7 @@ msgid "Open a ticket for the admins"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:445
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:291
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:326
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Player name or ID"
 msgstr ""
@@ -5425,7 +5429,7 @@ msgstr ""
 msgid "Roles to mention"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:289
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:324
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Search"
 msgstr ""
@@ -5644,7 +5648,7 @@ msgstr ""
 msgid "Alerts on"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:299
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:334
 #, elixir-autogen, elixir-format
 msgid "All categories"
 msgstr ""
@@ -5661,7 +5665,7 @@ msgstr ""
 msgid "Categories"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:297
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:332
 #, elixir-autogen, elixir-format
 msgid "Category"
 msgstr ""
@@ -5858,12 +5862,12 @@ msgstr ""
 msgid "%{name} is viewing"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:392
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:437
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Admin:"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:131
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:166
 #, elixir-autogen, elixir-format
 msgid "All open"
 msgstr ""
@@ -5873,7 +5877,7 @@ msgstr ""
 msgid "Any time"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:428
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:476
 #, elixir-autogen, elixir-format
 msgid "Claim"
 msgstr ""
@@ -5888,12 +5892,12 @@ msgstr ""
 msgid "Closed for inactivity"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:186
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:221
 #, elixir-autogen, elixir-format
 msgid "Just arrived"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:225
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:260
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Let players call an admin from the game"
 msgstr ""
@@ -5904,7 +5908,7 @@ msgid "Messages"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:675
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:128
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:163
 #, elixir-autogen, elixir-format
 msgid "Mine"
 msgstr ""
@@ -5924,7 +5928,7 @@ msgstr ""
 msgid "No webhook registered yet."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:187
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:222
 #, elixir-autogen, elixir-format
 msgid "Not waiting on an admin"
 msgstr ""
@@ -5964,7 +5968,7 @@ msgstr ""
 msgid "Something needs fixing: see the highlighted step."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:238
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:273
 #, elixir-autogen, elixir-format
 msgid "Start the wizard"
 msgstr ""
@@ -5982,7 +5986,7 @@ msgstr ""
 msgid "Steps"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:228
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:263
 #, elixir-autogen, elixir-format
 msgid "The wizard sets up the command, the messages and the office hours in a few steps."
 msgstr ""
@@ -5992,34 +5996,34 @@ msgstr ""
 msgid "Tickets are set up. Players can call an admin now."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:381
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:426
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Tickets this player opened"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:127
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:162
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Unassigned"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:254
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:289
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Views"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:185
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:220
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Waiting for a while"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/ticket_components.ex:986
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:636
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:130
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:165
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Waiting for the player"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:184
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:219
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Waiting too long"
 msgstr ""
@@ -6049,12 +6053,12 @@ msgstr ""
 msgid "Could not resume that rule."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2398
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2399
 #, elixir-autogen, elixir-format
 msgid "Creates a new group %{group}."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2397
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2398
 #, elixir-autogen, elixir-format
 msgid "Joins the group %{group}."
 msgstr ""
@@ -6119,7 +6123,7 @@ msgstr ""
 msgid "Pick a valid date and time."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2393
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2394
 #, elixir-autogen, elixir-format
 msgid "Pick an existing group or type a new one."
 msgstr ""
@@ -6188,7 +6192,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/metrics_live.ex:395
 #: lib/hll_conditional_actions_web/live/player_live/parts.ex:44
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1985
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2457
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2458
 #: lib/hll_conditional_actions_web/relative_time.ex:36
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{count} h"
@@ -6200,7 +6204,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:688
 #: lib/hll_conditional_actions_web/live/metrics_live.ex:394
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1617
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2458
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2459
 #: lib/hll_conditional_actions_web/live/shop_live/reset_password.ex:96
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:557
 #: lib/hll_conditional_actions_web/relative_time.ex:35
@@ -6210,7 +6214,7 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:687
 #: lib/hll_conditional_actions_web/live/metrics_live.ex:393
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2459
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2460
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:560
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{count} s"
@@ -6273,7 +6277,7 @@ msgstr ""
 msgid "1 means the most vehicles destroyed."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2443
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2444
 #, elixir-autogen, elixir-format
 msgid "; repeat offences within %{window} escalate to the next action."
 msgstr ""
@@ -6293,7 +6297,7 @@ msgstr ""
 msgid "Combat score this match."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1991
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1992
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Daily cap"
 msgstr ""
@@ -6324,17 +6328,17 @@ msgstr ""
 msgid "Doesn't apply to %{who}."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2430
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2431
 #, elixir-autogen, elixir-format
 msgid "Each player can trigger this at most %{count}× per day"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2424
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2425
 #, elixir-autogen, elixir-format
 msgid "Each player can trigger this at most %{count}× per day, at least %{gap} apart"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2433
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2434
 #, elixir-autogen, elixir-format
 msgid "Each player can trigger this at most once every %{gap}"
 msgstr ""
@@ -6384,7 +6388,7 @@ msgstr ""
 msgid "Kills per minute on this map."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1961
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1962
 #, elixir-autogen, elixir-format
 msgid "Make the same player wait before this rule can fire for them again."
 msgstr ""
@@ -6399,7 +6403,7 @@ msgstr ""
 msgid "No check: the actions run every time."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2438
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2439
 #, elixir-autogen, elixir-format
 msgid "No limits: this fires every time its conditions hold"
 msgstr ""
@@ -6469,7 +6473,7 @@ msgstr ""
 msgid "Players waiting to join."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2010
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2011
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Players who hold VIP on the server."
 msgstr ""
@@ -6509,7 +6513,7 @@ msgstr ""
 msgid "Steam, Epic, Xbox or PlayStation."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1992
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1993
 #, elixir-autogen, elixir-format
 msgid "Stop after a number of firings per player in 24 hours."
 msgstr ""
@@ -6624,7 +6628,7 @@ msgstr ""
 msgid "Their team is one point from winning."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2026
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2027
 #, elixir-autogen, elixir-format
 msgid "These players are skipped before any condition is checked. CRCON does not say who is an admin, so exempt your staff by the flag you give them."
 msgstr ""
@@ -6634,7 +6638,7 @@ msgstr ""
 msgid "This pattern is not valid: %{reason}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2000
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2001
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Times per player per day"
 msgstr ""
@@ -6644,12 +6648,12 @@ msgstr ""
 msgid "Try the pattern on some text"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2016
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2017
 #, elixir-autogen, elixir-format
 msgid "Type a flag, then Enter"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2022
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2023
 #, elixir-autogen, elixir-format
 msgid "Type a player ID, then Enter"
 msgstr ""
@@ -6659,7 +6663,7 @@ msgstr ""
 msgid "Type a value, then Enter"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1976
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1977
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Unit"
 msgstr ""
@@ -6674,7 +6678,7 @@ msgstr ""
 msgid "Vehicles destroyed this match."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1970
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1971
 #, elixir-autogen, elixir-format
 msgid "Wait at least"
 msgstr ""
@@ -6729,14 +6733,14 @@ msgstr ""
 msgid "Whether they lead their squad."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2407
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2408
 #: lib/hll_conditional_actions_web/live/rule_live/recipe_wizard.ex:503
 #: lib/hll_conditional_actions_web/live/ticket_live/settings.ex:616
 #, elixir-autogen, elixir-format, fuzzy
 msgid "hours"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2407
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2408
 #, elixir-autogen, elixir-format, fuzzy
 msgid "minutes"
 msgstr ""
@@ -6746,7 +6750,7 @@ msgstr ""
 msgid "players flagged %{flags}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2407
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2408
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:1183
 #, elixir-autogen, elixir-format
 msgid "seconds"
@@ -7122,7 +7126,7 @@ msgstr ""
 msgid "Continue editing"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1616
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1617
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1149
 #: lib/hll_conditional_actions_web/live/ticket_live/settings.ex:540
 #, elixir-autogen, elixir-format, fuzzy
@@ -7189,7 +7193,7 @@ msgstr ""
 msgid "Paste a rules export or upload the file. Imported rules always arrive disabled, so you can read them over before switching them on."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1512
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1513
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1138
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:480
 #, elixir-autogen, elixir-format, fuzzy
@@ -7222,7 +7226,7 @@ msgstr ""
 msgid "Rule saved."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1489
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1490
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:470
 #, elixir-autogen, elixir-format
 msgid "Save draft"
@@ -7372,7 +7376,7 @@ msgstr ""
 msgid "Select every rule shown"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1206
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1207
 #, elixir-autogen, elixir-format
 msgid "You have unsaved changes to this rule. Leave without saving?"
 msgstr ""
@@ -8626,7 +8630,7 @@ msgstr[1] ""
 
 #: lib/hll_conditional_actions_web/components/briefing_components.ex:2221
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:627
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:917
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:920
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{count} d"
 msgstr ""
@@ -9187,7 +9191,7 @@ msgid_plural "%{count} groups"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2481
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2482
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1866
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 h"
@@ -9451,7 +9455,7 @@ msgstr[1] ""
 msgid "10 min"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2479
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2480
 #, elixir-autogen, elixir-format, fuzzy
 msgid "15 min"
 msgstr ""
@@ -9472,7 +9476,7 @@ msgstr ""
 msgid "1–3 min"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2483
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2484
 #, elixir-autogen, elixir-format, fuzzy
 msgid "24 h"
 msgstr ""
@@ -9502,7 +9506,7 @@ msgstr ""
 msgid "3 min"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2480
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2481
 #, elixir-autogen, elixir-format
 msgid "30 min"
 msgstr ""
@@ -9527,7 +9531,7 @@ msgstr ""
 msgid "5–15 min"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2482
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2483
 #, elixir-autogen, elixir-format, fuzzy
 msgid "6 h"
 msgstr ""
@@ -9695,7 +9699,7 @@ msgstr ""
 msgid "Applied to the draft. The engine keeps running the published rule."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1609
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1610
 #, elixir-autogen, elixir-format
 msgid "Apply and go back to visual"
 msgstr ""
@@ -10753,7 +10757,7 @@ msgstr ""
 msgid "Hours"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1624
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1625
 #, elixir-autogen, elixir-format
 msgid "How the groups combine"
 msgstr ""
@@ -10775,7 +10779,7 @@ msgstr ""
 msgid "How the rule will look"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1673
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1674
 #, elixir-autogen, elixir-format
 msgid "How this group's conditions combine"
 msgstr ""
@@ -11415,7 +11419,7 @@ msgstr ""
 msgid "Needs you"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2009
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2010
 #, elixir-autogen, elixir-format
 msgid "Never VIPs"
 msgstr ""
@@ -11440,12 +11444,12 @@ msgstr ""
 msgid "Never checked · limit of %{max} per player"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2014
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2015
 #, elixir-autogen, elixir-format
 msgid "Never players with any of these flags"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2020
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2021
 #, elixir-autogen, elixir-format
 msgid "Never these players"
 msgstr ""
@@ -11550,7 +11554,7 @@ msgstr ""
 msgid "No ladder: every run does every action."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2087
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2088
 #, elixir-autogen, elixir-format, fuzzy
 msgid "No name yet"
 msgstr ""
@@ -12224,17 +12228,17 @@ msgid "Protection"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:1061
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1389
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1390
 #, elixir-autogen, elixir-format
 msgid "Protections"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1510
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1511
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Publish edits"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1511
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1512
 #, elixir-autogen, elixir-format
 msgid "Publish in simulation"
 msgstr ""
@@ -12480,12 +12484,12 @@ msgid_plural "Rule “%{rule}” failed %{count}×"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2211
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2212
 #, elixir-autogen, elixir-format
 msgid "Rules / %{group}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2210
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2211
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Rules / New"
 msgstr ""
@@ -13008,7 +13012,7 @@ msgstr ""
 msgid "Starts in simulation"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1871
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1872
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1936
 #: lib/hll_conditional_actions_web/live/rule_live/simulate.ex:883
 #, elixir-autogen, elixir-format, fuzzy
@@ -13376,7 +13380,7 @@ msgstr ""
 msgid "This kind of event has no message"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1600
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1601
 #, elixir-autogen, elixir-format
 msgid "This text cannot go back to the visual view: %{reason}"
 msgstr ""
@@ -13719,7 +13723,7 @@ msgstr ""
 msgid "Wait between calls"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1960
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1961
 #, elixir-autogen, elixir-format
 msgid "Wait between firings"
 msgstr ""
@@ -14230,7 +14234,7 @@ msgstr[1] ""
 msgid "all must hold"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1770
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1771
 #, elixir-autogen, elixir-format
 msgid "all of"
 msgstr ""
@@ -14245,7 +14249,7 @@ msgstr ""
 msgid "already ran"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1643
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1644
 #, elixir-autogen, elixir-format
 msgid "always, no conditions"
 msgstr ""
@@ -14260,7 +14264,7 @@ msgstr ""
 msgid "any condition is enough"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1771
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1772
 #, elixir-autogen, elixir-format
 msgid "any of"
 msgstr ""
@@ -14361,7 +14365,7 @@ msgstr ""
 msgid "changed"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1828
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1829
 #, elixir-autogen, elixir-format
 msgid "clean"
 msgstr ""
@@ -14407,7 +14411,7 @@ msgstr ""
 msgid "condition %{number}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1733
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1734
 #, elixir-autogen, elixir-format
 msgid "condition in this group"
 msgstr ""
@@ -14535,19 +14539,19 @@ msgstr ""
 msgid "draft pending"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2229
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2230
 #, elixir-autogen, elixir-format
 msgid "draft with 1 unpublished edit"
 msgid_plural "draft with %{count} unpublished edits"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1814
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1815
 #, elixir-autogen, elixir-format
 msgid "each offence climbs a step · the count resets after"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2093
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2094
 #, elixir-autogen, elixir-format, fuzzy
 msgid "edit"
 msgstr ""
@@ -14586,13 +14590,13 @@ msgstr[1] ""
 msgid "event no longer kept: showing what the run recorded"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1322
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1323
 #, elixir-autogen, elixir-format, fuzzy
 msgid "every"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/rule_diff.ex:433
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2382
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2383
 #, elixir-autogen, elixir-format
 msgid "every %{game} server"
 msgstr ""
@@ -14747,7 +14751,7 @@ msgid_plural "from %{count} different players"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2219
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2220
 #, elixir-autogen, elixir-format
 msgid "from the recipe %{name}"
 msgstr ""
@@ -14762,17 +14766,17 @@ msgstr ""
 msgid "group %{group}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1711
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1712
 #, elixir-autogen, elixir-format
 msgid "group did not match"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1711
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1712
 #, elixir-autogen, elixir-format, fuzzy
 msgid "group matched"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1351
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1352
 #, elixir-autogen, elixir-format, fuzzy
 msgid "happened"
 msgstr ""
@@ -15043,19 +15047,19 @@ msgstr ""
 msgid "never: %{who}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1935
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1936
 #, elixir-autogen, elixir-format
 msgid "never: 1 player"
 msgid_plural "never: %{count} players"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1919
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1920
 #, elixir-autogen, elixir-format, fuzzy
 msgid "never: VIP"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1927
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1928
 #, elixir-autogen, elixir-format
 msgid "never: flag “%{flag}”"
 msgstr ""
@@ -15153,7 +15157,7 @@ msgstr ""
 msgid "none applies"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1773
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1774
 #, elixir-autogen, elixir-format, fuzzy
 msgid "none of"
 msgstr ""
@@ -15184,7 +15188,7 @@ msgstr ""
 msgid "not all conditions may hold"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1772
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1773
 #, elixir-autogen, elixir-format, fuzzy
 msgid "not all of"
 msgstr ""
@@ -15282,7 +15286,7 @@ msgstr ""
 msgid "of %{total}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1782
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1783
 #, elixir-autogen, elixir-format
 msgid "of these hold"
 msgstr ""
@@ -15483,12 +15487,12 @@ msgstr ""
 msgid "priority"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2090
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:2091
 #, elixir-autogen, elixir-format, fuzzy
 msgid "priority %{count}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1947
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1948
 #, elixir-autogen, elixir-format
 msgid "protection"
 msgstr ""
@@ -15560,7 +15564,7 @@ msgid_plural "rules selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1833
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1834
 #, elixir-autogen, elixir-format
 msgid "run every action instead"
 msgstr ""
@@ -15576,7 +15580,7 @@ msgstr ""
 msgid "runs in 7 days"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1836
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1837
 #, elixir-autogen, elixir-format
 msgid "runs these actions, in order"
 msgstr ""
@@ -15616,7 +15620,7 @@ msgstr ""
 msgid "scope"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1762
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1763
 #, elixir-autogen, elixir-format
 msgid "see as an expression"
 msgstr ""
@@ -15851,7 +15855,7 @@ msgstr ""
 msgid "there is no operator called %{name}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1639
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1640
 #, elixir-autogen, elixir-format
 msgid "these groups hold"
 msgstr ""
@@ -15904,7 +15908,7 @@ msgstr ""
 msgid "trigger"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1846
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1847
 #, elixir-autogen, elixir-format
 msgid "turn into a ladder"
 msgstr ""
@@ -15937,7 +15941,7 @@ msgstr ""
 msgid "unread"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1911
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1912
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:623
 #, elixir-autogen, elixir-format
 msgid "up to %{count} per player in 24 h"
@@ -15973,7 +15977,7 @@ msgstr ""
 msgid "vs"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1902
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1903
 #, elixir-autogen, elixir-format
 msgid "wait %{gap}"
 msgstr ""
@@ -16561,7 +16565,7 @@ msgstr ""
 msgid "%{fine} right · %{review} to review"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:896
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:899
 #, elixir-autogen, elixir-format
 msgid "%{hours} h of VIP"
 msgstr ""
@@ -17071,7 +17075,7 @@ msgstr ""
 msgid "A link in your e-mail and you are back at your post. The authenticator app code is still asked for when you sign in."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:637
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:640
 #, elixir-autogen, elixir-format
 msgid "A new way of scoring counts from the next match on: the points already made stay as they are."
 msgstr ""
@@ -17677,7 +17681,7 @@ msgstr ""
 msgid "Community / Matches"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:977
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:980
 #: lib/hll_conditional_actions_web/live/season_live/show.ex:161
 #, elixir-autogen, elixir-format
 msgid "Community / Seasons"
@@ -17688,7 +17692,7 @@ msgstr ""
 msgid "Community / Seasons · %{name}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:971
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:974
 #, elixir-autogen, elixir-format
 msgid "Community / Seasons · the current one, %{name}, %{ends}"
 msgstr ""
@@ -18201,7 +18205,7 @@ msgstr ""
 msgid "Each server confirms on its own. It usually takes seconds."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:947
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:950
 #, elixir-autogen, elixir-format
 msgid "Each stat times its weight. Playing a lot is not enough to win."
 msgstr ""
@@ -18360,12 +18364,12 @@ msgstr ""
 msgid "Fewer days"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:665
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:668
 #, elixir-autogen, elixir-format
 msgid "Fewer matches"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:654
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:657
 #, elixir-autogen, elixir-format
 msgid "Fewer winners"
 msgstr ""
@@ -19132,7 +19136,7 @@ msgstr ""
 msgid "Minimum %{count}."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:659
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:662
 #, elixir-autogen, elixir-format
 msgid "Minimum matches"
 msgstr ""
@@ -19167,7 +19171,7 @@ msgstr ""
 msgid "More days"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:666
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:669
 #, elixir-autogen, elixir-format
 msgid "More matches"
 msgstr ""
@@ -19177,7 +19181,7 @@ msgstr ""
 msgid "More storefront settings"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:655
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:658
 #, elixir-autogen, elixir-format
 msgid "More winners"
 msgstr ""
@@ -19991,7 +19995,7 @@ msgid "Price, days of VIP and the servers it counts on."
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/season_live/dashboard.ex:390
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:898
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:901
 #, elixir-autogen, elixir-format
 msgid "Prize line"
 msgstr ""
@@ -20437,7 +20441,7 @@ msgstr ""
 msgid "Scan the code with an authenticator app and type the 6 digits it shows. Optional, but it keeps the account safe even if the password leaks."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:778
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:781
 #, elixir-autogen, elixir-format
 msgid "Score"
 msgstr ""
@@ -20817,8 +20821,8 @@ msgstr ""
 msgid "Spotter"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:724
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:729
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:727
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:732
 #, elixir-autogen, elixir-format
 msgid "Standings preview"
 msgstr ""
@@ -21144,7 +21148,7 @@ msgstr ""
 msgid "The days add up. With 10 days left, buying the monthly package leaves you with 40. Nothing you have is lost."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:752
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:755
 #, elixir-autogen, elixir-format
 msgid "The formula applied to the last match of %{servers}. Nothing is saved until you create it."
 msgid_plural "The formula applied to the last %{count} matches of %{servers}. Nothing is saved until you create it."
@@ -21547,7 +21551,7 @@ msgstr ""
 msgid "Type the player's name to confirm."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:819
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:822
 #, elixir-autogen, elixir-format
 msgid "Under 1 match · they show up, without a prize"
 msgid_plural "Under %{count} matches · they show up, without a prize"
@@ -21666,7 +21670,7 @@ msgid "VIP from %{price}: you skip the queue and get into %{shop}'s servers even
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:674
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:670
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:673
 #, elixir-autogen, elixir-format
 msgid "VIP hours"
 msgstr ""
@@ -21927,7 +21931,7 @@ msgstr ""
 msgid "Where the VIP counts"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:761
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:764
 #, elixir-autogen, elixir-format
 msgid "Where the score comes from"
 msgstr ""
@@ -21999,7 +22003,7 @@ msgstr ""
 msgid "With penalties"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:885
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:888
 #, elixir-autogen, elixir-format
 msgid "With this formula %{new} goes past %{leader}, who leads %{season}."
 msgstr ""
@@ -22348,7 +22352,7 @@ msgid "checked at"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/season_live/dashboard.ex:626
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:981
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:984
 #, elixir-autogen, elixir-format
 msgid "closing"
 msgstr ""
@@ -23197,12 +23201,12 @@ msgstr ""
 msgid "schedules and “Periodically” use this zone"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:911
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:914
 #, elixir-autogen, elixir-format
 msgid "score = %{terms}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:910
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:913
 #, elixir-autogen, elixir-format
 msgid "score = (%{terms}) ÷ matches"
 msgstr ""
@@ -23496,7 +23500,7 @@ msgstr ""
 msgid "visitors see “Coming soon”"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:779
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:782
 #, elixir-autogen, elixir-format
 msgid "vs now"
 msgstr ""
@@ -23649,8 +23653,8 @@ msgstr ""
 msgid "Paid with"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:926
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:930
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:929
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:933
 #, elixir-autogen, elixir-format
 msgid "Pick a date"
 msgstr ""
@@ -23685,41 +23689,41 @@ msgstr ""
 msgid "Your e-mail and a password are enough. You pick your player right after."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1778
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1779
 #, elixir-autogen, elixir-format
 msgid "at least one"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:983
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:986
 #, elixir-autogen, elixir-format
 msgid "closes in 1 day"
 msgid_plural "closes in %{count} days"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/season_live/form.ex:982
+#: lib/hll_conditional_actions_web/live/season_live/form.ex:985
 #, elixir-autogen, elixir-format
 msgid "closes in 1 hour"
 msgid_plural "closes in %{count} hours"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1777
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1778
 #, elixir-autogen, elixir-format
 msgid "every one"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1333
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1334
 #, elixir-autogen, elixir-format
 msgid "in"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1779
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1780
 #, elixir-autogen, elixir-format
 msgid "not every one"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1780
+#: lib/hll_conditional_actions_web/live/rule_live/form.ex:1781
 #, elixir-autogen, elixir-format
 msgid "not one"
 msgstr ""
@@ -23924,3 +23928,28 @@ msgid "−1 weapon"
 msgid_plural "−%{count} weapons"
 msgstr[0] ""
 msgstr[1] ""
+
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:151
+#, elixir-autogen, elixir-format
+msgid "Closed most recently"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:160
+#, elixir-autogen, elixir-format
+msgid "Last activity"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:150
+#, elixir-autogen, elixir-format
+msgid "Opened longest ago"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:149
+#, elixir-autogen, elixir-format
+msgid "Opened most recently"
+msgstr ""
+
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:147
+#, elixir-autogen, elixir-format
+msgid "Priority first"
+msgstr ""

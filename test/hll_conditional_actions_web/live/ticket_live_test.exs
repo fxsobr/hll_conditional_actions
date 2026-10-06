@@ -57,6 +57,29 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
     ticket
   end
 
+  defp closed_ticket(server, name, priority, opened: opened, closed: closed) do
+    Repo.insert!(%Tickets.Ticket{
+      server_id: server.id,
+      player_id: "7656119800000#{System.unique_integer([:positive])}",
+      player_name: name,
+      status: :closed,
+      priority: priority,
+      last_activity_at: closed,
+      closed_at: closed,
+      inserted_at: opened,
+      updated_at: closed
+    })
+  end
+
+  defp row_ids(view) do
+    view
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#tickets > li")
+    |> LazyHTML.attribute("id")
+    |> Enum.map(fn "ticket-" <> id -> String.to_integer(id) end)
+  end
+
   test "the inbox lists open tickets and updates live", %{conn: conn, server: server} do
     {:ok, view, html} = live(conn, ~p"/tickets")
     assert html =~ "No tickets"
@@ -457,6 +480,35 @@ defmodule HllConditionalActionsWeb.TicketLiveTest do
 
       view |> element("#ticket-filters") |> render_change(%{"q" => "sarg"})
       assert has_element?(view, "#ticket-#{ticket.id}")
+    end
+
+    # Closed tickets used to keep the queue's order - priority first - so an
+    # urgent ticket closed days ago sat above one closed a minute ago.
+    test "closed tickets list the latest closed first, and the order can be changed", %{
+      conn: conn,
+      server: server
+    } do
+      now = DateTime.utc_now(:second)
+      ago = &DateTime.add(now, -&1, :hour)
+
+      urgent_long_ago = closed_ticket(server, "Old", :urgent, opened: ago.(80), closed: ago.(72))
+      closed_now = closed_ticket(server, "Recent", :normal, opened: ago.(5), closed: now)
+      opened_first = closed_ticket(server, "First", :high, opened: ago.(100), closed: ago.(10))
+
+      {:ok, view, _html} = live(conn, ~p"/tickets")
+      view |> element("#ticket-views button[data-view=closed]") |> render_click()
+
+      assert row_ids(view) == [closed_now.id, opened_first.id, urgent_long_ago.id]
+
+      view |> element("#ticket-filters") |> render_change(%{"sort" => "oldest"})
+      assert row_ids(view) == [opened_first.id, urgent_long_ago.id, closed_now.id]
+
+      view |> element("#ticket-filters") |> render_change(%{"sort" => "priority"})
+      assert row_ids(view) == [urgent_long_ago.id, opened_first.id, closed_now.id]
+
+      # Back to the queue, the order goes back to the queue's own.
+      view |> element("#ticket-views button[data-view=active]") |> render_click()
+      refute has_element?(view, ~s(select[name="sort"] option[value="closed"]))
     end
 
     test "metrics count the tickets", %{conn: conn, server: server} do
