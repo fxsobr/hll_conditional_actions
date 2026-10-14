@@ -18,6 +18,10 @@ See [`.env.example`](https://github.com/fxsobr/hll_conditional_actions/blob/main
 | `ENGINE_ENABLED` | no | `true` | `false` serves the UI without connecting to CRCON |
 | `EXECUTION_RETENTION_DAYS` | no | `30` | How long the rule history is kept |
 | `CONNECT_DELAY_MS` | no | `5000` | How long to wait after a connect before evaluating rules |
+| `ALERT_WEBHOOK_URL` | no | — | A Discord webhook for alerts about the app itself: a CRCON stream down for five minutes (and its return), errors, pages slower than five seconds. Empty means no alerts |
+| `BACKUP_HOUR` | no | `06` | The hour (UTC) of the daily database dump into `./backups` — see [Backups](https://github.com/fxsobr/hll_conditional_actions/wiki/Administration-%E2%80%90-Backups) |
+| `BACKUP_KEEP_DAYS` | no | `14` | How many days of dumps `./backups` keeps |
+| `POSTGRES_WORK_MEM` | no | `16MB` | Memory per sort in Postgres; enough for the Briefing's totals to sort in memory |
 | `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_NAME` | no | localhost/postgres | Development and test only |
 
 **Losing `ENCRYPTION_KEY` means every stored CRCON API key has to be entered

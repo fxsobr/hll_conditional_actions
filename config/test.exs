@@ -39,6 +39,9 @@ config :hll_conditional_actions, :engine_enabled, false
 # Samples are kept in memory only; tests exercise SavedEvents directly.
 config :hll_conditional_actions, :persist_samples, false
 
+# A cached number would hide what a test just wrote; `CacheTest` turns it on.
+config :hll_conditional_actions, :cache, false
+
 # No test may reach GitHub. The update checker is not started, and the tests
 # that cover it call the fetch directly with `Req.Test` answering.
 config :hll_conditional_actions, :updates_enabled, false

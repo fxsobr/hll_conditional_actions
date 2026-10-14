@@ -57,6 +57,8 @@ defmodule HllConditionalActions.Tickets do
   def settings_topic(server_id), do: "tickets:settings:#{server_id}"
 
   defp broadcast(%Ticket{} = ticket) do
+    # Tickets are attention items too; the shared count must not lag behind.
+    HllConditionalActions.Cache.drop(:attention)
     Phoenix.PubSub.broadcast(PubSub, @topic, {:ticket_changed, ticket})
     ticket
   end

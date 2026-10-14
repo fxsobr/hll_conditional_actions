@@ -27,6 +27,7 @@ defmodule HllConditionalActions.Application do
          query: Application.get_env(:hll_conditional_actions, :dns_cluster_query) || :ignore},
         {Oban, Application.fetch_env!(:hll_conditional_actions, Oban)},
         {Phoenix.PubSub, name: HllConditionalActions.PubSub},
+        HllConditionalActions.Cache,
         # Who has a ticket open, so admins do not answer the same player twice.
         HllConditionalActionsWeb.Presence,
         # Aggregates our telemetry events so the metrics page has something to
@@ -41,6 +42,7 @@ defmodule HllConditionalActions.Application do
         HllConditionalActions.VipShop.LiveServers
       ] ++
         update_checker() ++
+        alerts() ++
         Runtime.children() ++
         [
           # Serve requests last, so the engine is ready before traffic arrives.
@@ -55,6 +57,14 @@ defmodule HllConditionalActions.Application do
     if Application.get_env(:hll_conditional_actions, :adopt_legacy_webhooks, true),
       do: {Task, &HllConditionalActions.Discord.adopt_legacy_urls/0},
       else: {Task, fn -> :ok end}
+  end
+
+  # Discord alerts for the operator, only when ALERT_WEBHOOK_URL is set.
+  defp alerts do
+    case HllConditionalActions.Alerts.webhook_url() do
+      nil -> []
+      url -> [{HllConditionalActions.Alerts, url: url}]
+    end
   end
 
   # Asks GitHub about newer releases on a timer. Off in test, where nothing

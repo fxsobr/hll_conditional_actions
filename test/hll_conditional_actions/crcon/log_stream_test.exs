@@ -91,6 +91,15 @@ defmodule HllConditionalActions.Crcon.LogStreamTest do
     end
   end
 
+  # A null position makes CRCON look up its newest line, which crashes on an
+  # empty stream (a server nobody plays on) and closes the socket with 1011.
+  test "starts from \"$\" when it has no position yet", %{server: server, port: port} do
+    start_fake(port, {:report_start, self()})
+    start_stream(server)
+
+    assert_receive {:start_frame, %{"last_seen_id" => "$"}}, 5_000
+  end
+
   describe "a CRCON with the log stream disabled" do
     setup %{server: server, port: port} do
       start_fake(port, :disabled)

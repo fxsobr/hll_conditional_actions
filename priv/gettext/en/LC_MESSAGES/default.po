@@ -631,7 +631,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/components/shop_components.ex:1431
 #: lib/hll_conditional_actions_web/components/ui.ex:1047
 #: lib/hll_conditional_actions_web/labels.ex:1195
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:672
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:719
 #: lib/hll_conditional_actions_web/live/leaderboard_live.ex:60
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:398
 #: lib/hll_conditional_actions_web/live/role_live/index.ex:284
@@ -798,8 +798,8 @@ msgid "New role"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/command_palette.ex:258
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:510
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:517
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:539
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:546
 #: lib/hll_conditional_actions_web/live/rule_live/form.ex:140
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:869
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:871
@@ -832,7 +832,7 @@ msgstr ""
 msgid "No servers registered yet."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:529
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:558
 #, elixir-autogen, elixir-format
 msgid "No servers yet"
 msgstr ""
@@ -1169,7 +1169,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1528
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1543
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:1095
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:421
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:419
 #, elixir-autogen, elixir-format
 msgid "Rule"
 msgstr ""
@@ -1891,7 +1891,7 @@ msgid "Simulated"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:365
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:673
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:720
 #: lib/hll_conditional_actions_web/live/rule_live/show_tabs.ex:647
 #, elixir-autogen, elixir-format
 msgid "Simulation"
@@ -2050,7 +2050,7 @@ msgstr ""
 #: lib/hll_conditional_actions_web/labels.ex:500
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:289
 #: lib/hll_conditional_actions_web/live/attention_live.ex:182
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:671
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:718
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:414
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:424
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:434
@@ -2272,7 +2272,7 @@ msgstr ""
 msgid "Definition"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:740
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:787
 #: lib/hll_conditional_actions_web/live/rule_live/index.ex:1447
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1317
 #, elixir-autogen, elixir-format, fuzzy
@@ -2896,7 +2896,7 @@ msgstr ""
 msgid "Too many sign in attempts. Try again in %{seconds} seconds."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:552
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:581
 #, elixir-autogen, elixir-format
 msgid "Your servers, and what the rules are doing on them"
 msgstr ""
@@ -3166,14 +3166,14 @@ msgstr ""
 msgid "nothing"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:700
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:713
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:747
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:760
 #: lib/hll_conditional_actions_web/live/ticket_live/metrics.ex:495
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{count} days"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:864
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:911
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{count} in simulation"
 msgid_plural "%{count} in simulation"
@@ -3190,7 +3190,7 @@ msgid_plural "%{count} servers"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:531
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:560
 #, elixir-autogen, elixir-format
 msgid "An administrator has not connected a CRCON instance yet. Check back later."
 msgstr ""
@@ -3217,7 +3217,7 @@ msgstr ""
 msgid "Open your rules"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:696
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:743
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:457
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:325
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1863
@@ -3244,7 +3244,7 @@ msgstr ""
 msgid "Protect your account"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:921
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:968
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:354
 #, elixir-autogen, elixir-format
 msgid "Success"
@@ -3348,7 +3348,7 @@ msgstr ""
 msgid "You will need its address and an API key from CRCON."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:803
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:850
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:383
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:686
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:689
@@ -3620,7 +3620,7 @@ msgstr ""
 
 #: lib/hll_conditional_actions_web/components/command_palette.ex:251
 #: lib/hll_conditional_actions_web/live/attention_live.ex:52
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:938
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:985
 #, elixir-autogen, elixir-format
 msgid "Attention"
 msgstr ""
@@ -5140,7 +5140,7 @@ msgstr ""
 msgid "Assign to me"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:462
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:460
 #, elixir-autogen, elixir-format
 msgid "Assigned to"
 msgstr ""
@@ -5172,7 +5172,7 @@ msgstr ""
 msgid "Earlier tickets"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:361
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:359
 #, elixir-autogen, elixir-format
 msgid "No tickets"
 msgstr ""
@@ -5265,7 +5265,7 @@ msgstr[1] ""
 #: lib/hll_conditional_actions_web/components/command_palette.ex:244
 #: lib/hll_conditional_actions_web/components/command_palette.ex:695
 #: lib/hll_conditional_actions_web/labels.ex:1087
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:952
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:999
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:668
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1076
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1340
@@ -5288,7 +5288,7 @@ msgstr ""
 msgid "Waiting for an admin"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:363
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:361
 #, elixir-autogen, elixir-format
 msgid "When a player types a ticket command in the game chat, the ticket shows up here."
 msgstr ""
@@ -5324,7 +5324,7 @@ msgid "%{player} is waiting for an admin"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/command_palette.ex:710
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:428
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:426
 #: lib/hll_conditional_actions_web/live/ticket_live/metrics.ex:913
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 ticket"
@@ -5618,17 +5618,17 @@ msgstr ""
 msgid "Warfare"
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:330
+#: lib/hll_conditional_actions/tickets.ex:332
 #, elixir-autogen, elixir-format
 msgid "An admin answered your ticket. Keep typing to reply."
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:325
+#: lib/hll_conditional_actions/tickets.ex:327
 #, elixir-autogen, elixir-format
 msgid "You have no open ticket. Type {command} and your message to open one."
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:333
+#: lib/hll_conditional_actions/tickets.ex:335
 #, elixir-autogen, elixir-format
 msgid "Your ticket is waiting for an admin."
 msgstr ""
@@ -5862,7 +5862,7 @@ msgstr ""
 msgid "%{name} is viewing"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:437
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:435
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Admin:"
 msgstr ""
@@ -5877,7 +5877,7 @@ msgstr ""
 msgid "Any time"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:476
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:474
 #, elixir-autogen, elixir-format
 msgid "Claim"
 msgstr ""
@@ -5996,7 +5996,7 @@ msgstr ""
 msgid "Tickets are set up. Players can call an admin now."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:426
+#: lib/hll_conditional_actions_web/live/ticket_live/index.ex:424
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Tickets this player opened"
 msgstr ""
@@ -6851,7 +6851,7 @@ msgid "Final punishment"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/diagnosis_components.ex:696
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:724
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:771
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Fires"
 msgstr ""
@@ -8568,7 +8568,7 @@ msgstr ""
 msgid "%{allies} Allies, %{axis} Axis"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:907
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:954
 #, elixir-autogen, elixir-format
 msgid "%{arrow} %{points} pt this week"
 msgstr ""
@@ -9147,15 +9147,15 @@ msgid_plural "%{count} events so far"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:916
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:963
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 failed this week"
 msgid_plural "%{count} failed this week"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:806
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:817
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:853
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:864
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 failure"
 msgid_plural "%{count} failures"
@@ -9176,8 +9176,8 @@ msgid_plural "%{count} fields changed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:812
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:816
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:859
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:863
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 fire"
 msgid_plural "%{count} fires"
@@ -9224,7 +9224,7 @@ msgid_plural "%{count} minutes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:399
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:428
 #, elixir-autogen, elixir-format
 msgid "1 module installed on %{server}."
 msgid_plural "%{count} modules installed on %{server}."
@@ -9401,7 +9401,7 @@ msgstr[1] ""
 msgid "1 trigger"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:955
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1002
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 unassigned"
 msgid_plural "%{count} unassigned"
@@ -9415,7 +9415,7 @@ msgid_plural "%{count} unsaved changes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:941
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:988
 #, elixir-autogen, elixir-format, fuzzy
 msgid "1 urgent"
 msgid_plural "%{count} urgent"
@@ -9607,7 +9607,7 @@ msgstr ""
 msgid "Actions for the folder %{group}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:861
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:908
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Active rules"
 msgstr ""
@@ -9758,12 +9758,12 @@ msgstr ""
 msgid "August"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:830
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:877
 #, elixir-autogen, elixir-format
 msgid "Average run time per day, last %{count} days"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:749
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:796
 #: lib/hll_conditional_actions_web/live/metrics_live.ex:771
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Average time"
@@ -9883,12 +9883,12 @@ msgstr ""
 msgid "Both teams"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:448
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:477
 #, elixir-autogen, elixir-format
 msgid "Briefing of a new install"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:447
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:476
 #, elixir-autogen, elixir-format
 msgid "Briefing of a new server"
 msgstr ""
@@ -10512,7 +10512,7 @@ msgid_plural "Failed %{count}×"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:824
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:871
 #, elixir-autogen, elixir-format
 msgid "Failed runs per day, last %{count} days"
 msgstr ""
@@ -10616,7 +10616,7 @@ msgstr ""
 msgid "First rule from a recipe"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:444
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:473
 #, elixir-autogen, elixir-format
 msgid "First steps"
 msgstr ""
@@ -10670,19 +10670,19 @@ msgid "Go to"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/briefing_components.ex:99
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1068
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1132
 #, elixir-autogen, elixir-format
 msgid "Good afternoon, %{name}"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/briefing_components.ex:100
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1069
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1133
 #, elixir-autogen, elixir-format
 msgid "Good evening, %{name}"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/briefing_components.ex:98
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1067
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1131
 #, elixir-autogen, elixir-format
 msgid "Good morning, %{name}"
 msgstr ""
@@ -11147,7 +11147,7 @@ msgstr ""
 msgid "Limit in 24 h"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:836
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:883
 #, elixir-autogen, elixir-format
 msgid "Live fires per day, last %{count} days"
 msgstr ""
@@ -11412,8 +11412,9 @@ msgstr ""
 msgid "Name or player ID"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:590
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:591
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:631
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:637
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:638
 #: lib/hll_conditional_actions_web/live/server_live/show.ex:739
 #, elixir-autogen, elixir-format
 msgid "Needs you"
@@ -11957,7 +11958,7 @@ msgid "Open the feed of %{server}"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/live/attention_live.ex:132
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:596
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:643
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Open the inbox"
 msgstr ""
@@ -12184,12 +12185,12 @@ msgstr ""
 msgid "Players can call an admin as soon as you save. You can change everything later in the settings."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:827
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:874
 #, elixir-autogen, elixir-format
 msgid "Players reached per day, last %{count} days"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:887
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:934
 #, elixir-autogen, elixir-format
 msgid "Playing now"
 msgstr ""
@@ -12279,7 +12280,7 @@ msgstr ""
 msgid "Ran at least 3 days in simulation"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:732
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:779
 #, elixir-autogen, elixir-format
 msgid "Reached"
 msgstr ""
@@ -12461,8 +12462,9 @@ msgstr ""
 msgid "Role in the squad"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:660
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:665
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:622
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:707
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:712
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Rule fires"
 msgstr ""
@@ -12510,7 +12512,7 @@ msgstr ""
 msgid "Rules fired and skipped"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:839
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:886
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Rules fired per day, last %{count} days"
 msgstr ""
@@ -12779,7 +12781,7 @@ msgstr[1] ""
 msgid "See the whole feed"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:622
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:669
 #, elixir-autogen, elixir-format, fuzzy
 msgid "See them all"
 msgstr ""
@@ -12861,8 +12863,8 @@ msgid "Server name"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/briefing_components.ex:284
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:616
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:617
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:663
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:664
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Servers now"
 msgstr ""
@@ -12923,7 +12925,7 @@ msgstr ""
 msgid "Simulate this event"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:833
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:880
 #, elixir-autogen, elixir-format
 msgid "Simulated fires per day, last %{count} days"
 msgstr ""
@@ -12954,7 +12956,7 @@ msgstr ""
 msgid "Simulator"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:457
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:486
 #, elixir-autogen, elixir-format
 msgid "Skip for now"
 msgstr ""
@@ -13156,7 +13158,7 @@ msgstr ""
 msgid "Tell Discord when it goes live"
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:575
+#: lib/hll_conditional_actions/tickets.ex:577
 #: lib/hll_conditional_actions_web/live/ticket_live/setup.ex:596
 #, elixir-autogen, elixir-format
 msgid "Tell us what happened: type it here in the chat and it joins your ticket."
@@ -13355,7 +13357,7 @@ msgstr ""
 msgid "The “%{permission}” permission is missing."
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:127
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:128
 #, elixir-autogen, elixir-format
 msgid "They can see %{server} now."
 msgstr ""
@@ -13713,7 +13715,7 @@ msgstr ""
 msgid "Visual"
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:258
+#: lib/hll_conditional_actions/tickets.ex:260
 #, elixir-autogen, elixir-format
 msgid "Wait a few minutes before calling an admin again."
 msgstr ""
@@ -13859,7 +13861,7 @@ msgstr ""
 msgid "Whether he holds VIP"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:667
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:714
 #, elixir-autogen, elixir-format
 msgid "Which fires"
 msgstr ""
@@ -14108,7 +14110,7 @@ msgstr ""
 msgid "You"
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:252
+#: lib/hll_conditional_actions/tickets.ex:254
 #, elixir-autogen, elixir-format
 msgid "You already have ticket #{ticket_id} open. Wait for the admin's answer."
 msgstr ""
@@ -14139,7 +14141,7 @@ msgstr ""
 msgid "Your role,"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:544
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:573
 #, elixir-autogen, elixir-format
 msgid "Your rules acted once this week"
 msgid_plural "Your rules acted %{fires} times this week"
@@ -14151,7 +14153,7 @@ msgstr[1] ""
 msgid "Your server"
 msgstr ""
 
-#: lib/hll_conditional_actions/tickets.ex:1202
+#: lib/hll_conditional_actions/tickets.ex:1204
 #, elixir-autogen, elixir-format
 msgid "Your ticket #{ticket_id} closes in 1 hour without news. Write here if you still need help."
 msgstr ""
@@ -14676,7 +14678,7 @@ msgstr ""
 msgid "failing: %{error}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:772
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:819
 #, elixir-autogen, elixir-format, fuzzy
 msgid "failure"
 msgid_plural "failures"
@@ -14693,7 +14695,7 @@ msgstr ""
 msgid "fewer"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:759
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:806
 #, elixir-autogen, elixir-format
 msgid "fire"
 msgid_plural "fires"
@@ -15136,7 +15138,7 @@ msgstr ""
 msgid "no rule yet"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:882
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:929
 #, elixir-autogen, elixir-format
 msgid "no server answering"
 msgstr ""
@@ -15311,7 +15313,7 @@ msgstr ""
 msgid "on"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:876
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:923
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:375
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1699
 #, elixir-autogen, elixir-format, fuzzy
@@ -15320,7 +15322,7 @@ msgid_plural "on %{count} servers"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:779
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:826
 #, elixir-autogen, elixir-format
 msgid "on average"
 msgstr ""
@@ -15451,7 +15453,7 @@ msgstr ""
 msgid "played %{time}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:766
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:813
 #, elixir-autogen, elixir-format, fuzzy
 msgid "player"
 msgid_plural "players"
@@ -15516,7 +15518,7 @@ msgstr ""
 msgid "read only"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:879
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:926
 #, elixir-autogen, elixir-format, fuzzy
 msgid "reading the servers…"
 msgstr ""
@@ -15590,7 +15592,7 @@ msgstr ""
 msgid "same as before"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:913
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:960
 #, elixir-autogen, elixir-format
 msgid "same as last week"
 msgstr ""
@@ -16903,7 +16905,7 @@ msgstr[1] ""
 msgid "%{weekday}, %{day} %{month}"
 msgstr ""
 
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1076
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1140
 #, elixir-autogen, elixir-format
 msgid "%{weekday}, %{month} %{day}"
 msgstr ""
@@ -22227,7 +22229,7 @@ msgid "answer, assign, close, internal notes"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:487
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1099
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1163
 #, elixir-autogen, elixir-format
 msgid "april"
 msgstr ""
@@ -22253,7 +22255,7 @@ msgid "attempt %{n}"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:491
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1103
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1167
 #, elixir-autogen, elixir-format
 msgid "august"
 msgstr ""
@@ -22454,7 +22456,7 @@ msgid "days before"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:495
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1107
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1171
 #, elixir-autogen, elixir-format
 msgid "december"
 msgstr ""
@@ -22609,7 +22611,7 @@ msgid "extended"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:485
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1097
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1161
 #, elixir-autogen, elixir-format
 msgid "february"
 msgstr ""
@@ -22688,19 +22690,19 @@ msgid "inactive"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:484
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1096
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1160
 #, elixir-autogen, elixir-format
 msgid "january"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:490
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1102
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1166
 #, elixir-autogen, elixir-format
 msgid "july"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:489
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1101
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1165
 #, elixir-autogen, elixir-format
 msgid "june"
 msgstr ""
@@ -22778,7 +22780,7 @@ msgid "main"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:486
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1098
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1162
 #, elixir-autogen, elixir-format
 msgid "march"
 msgstr ""
@@ -22796,7 +22798,7 @@ msgid "matches played"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:488
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1100
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1164
 #, elixir-autogen, elixir-format
 msgid "may"
 msgstr ""
@@ -22832,7 +22834,7 @@ msgid "most common: %{rule}, %{cooldown}"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:266
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:442
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:471
 #: lib/hll_conditional_actions_web/live/vip_shop_live/email_panel.ex:385
 #, elixir-autogen, elixir-format
 msgid "new"
@@ -22907,13 +22909,13 @@ msgid "nothing sold in"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:494
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1106
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1170
 #, elixir-autogen, elixir-format
 msgid "november"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:493
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1105
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1169
 #, elixir-autogen, elixir-format
 msgid "october"
 msgstr ""
@@ -23238,7 +23240,7 @@ msgid "sent by email"
 msgstr ""
 
 #: lib/hll_conditional_actions_web/components/community_components.ex:492
-#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1104
+#: lib/hll_conditional_actions_web/live/dashboard_live.ex:1168
 #, elixir-autogen, elixir-format
 msgid "september"
 msgstr ""
@@ -23953,3 +23955,27 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Priority first"
 msgstr ""
+
+#: lib/hll_conditional_actions/alerts.ex:207
+#, elixir-autogen, elixir-format
+msgid "⚠️ **%{server}**: no events from CRCON for %{minutes} min. The rules of this server are blind until it is back."
+msgstr ""
+
+#: lib/hll_conditional_actions/alerts.ex:219
+#, elixir-autogen, elixir-format
+msgid "✅ **%{server}**: events from CRCON are back after %{minutes} min."
+msgstr ""
+
+#: lib/hll_conditional_actions/alerts.ex:239
+#, elixir-autogen, elixir-format
+msgid "🐢 1 page took more than 5 s (%{seconds} s): `%{where}`."
+msgid_plural "🐢 %{count} pages took more than 5 s, the slowest %{seconds} s: `%{where}`."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/hll_conditional_actions/alerts.ex:232
+#, elixir-autogen, elixir-format
+msgid "🛑 1 error in the app since the last report. Last one: `%{where}`."
+msgid_plural "🛑 %{count} errors in the app since the last report. Last one: `%{where}`."
+msgstr[0] ""
+msgstr[1] ""

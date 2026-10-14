@@ -33,6 +33,9 @@ defmodule HllConditionalActions.Rules.Execution do
     # `HllConditionalActions.Engine` for the shape; empty on older rows.
     field :trace, :map, default: %{}
     field :error, :string
+    # The same as `trace["duration_ms"]`, as a column the totals can read
+    # without loading the trace.
+    field :duration_ms, :integer
     # How each queued action (Discord) ended, by action index:
     # %{"0" => %{"status" => "delivered", "detail" => nil, "at" => "..."}}.
     # Written by the delivery job alone, never through `changeset/2`.
@@ -61,10 +64,24 @@ defmodule HllConditionalActions.Rules.Execution do
       :results,
       :trace,
       :error,
+      :duration_ms,
       :executed_at
     ])
     |> validate_required([:rule_id, :server_id, :trigger_event, :status])
     |> put_default_executed_at()
+    |> put_duration_from_trace()
+  end
+
+  # A trace carrying the duration fills the column too, so the two never
+  # disagree whoever writes the row.
+  defp put_duration_from_trace(changeset) do
+    case {get_change(changeset, :duration_ms), get_change(changeset, :trace)} do
+      {nil, %{"duration_ms" => ms}} when is_number(ms) ->
+        put_change(changeset, :duration_ms, round(ms))
+
+      _other ->
+        changeset
+    end
   end
 
   defp put_default_executed_at(changeset) do

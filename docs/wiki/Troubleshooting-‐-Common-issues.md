@@ -40,6 +40,16 @@ rules stopped on all servers at once until the modules were reinstalled.
 That workaround is no longer needed: the log shows *no data from CRCON for
 90s* and the stream comes back by itself.
 
+Before 0.3.5, a server **nobody was playing on** could show *No stream*, the
+log repeating *server closed the stream (1011)*: CRCON crashes when a client
+asks for its newest line and there is none yet. The app now starts from
+"new lines only", which CRCON handles, so an empty server stays connected.
+
+When CRCON runs on the same machine, point the server at it directly —
+`http://host.docker.internal:<port of CRCON's frontend>` — rather than at
+its public address. Every hop in between (a tunnel, a CDN) is one more thing
+that can drop the stream.
+
 ## "This will never work" on a rule
 
 The CRCON key cannot do what the rule asks. The badge names the permission.

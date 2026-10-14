@@ -436,8 +436,13 @@ defmodule HllConditionalActions.Crcon.LogStream do
 
   # ── Frames out ─────────────────────────────────────────────────────────────
 
+  # Without a position the stream starts at "$", Redis's "from now on". A
+  # null one makes CRCON look up its newest line first, and on an empty
+  # stream - a server nobody plays on, or just after CRCON's log service
+  # restarted and cleared it - that lookup crashes and the socket closes
+  # with 1011, over and over until someone joins.
   defp send_start_frame(state) do
-    payload = Jason.encode!(%{last_seen_id: state.last_seen_id, actions: state.actions})
+    payload = Jason.encode!(%{last_seen_id: state.last_seen_id || "$", actions: state.actions})
     send_frame(state, {:text, payload})
   end
 

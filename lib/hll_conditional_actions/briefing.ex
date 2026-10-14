@@ -23,6 +23,7 @@ defmodule HllConditionalActions.Briefing do
 
   alias HllConditionalActions.Accounts
   alias HllConditionalActions.Accounts.User
+  alias HllConditionalActions.Cache
   alias HllConditionalActions.Engine.SavedEvent
   alias HllConditionalActions.Engine.SavedEvents
   alias HllConditionalActions.Repo
@@ -31,6 +32,9 @@ defmodule HllConditionalActions.Briefing do
   alias HllConditionalActions.Tickets.Ticket
 
   @series ~w(all live simulated)
+
+  # How long the activity numbers are shared between pages.
+  @activity_ttl_ms :timer.seconds(60)
 
   @doc "The series the chart can show."
   @spec series() :: [String.t()]
@@ -51,7 +55,20 @@ defmodule HllConditionalActions.Briefing do
   Days are bucketed in UTC.
   """
   @spec activity(map() | nil, pos_integer(), String.t(), keyword()) :: map()
-  def activity(user, days, series \\ "all", opts \\ []) do
+  def activity(user, days, series \\ "all", opts \\ [])
+
+  # Every open Briefing asks for the same numbers on its refresh, so users
+  # who see the same servers share one computation a minute. A fixed `:now`
+  # (tests, reports) is always computed.
+  def activity(user, days, series, []) do
+    scope = Accounts.server_scope(user)
+
+    Cache.fetch({:activity, scope, days, series}, @activity_ttl_ms, fn ->
+      activity(user, days, series, now: DateTime.utc_now())
+    end)
+  end
+
+  def activity(user, days, series, opts) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     since = DateTime.add(now, -days, :day)
     before = DateTime.add(since, -days, :day)
@@ -84,7 +101,7 @@ defmodule HllConditionalActions.Briefing do
         simulated: filter(count(e.id), e.status == :simulated),
         failed: filter(count(e.id), e.status in [:failed, :partial]),
         players: count(e.player_id, :distinct),
-        duration: avg(fragment("CAST(? ->> 'duration_ms' AS double precision)", e.trace))
+        duration: type(avg(e.duration_ms), :float)
       })
       |> Repo.one()
 
@@ -111,7 +128,7 @@ defmodule HllConditionalActions.Briefing do
         count(e.id),
         filter(count(e.id), e.status in [:failed, :partial]),
         count(e.player_id, :distinct),
-        avg(fragment("CAST(? ->> 'duration_ms' AS double precision)", e.trace))
+        type(avg(e.duration_ms), :float)
       })
       |> Repo.all()
       |> Map.new(fn {date, fired, failed, players, duration} ->

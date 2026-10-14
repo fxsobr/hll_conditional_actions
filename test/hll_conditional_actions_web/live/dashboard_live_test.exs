@@ -125,6 +125,22 @@ defmodule HllConditionalActionsWeb.DashboardLiveTest do
   end
 
   describe "the briefing" do
+    # The numbers used to be computed for the static render and again when
+    # the page connected; the static render now only draws their place.
+    test "the first render holds the numbers' place, the connected one fills it", %{conn: conn} do
+      server = server_fixture()
+      rule = rule_fixture(%{server_id: server.id})
+      record(rule, server)
+
+      html = conn |> get(~p"/?onboarding=skip") |> html_response(200)
+      assert html =~ ~s(id="briefing-needs-loading")
+      refute html =~ ~s(id="overview-chart")
+
+      {:ok, view, _html} = live(conn, ~p"/?onboarding=skip")
+      refute has_element?(view, "#briefing-needs-loading")
+      assert has_element?(view, "#overview-chart")
+    end
+
     test "shows the week and the period's numbers once rules have fired", %{conn: conn} do
       server = server_fixture()
       rule = rule_fixture(%{name: "Greeter", server_id: server.id})
