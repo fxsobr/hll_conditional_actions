@@ -49,6 +49,12 @@ defmodule HllConditionalActions.FakeCrcon.Socket do
     {:ok, :silent}
   end
 
+  # Hands the client's start frame to a test process, then stays quiet.
+  def handle_in({payload, [opcode: :text]}, {:report_start, pid} = mode) do
+    send(pid, {:start_frame, Jason.decode!(payload)})
+    {:ok, mode}
+  end
+
   def handle_in(_message, mode), do: {:ok, mode}
 
   @impl WebSock

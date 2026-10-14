@@ -63,6 +63,7 @@ defmodule HllConditionalActionsWeb.DashboardLive do
        metric: "fired",
        series: "all",
        skipped?: false,
+       briefing_loading?: false,
        setup: nil,
        live: %{},
        live_loading?: false,
@@ -244,7 +245,32 @@ defmodule HllConditionalActionsWeb.DashboardLive do
   defp single([server]), do: server
   defp single(_servers), do: nil
 
+  # The first, static render only draws the frame: the numbers would be
+  # computed again a moment later when the page connects, so they are left
+  # to that render and placeholders hold their place meanwhile.
   defp load_briefing(socket) do
+    if connected?(socket), do: load_numbers(socket), else: placeholders(socket)
+  end
+
+  defp placeholders(socket) do
+    %{current_user: user, servers: servers, rules: rules} = socket.assigns
+
+    assign(socket,
+      briefing_loading?: Accounts.can?(user, :view_executions),
+      activity: nil,
+      week: nil,
+      rule_summary: rule_summary(user, rules),
+      tickets: ticket_counts(socket),
+      last_events: Briefing.last_events(Enum.map(servers, & &1.id)),
+      attention: nil,
+      suggestion: nil,
+      digest: nil,
+      needs_you: [],
+      quotes: %{}
+    )
+  end
+
+  defp load_numbers(socket) do
     %{current_user: user, servers: servers, rules: rules} = socket.assigns
     executions? = Accounts.can?(user, :view_executions)
 
@@ -261,6 +287,7 @@ defmodule HllConditionalActionsWeb.DashboardLive do
 
     socket
     |> assign(
+      briefing_loading?: false,
       activity: activity,
       week: week,
       rule_summary: rule_summary(user, rules),
@@ -277,7 +304,9 @@ defmodule HllConditionalActionsWeb.DashboardLive do
     user = socket.assigns.current_user
 
     if Accounts.can?(user, :view_executions) do
-      %{open: open} = Attention.items(user, socket.assigns.servers, socket.assigns.stream_status)
+      %{open: open} =
+        Attention.cached_items(user, socket.assigns.servers, socket.assigns.stream_status)
+
       suggestion = Enum.find(open, &(&1.kind == :ready_to_go_live))
       needs_you = if suggestion, do: List.delete(open, suggestion), else: open
       shown = Enum.take(needs_you, @attention_rows)
@@ -582,6 +611,24 @@ defmodule HllConditionalActionsWeb.DashboardLive do
             series={@series}
             period={@period}
           />
+        </div>
+
+        <div
+          :if={@briefing_loading?}
+          id="briefing-chart-loading"
+          data-area="chart"
+          class="hidden min-w-0 md:flex"
+        >
+          <.loading_panel title={gettext("Rule fires")} rows={1} />
+        </div>
+
+        <div
+          :if={@briefing_loading?}
+          id="briefing-needs-loading"
+          data-area="needs"
+          class="flex min-w-0"
+        >
+          <.loading_panel title={gettext("Needs you")} rows={3} />
         </div>
 
         <div :if={@attention} data-area="needs" class="flex min-w-0">
@@ -1023,8 +1070,8 @@ defmodule HllConditionalActionsWeb.DashboardLive do
       chips: cards != [],
       week: assigns.week != nil,
       suggest: assigns.activity != nil and assigns.suggestion != nil,
-      chart: assigns.activity != nil,
-      needs: assigns.attention != nil,
+      chart: assigns.activity != nil or loading?(assigns),
+      needs: assigns.attention != nil or loading?(assigns),
       servers: cards != []
     }
 
@@ -1044,6 +1091,8 @@ defmodule HllConditionalActionsWeb.DashboardLive do
     "--areas-sm: #{template(phone)}; --areas-md: #{template(tablet)}; --areas-xl: #{template(desktop)}"
   end
 
+  defp loading?(assigns), do: Map.get(assigns, :briefing_loading?, false)
+
   defp pair(has, left, right) do
     case {has[left], has[right]} do
       {true, true} -> [[to_string(left), to_string(right)]]
@@ -1054,6 +1103,21 @@ defmodule HllConditionalActionsWeb.DashboardLive do
   end
 
   defp template(rows), do: Enum.map_join(rows, " ", &~s("#{Enum.join(&1, " ")}"))
+
+  # A panel's place while its numbers load: the title, and grey bars.
+  attr :title, :string, required: true
+  attr :rows, :integer, default: 1
+
+  defp loading_panel(assigns) do
+    ~H"""
+    <.briefing_panel title={@title} class="flex-1">
+      <div class="flex flex-col gap-3 pt-1">
+        <.skeleton_block :for={_row <- 1..@rows} class="h-10 w-full" />
+        <.skeleton_block :if={@rows == 1} class="h-40 w-full" />
+      </div>
+    </.briefing_panel>
+    """
+  end
 
   # ── Helpers ────────────────────────────────────────────────────────────────
 

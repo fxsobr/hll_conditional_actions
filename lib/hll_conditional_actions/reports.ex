@@ -82,7 +82,7 @@ defmodule HllConditionalActions.Reports do
       |> window(from, to)
       |> select([e], %{
         players: count(e.player_id, :distinct),
-        duration: avg(fragment("CAST(? ->> 'duration_ms' AS double precision)", e.trace))
+        duration: type(avg(e.duration_ms), :float)
       })
       |> Repo.one()
 

@@ -26,6 +26,7 @@ defmodule HllConditionalActions.Attention do
 
   alias HllConditionalActions.Accounts
   alias HllConditionalActions.Attention.Review
+  alias HllConditionalActions.Cache
   alias HllConditionalActions.Repo
   alias HllConditionalActions.Rules
   alias HllConditionalActions.Rules.Health
@@ -48,6 +49,21 @@ defmodule HllConditionalActions.Attention do
   @simulation_days 3
 
   @severity_order %{error: 0, warning: 1, info: 2}
+
+  # How long `cached_items/3` may serve the same answer.
+  @cache_ttl_ms :timer.seconds(10)
+
+  @doc """
+  `items/3`, shared for a few seconds: what the bell and the Briefing show
+  while rules keep firing. Handling an item or a ticket changing drops it,
+  so those show at once; a new failure may take up to ten seconds.
+  """
+  @spec cached_items(map(), [map()], %{optional(term()) => term()}) ::
+          %{open: [item()], handled: non_neg_integer()}
+  def cached_items(user, servers, stream_status) do
+    key = {:attention, user && user.id, Enum.map(servers, & &1.id), stream_status}
+    Cache.fetch(key, @cache_ttl_ms, fn -> items(user, servers, stream_status) end)
+  end
 
   @doc """
   The open items for a user, most urgent first, and how many were handled.
@@ -115,6 +131,7 @@ defmodule HllConditionalActions.Attention do
     |> Review.changeset(%{key: key, user_id: user && user.id})
     |> Repo.insert(on_conflict: :nothing, conflict_target: :key)
 
+    Cache.drop(:attention)
     notify_changed()
   end
 

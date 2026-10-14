@@ -43,6 +43,10 @@ if config_env() != :test do
          :execution_retention_days,
          String.to_integer(System.get_env("EXECUTION_RETENTION_DAYS", "30"))
 
+  # A Discord webhook for the operator: streams down for five minutes,
+  # errors and slow pages (`HllConditionalActions.Alerts`). Unset, no alerts.
+  config :hll_conditional_actions, :alert_webhook_url, System.get_env("ALERT_WEBHOOK_URL")
+
   # How long to wait after a CONNECTED log line before evaluating rules, so the
   # player exists in CRCON's view by then. Raise it for a slow game server.
   config :hll_conditional_actions,

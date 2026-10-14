@@ -121,7 +121,7 @@ defmodule HllConditionalActionsWeb.NotificationsPanel do
     attention =
       if Accounts.can?(user, :view_executions) do
         status = Map.new(servers, &{&1.id, LogStream.status(&1.id)})
-        Attention.items(user, servers, status).open
+        Attention.cached_items(user, servers, status).open
       else
         []
       end

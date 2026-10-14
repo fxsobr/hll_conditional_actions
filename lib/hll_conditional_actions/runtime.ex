@@ -74,11 +74,17 @@ defmodule HllConditionalActions.Runtime do
   # has to notice.
   @revive_ms :timer.seconds(30)
 
+  # How long a burst of module changes may last before the server restarts.
+  @features_settle_ms :timer.seconds(2)
+
+  defp features_settle_ms,
+    do: Application.get_env(:hll_conditional_actions, :features_settle_ms, @features_settle_ms)
+
   @impl GenServer
   def init(_opts) do
     Servers.subscribe()
     Features.subscribe()
-    state = %{monitors: %{}}
+    state = %{monitors: %{}, pending: MapSet.new()}
 
     if enabled?() do
       {:ok, state, {:continue, :start_servers}}
@@ -118,7 +124,21 @@ defmodule HllConditionalActions.Runtime do
   end
 
   # Installing or removing a module changes which processes a server runs.
+  # Modules come in bursts - setting up a server, or reinstalling five of
+  # them - so the restart waits for the burst to end and happens once,
+  # instead of once per module with the stream reconnecting in between.
   def handle_info({:features_changed, server_id}, state) do
+    if MapSet.member?(state.pending, server_id) do
+      {:noreply, state}
+    else
+      Process.send_after(self(), {:apply_features, server_id}, features_settle_ms())
+      {:noreply, %{state | pending: MapSet.put(state.pending, server_id)}}
+    end
+  end
+
+  def handle_info({:apply_features, server_id}, state) do
+    state = %{state | pending: MapSet.delete(state.pending, server_id)}
+
     state =
       with true <- enabled?(),
            {:ok, %Server{enabled: true} = server} <- Servers.fetch_server(server_id) do

@@ -313,14 +313,12 @@ defmodule HllConditionalActions.Engine do
   end
 
   defp finalize(execution, results, context, rule, duration) do
+    duration_ms = System.convert_time_unit(duration, :native, :millisecond)
+
     attrs = %{
       results: Enum.map(results, &stringify_result/1),
-      trace:
-        Map.put(
-          execution.trace,
-          "duration_ms",
-          System.convert_time_unit(duration, :native, :millisecond)
-        ),
+      trace: Map.put(execution.trace, "duration_ms", duration_ms),
+      duration_ms: duration_ms,
       status: overall_status(results, rule),
       error: first_error(results)
     }

@@ -174,16 +174,20 @@ defmodule HllConditionalActionsWeb.Nav do
   defp tab_counts(_path, _user), do: %{}
 
   # The bell keeps itself current without a reload: every signal that the
-  # inbox may have changed (a ticket counts too) schedules one recount, a
-  # second later, however many signals arrive in between. Its own messages
-  # stop here; the ticket one goes on to the ticket hook and the page.
+  # inbox may have changed schedules one recount, however many signals
+  # arrive in between. A ticket is counted a second later; the engine's
+  # signal - one per rule run, several a second on a busy evening - waits
+  # five, since what it changes (a failure, a rule ready to go live) is no
+  # emergency. Its own messages stop here; the ticket one goes on to the
+  # ticket hook and the page.
   @recount_after 1_000
+  @engine_recount_after 5_000
 
   defp refresh_attention({:attention_changed, _nil}, socket),
-    do: {:halt, schedule_recount(socket)}
+    do: {:halt, schedule_recount(socket, @engine_recount_after)}
 
   defp refresh_attention({:ticket_changed, _ticket}, socket),
-    do: {:cont, schedule_recount(socket)}
+    do: {:cont, schedule_recount(socket, @recount_after)}
 
   defp refresh_attention(:recount_attention, socket) do
     socket = assign(socket, :attention_recount_pending?, false)
@@ -196,11 +200,11 @@ defmodule HllConditionalActionsWeb.Nav do
 
   defp refresh_attention(_other, socket), do: {:cont, socket}
 
-  defp schedule_recount(socket) do
+  defp schedule_recount(socket, delay) do
     if socket.assigns[:attention_recount_pending?] do
       socket
     else
-      Process.send_after(self(), :recount_attention, @recount_after)
+      Process.send_after(self(), :recount_attention, delay)
       assign(socket, :attention_recount_pending?, true)
     end
   end
@@ -218,7 +222,7 @@ defmodule HllConditionalActionsWeb.Nav do
       attention =
         if Accounts.can?(user, :view_executions) do
           status = Map.new(servers, &{&1.id, LogStream.status(&1.id)})
-          Attention.items(user, servers, status).open
+          Attention.cached_items(user, servers, status).open
         else
           []
         end

@@ -17,3 +17,4 @@ npm-debug.log
 
 # JetBrains project files.
 /.idea/
+/backups/

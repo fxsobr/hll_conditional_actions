@@ -25,6 +25,9 @@ services:
       POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER in .env}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
       POSTGRES_DB: ${POSTGRES_DB:-hll_conditional_actions}
+    # More memory per sort than the default 4MB, so the Briefing's totals
+    # sort in memory instead of spilling to disk.
+    command: ["postgres", "-c", "work_mem=${POSTGRES_WORK_MEM:-16MB}"]
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -76,6 +79,9 @@ services:
       ENGINE_ENABLED: ${ENGINE_ENABLED:-true}
       EXECUTION_RETENTION_DAYS: ${EXECUTION_RETENTION_DAYS:-30}
       POOL_SIZE: ${POOL_SIZE:-10}
+      # A Discord webhook URL for alerts about the app itself (streams down,
+      # errors, slow pages). Empty means no alerts.
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
     # CRCON usually runs on the same machine. From inside a container
     # `localhost` is the container itself, so the CRCON URL has to be either
     # the machine's LAN address or `host.docker.internal`. Docker Desktop
@@ -96,6 +102,44 @@ services:
       timeout: 10s
       start_period: 40s
       retries: 3
+
+  # A dump of the database every day at BACKUP_HOUR (UTC) into ./backups,
+  # keeping BACKUP_KEEP_DAYS of them. Copy that folder off the machine too:
+  # a backup on the same disk does not survive losing the disk. Restoring
+  # is in the wiki (Administration - Backups).
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: "${POSTGRES_USER}"
+      PGPASSWORD: "${POSTGRES_PASSWORD}"
+      PGDATABASE: ${POSTGRES_DB:-hll_conditional_actions}
+      BACKUP_HOUR: "${BACKUP_HOUR:-06}"
+      BACKUP_KEEP_DAYS: "${BACKUP_KEEP_DAYS:-14}"
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "backup: daily at $${BACKUP_HOUR}:00 UTC, keeping $${BACKUP_KEEP_DAYS} days"
+        while true; do
+          today=$$(date -u +%F)
+          if [ "$$(date -u +%H)" = "$${BACKUP_HOUR}" ] && [ ! -f "/backups/db-$$today.dump" ]; then
+            if pg_dump -Fc -f "/backups/.db-$$today.partial"; then
+              mv "/backups/.db-$$today.partial" "/backups/db-$$today.dump"
+              echo "backup: wrote db-$$today.dump"
+            else
+              rm -f "/backups/.db-$$today.partial"
+              echo "backup: pg_dump failed, trying again in 10 minutes" >&2
+            fi
+            find /backups -name 'db-*.dump' -mtime +$${BACKUP_KEEP_DAYS} -delete
+          fi
+          sleep 600
+        done
 
   caddy:
     # Not the stock Caddy: this one carries the rate limiting module, so there
