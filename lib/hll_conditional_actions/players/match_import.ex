@@ -11,6 +11,10 @@ defmodule HllConditionalActions.Players.MatchImport do
     field :match_id, :string
     field :players, :integer, default: 0
     field :ended_at, :utc_datetime
+    field :allied_score, :integer
+    field :axis_score, :integer
+    # When the team balance learned from this match.
+    field :balance_learned_at, :utc_datetime
 
     timestamps(type: :utc_datetime, updated_at: false)
   end

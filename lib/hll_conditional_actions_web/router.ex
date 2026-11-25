@@ -211,6 +211,7 @@ defmodule HllConditionalActionsWeb.Router do
       live "/tickets/setup", TicketLive.Setup, :new
       live "/tickets/:id", TicketLive.Show, :show
       live "/achievements", AchievementLive, :index
+      live "/balance", BalanceLive.Index, :index
       live "/seasons", SeasonLive.Index, :index
       live "/seasons/new", SeasonLive.Index, :new
       live "/seasons/:id", SeasonLive.Show, :show

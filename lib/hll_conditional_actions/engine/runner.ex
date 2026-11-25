@@ -186,7 +186,7 @@ defmodule HllConditionalActions.Engine.Runner do
   # rules or not. It is read from a fresh snapshot, the match's final
   # numbers, and only once per match: CRCON can repeat the line.
   defp handle_event(%{type: :match_end} = event, state) do
-    state = record_progression(state)
+    state = state |> record_progression() |> plan_balance()
     run_match_rules(event, state)
   end
 
@@ -267,6 +267,26 @@ defmodule HllConditionalActions.Engine.Runner do
     if MapSet.member?(state.features, :progression),
       do: do_record_progression(state),
       else: state
+  end
+
+  # The team balance measures the match that just ended, from its final
+  # numbers (`HllConditionalActions.Balance`); in simulation it moves nobody.
+  defp plan_balance(state) do
+    if MapSet.member?(state.features, :balance) do
+      state = refresh_snapshot(state)
+
+      if state.snapshot && not state.snapshot.stale? do
+        HllConditionalActions.Balance.plan_match(
+          state.server,
+          state.snapshot.players,
+          state.snapshot.gamestate
+        )
+      end
+
+      state
+    else
+      state
+    end
   end
 
   defp do_record_progression(state) do

@@ -71,7 +71,13 @@ defmodule HllConditionalActions.Players.MatchHistory do
       0
   end
 
-  defp import_match(server, id) do
+  @doc """
+  Reads one finished match into the history. A match read before this kept
+  the squads and the result knows them afterwards; its lines are not
+  duplicated.
+  """
+  @spec import_match(Server.t(), term()) :: :ok | :error
+  def import_match(server, id) do
     case Matches.get(server, id) do
       {:ok, match} ->
         now = DateTime.utc_now() |> DateTime.truncate(:second)
@@ -80,7 +86,12 @@ defmodule HllConditionalActions.Players.MatchHistory do
         Repo.transaction(fn ->
           rows
           |> Enum.chunk_every(200)
-          |> Enum.each(&Repo.insert_all(MatchStat, &1, on_conflict: :nothing))
+          |> Enum.each(
+            &Repo.insert_all(MatchStat, &1,
+              on_conflict: {:replace, [:unit_name]},
+              conflict_target: [:server_id, :match_id, :player_id]
+            )
+          )
 
           Repo.insert_all(
             MatchImport,
@@ -90,10 +101,13 @@ defmodule HllConditionalActions.Players.MatchHistory do
                 match_id: to_string(id),
                 players: length(rows),
                 ended_at: truncate(match.ended_at),
+                allied_score: match.allied,
+                axis_score: match.axis,
                 inserted_at: now
               }
             ],
-            on_conflict: :nothing
+            on_conflict: {:replace, [:allied_score, :axis_score]},
+            conflict_target: [:server_id, :match_id]
           )
         end)
 
@@ -120,6 +134,7 @@ defmodule HllConditionalActions.Players.MatchHistory do
         started_at: truncate(match.started_at),
         ended_at: truncate(match.ended_at),
         team: player["team"],
+        unit_name: player["unit_name"],
         role: player["role"],
         level: int(player["level"]),
         kills: stat(player, "kills"),

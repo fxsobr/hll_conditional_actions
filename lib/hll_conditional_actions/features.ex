@@ -22,16 +22,17 @@ defmodule HllConditionalActions.Features do
   @topic "features"
 
   # Order is the order of the marketplace.
-  @catalog [:rules, :tickets, :progression, :stats, :live_feed, :vip_shop]
+  @catalog [:rules, :tickets, :progression, :stats, :live_feed, :vip_shop, :balance]
 
   @typedoc "A module of the marketplace."
-  @type feature :: :rules | :tickets | :progression | :stats | :live_feed | :vip_shop
+  @type feature ::
+          :rules | :tickets | :progression | :stats | :live_feed | :vip_shop | :balance
 
   @doc """
   Every module the marketplace offers.
 
       iex> HllConditionalActions.Features.catalog()
-      [:rules, :tickets, :progression, :stats, :live_feed, :vip_shop]
+      [:rules, :tickets, :progression, :stats, :live_feed, :vip_shop, :balance]
   """
   @spec catalog() :: [feature()]
   def catalog, do: @catalog

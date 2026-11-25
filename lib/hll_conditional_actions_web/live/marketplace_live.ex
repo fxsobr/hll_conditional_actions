@@ -30,7 +30,7 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
   alias HllConditionalActionsWeb.Labels
 
   # The order of the board: what runs the server first, community last.
-  @order [:rules, :tickets, :stats, :live_feed, :progression, :vip_shop]
+  @order [:rules, :tickets, :stats, :live_feed, :progression, :balance, :vip_shop]
 
   @impl Phoenix.LiveView
   def mount(%{"server_id" => server_id}, _session, socket) do
@@ -515,6 +515,12 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
   defp description_text(:progression),
     do: gettext("Medals for performance and season-long contests, with VIP as a prize.")
 
+  defp description_text(:balance),
+    do:
+      gettext(
+        "Measures how uneven each match was and which squads would change team to fix the next one. Simulation only."
+      )
+
   defp description_text(:vip_shop),
     do: gettext("Sell VIP packages with Pix or card. Delivery on the server is automatic.")
 
@@ -590,6 +596,14 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
         usage.progression
       )
 
+  defp usage_line(:balance, usage, _matches),
+    do:
+      ngettext(
+        "%{count} match measured this week",
+        "%{count} matches measured this week",
+        usage.balance
+      )
+
   defp usage_line(:vip_shop, usage, _matches),
     do: ngettext("%{count} package on sale", "%{count} packages on sale", usage.vip_shop)
 
@@ -647,6 +661,8 @@ defmodule HllConditionalActionsWeb.MarketplaceLive do
           <path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7" />
         <% :vip_shop -> %>
           <path d="M3 9h18v11H3zM12 9v11M3 9l3-5h12l3 5" />
+        <% :balance -> %>
+          <path d="M12 4v16M7 20h10M5 8h14M5 8l-3 6a3 3 0 0 0 6 0L5 8zM19 8l-3 6a3 3 0 0 0 6 0l-3-6z" />
         <% _other -> %>
           <circle cx="12" cy="12" r="8" />
       <% end %>

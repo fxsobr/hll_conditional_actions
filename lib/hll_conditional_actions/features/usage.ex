@@ -34,7 +34,8 @@ defmodule HllConditionalActions.Features.Usage do
           tickets: non_neg_integer(),
           progression: non_neg_integer(),
           live_feed: pos_integer(),
-          vip_shop: non_neg_integer()
+          vip_shop: non_neg_integer(),
+          balance: non_neg_integer()
         }
 
   @doc """
@@ -46,7 +47,8 @@ defmodule HllConditionalActions.Features.Usage do
     * `:progression` - the achievements it awards (its own and the global
       ones);
     * `:live_feed` - how many lines the live feed keeps;
-    * `:vip_shop` - the packages on sale that grant VIP on it.
+    * `:vip_shop` - the packages on sale that grant VIP on it;
+    * `:balance` - the matches the team balance measured in the last week.
   """
   @spec for_server(Server.t()) :: t()
   def for_server(%Server{} = server) do
@@ -55,7 +57,8 @@ defmodule HllConditionalActions.Features.Usage do
       tickets: count_open_tickets(server.id),
       progression: count_achievements(server.id),
       live_feed: @feed_lines,
-      vip_shop: count_packages(server.id)
+      vip_shop: count_packages(server.id),
+      balance: count_plans(server.id)
     }
   end
 
@@ -112,5 +115,13 @@ defmodule HllConditionalActions.Features.Usage do
     |> where([p, s], s.id == ^server_id and p.active and is_nil(p.archived_at))
     |> select([p], count(p.id, :distinct))
     |> Repo.one()
+  end
+
+  defp count_plans(server_id) do
+    since = DateTime.add(DateTime.utc_now(), -7, :day)
+
+    HllConditionalActions.Balance.Plan
+    |> where([p], p.server_id == ^server_id and p.ended_at > ^since)
+    |> Repo.aggregate(:count)
   end
 end

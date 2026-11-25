@@ -1089,6 +1089,7 @@ defmodule HllConditionalActionsWeb.Labels do
   def feature(:stats), do: gettext("Leaderboard and matches")
   def feature(:live_feed), do: gettext("Live feed")
   def feature(:vip_shop), do: gettext("VIP shop")
+  def feature(:balance), do: gettext("Team balance")
 
   @doc """
   What a marketplace module adds, for its card.
@@ -1116,6 +1117,12 @@ defmodule HllConditionalActionsWeb.Labels do
     do:
       gettext(
         "Sell VIP packages on a public page: players sign in, link their player and pay with Stripe, Dodo Payments or Mercado Pago. VIP is granted on every server of the package."
+      )
+
+  def feature_description(:balance),
+    do:
+      gettext(
+        "Rates every player and, at the end of each match, works out which squads would change team to even the next one, never splitting players who play together. In simulation: nobody is moved."
       )
 
   @doc """

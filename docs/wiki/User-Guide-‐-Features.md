@@ -71,6 +71,7 @@ In the order the Modules page shows them:
 | **Leaderboard and matches** | The live scoreboard of players and squads, and every past match | [Leaderboard and matches](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Leaderboard-and-matches) |
 | **Live feed** | Kills, chat and connections as they happen, with the rules they fired | [Live](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Live-feed) |
 | **Achievements and seasons** | Goals players reach by playing, ranked seasons with VIP rewards | [Achievements and seasons](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Achievements-and-seasons) |
+| **Team balance** | Rates every player and plans, at the end of each match, which squads would change team to even the next one — in simulation | [Team balance](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-Team-balance) |
 | **VIP shop** | A public page where players buy VIP, paid with Stripe, Dodo Payments or Mercado Pago | [VIP shop](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop) · [Payments](https://github.com/fxsobr/hll_conditional_actions/wiki/User-Guide-%E2%80%90-Features-%E2%80%90-VIP-shop-payments) |
 
 ## Always there
