@@ -30,6 +30,7 @@ Everything beyond the core is a **module** each server installs from its **Modul
 | **Achievements and seasons** | Goals players unlock by playing, and ranked seasons that reward the best with VIP. |
 | **Leaderboard and matches** | The live top players and squads, and the scoreboard of every past match. |
 | **Live feed** | Kills, chat and connections as they happen, each line with the rules it fired. |
+| **Team balance** | Rates every player with an Elo that never resets and plans, at the end of each match, which squads would change team to even the next one, never splitting players who play together. Simulation for now. |
 | **VIP shop** | A public storefront where players buy VIP, paid with Stripe, Dodo Payments or Mercado Pago, delivered to every server of the package. |
 
 Always there: the Briefing, each server's live cockpit, one Inbox for attention items and tickets, the players directory, Ctrl K search, notifications, Discord webhooks, engine metrics, users, roles and two factor — on desktop, tablet and phone, in a dark or light theme.

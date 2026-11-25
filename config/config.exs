@@ -39,7 +39,8 @@ config :hll_conditional_actions, Oban,
        {"17 * * * *", HllConditionalActions.Workers.PruneSavedEvents},
        {"*/5 * * * *", HllConditionalActions.Workers.FinalizeSeasons},
        {"*/10 * * * *", HllConditionalActions.Workers.CloseStaleTickets},
-       {"0 12 * * *", HllConditionalActions.Workers.VipExpiryReminders}
+       {"0 12 * * *", HllConditionalActions.Workers.VipExpiryReminders},
+       {"*/5 * * * *", HllConditionalActions.Workers.BalanceLearn}
      ]}
   ]
 

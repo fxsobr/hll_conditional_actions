@@ -9,15 +9,15 @@ defmodule HllConditionalActionsWeb.MatchLiveTest do
   alias HllConditionalActions.Matches
   alias HllConditionalActions.Rules
 
-  @start "2026-09-20T20:00:00Z"
-  @end_ "2026-09-20T21:30:00Z"
+  # Yesterday, so the match is always inside the page's last 30 days.
+  defp ended_at, do: DateTime.utc_now(:second) |> DateTime.add(-1, :day)
 
   defp match(extra \\ %{}) do
     Map.merge(
       %{
         "id" => 77,
-        "start" => @start,
-        "end" => @end_,
+        "start" => ended_at() |> DateTime.add(-90, :minute) |> DateTime.to_iso8601(),
+        "end" => DateTime.to_iso8601(ended_at()),
         "result" => %{"allied" => 3, "axis" => 2},
         "map" => %{
           "game_mode" => "warfare",
@@ -158,7 +158,7 @@ defmodule HllConditionalActionsWeb.MatchLiveTest do
         player_name: "Sharpshooter",
         trigger_event: "player_connected",
         status: :executed,
-        executed_at: ~U[2026-09-20 20:12:00Z]
+        executed_at: DateTime.add(ended_at(), -78, :minute)
       })
 
     {:ok, view, _html} = live(conn, ~p"/servers/#{server}/matches/77")

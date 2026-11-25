@@ -18,6 +18,8 @@ defmodule HllConditionalActions.Players.MatchStat do
     field :started_at, :utc_datetime
     field :ended_at, :utc_datetime
     field :team, :string
+    # The squad the player ended the match in.
+    field :unit_name, :string
     field :role, :string
     field :level, :integer
     field :kills, :integer, default: 0

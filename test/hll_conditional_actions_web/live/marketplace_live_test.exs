@@ -77,7 +77,7 @@ defmodule HllConditionalActionsWeb.MarketplaceLiveTest do
       |> LazyHTML.attribute("id")
 
     assert ids ==
-             ~w(feature-rules feature-tickets feature-stats feature-live_feed feature-progression feature-vip_shop)
+             ~w(feature-rules feature-tickets feature-stats feature-live_feed feature-progression feature-balance feature-vip_shop)
 
     assert has_element?(view, "#uninstall-rules")
     assert has_element?(view, "#install-tickets")

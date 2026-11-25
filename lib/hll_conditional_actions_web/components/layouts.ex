@@ -1147,6 +1147,13 @@ defmodule HllConditionalActionsWeb.Layouts do
           prefix: true
         },
         %{
+          label: gettext("Balance"),
+          path: "/balance",
+          permission: :view_progression,
+          feature: :balance,
+          prefix: true
+        },
+        %{
           label: gettext("VIP shop"),
           path: "/vip-shop",
           permission: :manage_integrations,
