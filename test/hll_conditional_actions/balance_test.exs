@@ -55,7 +55,9 @@ defmodule HllConditionalActions.BalanceTest do
       {"a3", "allies", "baker", 100},
       {"x1", "axis", "able", 300},
       {"x2", "axis", "able", 200},
-      {"x3", "axis", "baker", 100}
+      {"x3", "axis", "baker", 100},
+      # CRCON had no squad for this one.
+      {"x4", "axis", nil, 50}
     ]
   end
 

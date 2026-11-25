@@ -31,6 +31,8 @@ defmodule HllConditionalActions.Balance do
 
   import Ecto.Query
 
+  require Logger
+
   alias HllConditionalActions.Balance.Partner
   alias HllConditionalActions.Balance.Plan
   alias HllConditionalActions.Balance.Planner
@@ -148,7 +150,24 @@ defmodule HllConditionalActions.Balance do
     |> Enum.count(&learn(server, &1))
   end
 
+  # One match that cannot be learned from is logged and left behind, marked,
+  # so it neither stops the others nor comes back every five minutes.
   defp learn(server, %MatchImport{} = import) do
+    do_learn(server, import)
+  rescue
+    error ->
+      Logger.error(
+        "[balance] #{server.name}: match #{import.match_id} skipped: #{Exception.message(error)}"
+      )
+
+      import
+      |> Ecto.Changeset.change(balance_learned_at: DateTime.utc_now(:second))
+      |> Repo.update()
+
+      false
+  end
+
+  defp do_learn(server, %MatchImport{} = import) do
     rows =
       MatchStat
       |> where([s], s.server_id == ^server.id and s.match_id == ^import.match_id)
@@ -236,7 +255,7 @@ defmodule HllConditionalActions.Balance do
     pairs =
       rows
       |> Enum.filter(
-        &((&1.unit_name && &1.team in ["allies", "axis"]) and
+        &(not is_nil(&1.unit_name) and &1.team in ["allies", "axis"] and
             &1.playtime_seconds >= @partner_min_seconds)
       )
       |> Enum.group_by(&{&1.team, &1.unit_name})
