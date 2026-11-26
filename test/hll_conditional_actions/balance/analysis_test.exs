@@ -163,7 +163,7 @@ defmodule HllConditionalActions.Balance.AnalysisTest do
       "x1" => %{"player_id" => "x1", "name" => "Xu", "team" => "axis", "unit_name" => "able"}
     }
 
-    plan = Balance.plan_match(server, players, %{"allied_score" => 5, "axis_score" => 0})
+    plan = Balance.close_match(server, players, %{"allied_score" => 5, "axis_score" => 0})
 
     assert %{"rating" => 1120, "matches" => 4, "kills" => 12, "points" => 150} =
              Enum.find(plan.roster, &(&1["id"] == "a1"))

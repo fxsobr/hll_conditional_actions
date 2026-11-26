@@ -1,23 +1,28 @@
 defmodule HllConditionalActions.Balance.Plan do
   @moduledoc """
-  What the balance made of one finished match: the teams' average ratings,
-  the gap, and the groups it would move to close it.
+  One match as the team balance saw it, in two moments:
 
-  `status` is `"balanced"` when the gap was under the server's trigger and
-  `"simulated"` when a plan was made but - this being the simulation - not
-  applied. `moves` holds one map per group: `"from"`, `"squad"` and its
-  `"players"` (`"id"`, `"name"`, `"rating"`). Since the game swaps the
-  factions on the next map, a group moves "to the other team", not to a
-  faction.
+    * **at its warmup** - the two minutes of preparation, the only time the
+      balance may act - the decision: the teams' average ratings (`roster`,
+      read in the warmup, or the previous match's sides swapped when CRCON
+      did not report teams yet: `source`), the previous match's dominant
+      group found together again (`stack_*`, `previous_id`), which test
+      fired (`rule_fired`) and the groups it would move (`moves`)
+    * **at its end** - the result (`allied_score`, `axis_score`), the roster
+      as it finished (`end_roster`, `teams`), the winners (`winner_ids`) and
+      how much they out-did the loser (`kills_ratio`, `points_ratio`, in %
+      of the loser's) - what the next warmup's decision reads
 
-  `roster` and `teams` keep what the balance saw, so a plan can be replayed
-  with other settings (`HllConditionalActions.Balance.Analysis`), and the
-  gap stays an honest prediction: it was measured before the ratings
-  learned from the match.
+  `status`: `"balanced"` when nothing fired, `"simulated"` when a plan was
+  made but - this being the simulation - not applied, `"measured"` when only
+  the end was seen (the warmup was missed). `moves` holds one map per group:
+  `"from"`, `"squad"` and its `"players"` (`"id"`, `"name"`, `"rating"`).
 
-  `strong_ids` are the players of the stronger team; when the next match
-  ends, `strong_won_again` says whether most of them, together again, won
-  it - the stack the balance is meant to break up.
+  `strong_won_again`: whether the previous match's dominant group, together
+  again in this one, won it too - what the balance is meant to stop.
+
+  Rows written before the warmup decision existed (0.5 and older) only have
+  the end, in `ended_at`, `roster` and `strong_ids`.
   """
 
   use Ecto.Schema
@@ -26,9 +31,20 @@ defmodule HllConditionalActions.Balance.Plan do
 
   schema "balance_plans" do
     belongs_to :server, HllConditionalActions.Servers.Server
+    belongs_to :previous, __MODULE__
 
     field :map, :string
+    field :started_at, :utc_datetime
     field :ended_at, :utc_datetime
+    field :source, :string
+    field :rule_fired, :string
+    field :stack_ids, {:array, :string}, default: []
+    field :stack_side, :string
+    field :stack_together, :integer
+    field :end_roster, {:array, :map}, default: []
+    field :winner_ids, {:array, :string}, default: []
+    field :kills_ratio, :integer
+    field :points_ratio, :integer
     field :status, :string
     field :players, :integer, default: 0
     field :allies_rating, :integer

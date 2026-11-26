@@ -163,6 +163,45 @@ defmodule HllConditionalActions.Engine.RunnerTest do
     end
   end
 
+  describe "the team balance" do
+    setup do
+      Application.put_env(:hll_conditional_actions, :balance_warmup_delay_ms, 0)
+
+      on_exit(fn ->
+        Application.delete_env(:hll_conditional_actions, :balance_warmup_delay_ms)
+      end)
+    end
+
+    test "decides in the preparation that MATCH START opens", %{server: server} do
+      pid = start_runner(server)
+
+      start =
+        Events.from_log(
+          log_line(%{"action" => "MATCH START", "message" => "MATCH START FOY"}),
+          server
+        )
+
+      # No rule listens to MATCH START: only the balance reads the teams.
+      send(pid, {:crcon_event, start})
+      assert_receive {:players_fetched, _}, 2_000
+    end
+
+    test "reads nothing at MATCH START when the module is not installed" do
+      server = server_fixture(%{features: [:rules]})
+      pid = start_runner(server)
+
+      start =
+        Events.from_log(
+          log_line(%{"action" => "MATCH START", "message" => "MATCH START FOY"}),
+          server
+        )
+
+      send(pid, {:crcon_event, start})
+      _ = :sys.get_state(pid)
+      refute_receive {:players_fetched, _}, 300
+    end
+  end
+
   test "the runner reports how many rules it holds", %{server: server} do
     _rule = rule_fixture()
     start_runner(server)

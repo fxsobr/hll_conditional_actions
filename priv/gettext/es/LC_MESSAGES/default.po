@@ -671,6 +671,7 @@ msgid "Manage users"
 msgstr "Administrar usuarios"
 
 #: lib/hll_conditional_actions_web/labels.ex:118
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:699
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:137
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:305
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:306
@@ -884,7 +885,7 @@ msgstr "Otro jugador"
 msgid "Outcome"
 msgstr "Resultado"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:261
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:289
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1312
 #: lib/hll_conditional_actions_web/live/rule_live/show.ex:1055
 #: lib/hll_conditional_actions_web/live/vip_shop_live/tabs.ex:50
@@ -1161,8 +1162,8 @@ msgstr "Rol actualizado."
 msgid "Roles"
 msgstr "Roles"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:651
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:747
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:951
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1047
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:413
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:519
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:1118
@@ -1227,7 +1228,7 @@ msgstr "Reglas"
 
 #: lib/hll_conditional_actions_web/components/ticket_components.ex:1415
 #: lib/hll_conditional_actions_web/live/account_live/show.ex:473
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:468
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:559
 #: lib/hll_conditional_actions_web/live/discord_live/index.ex:877
 #: lib/hll_conditional_actions_web/live/rule_live/simulate.ex:547
 #: lib/hll_conditional_actions_web/live/user_live/index.ex:878
@@ -1277,7 +1278,7 @@ msgid "Send a Discord message"
 msgstr "Enviar un mensaje a Discord"
 
 #: lib/hll_conditional_actions/tickets/announcement.ex:72
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:386
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:423
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:423
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:520
 #: lib/hll_conditional_actions_web/live/feed_live.ex:274
@@ -2055,7 +2056,7 @@ msgstr "Acción"
 #: lib/hll_conditional_actions_web/labels.ex:500
 #: lib/hll_conditional_actions_web/live/achievement_live.ex:289
 #: lib/hll_conditional_actions_web/live/attention_live.ex:182
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:354
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:391
 #: lib/hll_conditional_actions_web/live/dashboard_live.ex:718
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:414
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:424
@@ -2321,7 +2322,7 @@ msgstr "Secciones"
 #: lib/hll_conditional_actions_web/components/layouts.ex:1205
 #: lib/hll_conditional_actions_web/components/notifications_panel.ex:284
 #: lib/hll_conditional_actions_web/live/account_live/show.ex:397
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:382
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:419
 #: lib/hll_conditional_actions_web/live/discord_live/index.ex:377
 #: lib/hll_conditional_actions_web/live/server_live/index.ex:402
 #: lib/hll_conditional_actions_web/live/settings_live.ex:53
@@ -3224,7 +3225,8 @@ msgstr "Abrir %{name}"
 msgid "Open your rules"
 msgstr "Abrir tus reglas"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:517
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:588
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:807
 #: lib/hll_conditional_actions_web/live/dashboard_live.ex:743
 #: lib/hll_conditional_actions_web/live/execution_live/index.ex:457
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:325
@@ -3239,6 +3241,8 @@ msgstr "Período"
 #: lib/hll_conditional_actions_web/components/command_palette.ex:693
 #: lib/hll_conditional_actions_web/components/layouts.ex:1203
 #: lib/hll_conditional_actions_web/components/live_components.ex:297
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:622
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:701
 #: lib/hll_conditional_actions_web/live/inbox_live.ex:670
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:143
 #: lib/hll_conditional_actions_web/live/player_live/index.ex:39
@@ -3613,12 +3617,12 @@ msgstr "%{server} no está transmitiendo eventos"
 msgid "All clear"
 msgstr "Todo en orden"
 
-#: lib/hll_conditional_actions/balance.ex:673
+#: lib/hll_conditional_actions/balance.ex:889
 #: lib/hll_conditional_actions_web/components/community_components.ex:342
 #: lib/hll_conditional_actions_web/components/live_components.ex:45
 #: lib/hll_conditional_actions_web/components/ticket_components.ex:1271
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:811
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:903
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1111
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1218
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:140
 #: lib/hll_conditional_actions_web/live/match_live/show.ex:136
 #: lib/hll_conditional_actions_web/live/match_live/show.ex:308
@@ -3636,12 +3640,12 @@ msgstr "Aliados"
 msgid "Attention"
 msgstr "Atención"
 
-#: lib/hll_conditional_actions/balance.ex:674
+#: lib/hll_conditional_actions/balance.ex:890
 #: lib/hll_conditional_actions_web/components/community_components.ex:343
 #: lib/hll_conditional_actions_web/components/live_components.ex:45
 #: lib/hll_conditional_actions_web/components/ticket_components.ex:1272
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:815
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:904
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1115
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1219
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:141
 #: lib/hll_conditional_actions_web/live/match_live/show.ex:137
 #: lib/hll_conditional_actions_web/live/match_live/show.ex:320
@@ -3724,8 +3728,10 @@ msgstr "Informe de la partida"
 
 #: lib/hll_conditional_actions_web/components/command_palette.ex:696
 #: lib/hll_conditional_actions_web/components/layouts.ex:1143
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:506
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:717
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:621
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:700
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:796
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1017
 #: lib/hll_conditional_actions_web/live/marketplace_live.ex:563
 #: lib/hll_conditional_actions_web/live/match_live/index.ex:488
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1331
@@ -4540,7 +4546,7 @@ msgid "Admin log"
 msgstr "Log de admin"
 
 #: lib/hll_conditional_actions_web/components/rating_components.ex:406
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:901
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1216
 #, elixir-autogen, elixir-format
 msgid "Balanced"
 msgstr "Equilibrado"
@@ -5516,6 +5522,7 @@ msgid "%{change} vs before"
 msgstr "%{change} respecto a antes"
 
 #: lib/hll_conditional_actions_web/components/live_components.ex:1200
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:755
 #: lib/hll_conditional_actions_web/live/server_live/show.ex:911
 #, elixir-autogen, elixir-format
 msgid "%{minutes} min"
@@ -6023,7 +6030,7 @@ msgstr "Tickets que abrió este jugador"
 msgid "Unassigned"
 msgstr "Sin asignar"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:257
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:284
 #: lib/hll_conditional_actions_web/live/ticket_live/index.ex:289
 #, elixir-autogen, elixir-format
 msgid "Views"
@@ -12912,7 +12919,7 @@ msgstr "Configurar el mío"
 msgid "Shortcuts"
 msgstr "Atajos"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:352
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:389
 #: lib/hll_conditional_actions_web/live/player_live/show.ex:1401
 #, elixir-autogen, elixir-format
 msgid "Show"
@@ -12970,7 +12977,7 @@ msgid "Simulating since"
 msgstr "Simulando desde"
 
 #: lib/hll_conditional_actions_web/components/layouts.ex:1071
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:261
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:290
 #: lib/hll_conditional_actions_web/live/rule_live/simulate.ex:496
 #, elixir-autogen, elixir-format
 msgid "Simulator"
@@ -18959,6 +18966,8 @@ msgstr "Últimas entregas · %{name}"
 msgid "Leave blank to keep it"
 msgstr "Deja en blanco para conservarlo"
 
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:625
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:705
 #: lib/hll_conditional_actions_web/live/season_live/form.ex:414
 #: lib/hll_conditional_actions_web/live/season_live/form.ex:419
 #, elixir-autogen, elixir-format
@@ -24000,7 +24009,8 @@ msgid_plural "🛑 %{count} errors in the app since the last report. Last one: `
 msgstr[0] "🛑 1 error en la app desde el último aviso. El último: `%{where}`."
 msgstr[1] "🛑 %{count} errores en la app desde el último aviso. El último: `%{where}`."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:297
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:334
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:675
 #, elixir-autogen, elixir-format
 msgid "%{count} match"
 msgid_plural "%{count} matches"
@@ -24014,37 +24024,32 @@ msgid_plural "%{count} matches measured this week"
 msgstr[0] "%{count} partida medida esta semana"
 msgstr[1] "%{count} partidas medidas esta semana"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:914
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1229
 #, elixir-autogen, elixir-format
 msgid "%{points} pts"
 msgstr "%{points} pts"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:306
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:343
 #, elixir-autogen, elixir-format
 msgid "%{points} with the plans"
 msgstr "%{points} con los planes"
 
-#: lib/hll_conditional_actions/balance.ex:652
+#: lib/hll_conditional_actions/balance.ex:868
 #, elixir-autogen, elixir-format
 msgid "%{squad} (%{count}) from %{team}: %{names}"
 msgstr "%{squad} (%{count}) de %{team}: %{names}"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:866
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1180
 #, elixir-autogen, elixir-format
 msgid "%{team} stronger by %{gap} points, %{count} players."
 msgstr "%{team} más fuertes por %{gap} puntos, %{count} jugadores."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:418
-#, elixir-autogen, elixir-format
-msgid "15 by default. The plan aims for half of it."
-msgstr "15 por defecto. El plan apunta a la mitad."
-
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:336
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:373
 #, elixir-autogen, elixir-format
 msgid "Average balance rating of each team. Players with few matches count closer to 1000. %{count} players rated so far."
 msgstr "Nota de balance media de cada equipo. Quien tiene pocas partidas cuenta más cerca de 1000. %{count} jugadores con nota hasta ahora."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:304
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:341
 #, elixir-autogen, elixir-format
 msgid "Average gap"
 msgstr "Diferencia media"
@@ -24054,68 +24059,68 @@ msgstr "Diferencia media"
 msgid "Balance"
 msgstr "Balance"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:93
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:97
 #, elixir-autogen, elixir-format
 msgid "Balance settings saved."
 msgstr "Ajustes del balance guardados."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:803
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1103
 #, elixir-autogen, elixir-format
 msgid "CRCON did not answer."
 msgstr "CRCON no respondió."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:449
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:540
 #, elixir-autogen, elixir-format
 msgid "Do not post"
 msgstr "No publicar"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:365
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:402
 #, elixir-autogen, elixir-format
 msgid "Each match is measured when it ends, on the servers with the module."
 msgstr "Cada partida se mide cuando termina, en los servidores con el módulo."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:820
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1120
 #, elixir-autogen, elixir-format
 msgid "Gap of %{points} points"
 msgstr "Diferencia de %{points} puntos"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:443
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:534
 #, elixir-autogen, elixir-format
 msgid "Groups are never split."
 msgstr "Los grupos nunca se separan."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:250
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:277
 #, elixir-autogen, elixir-format
 msgid "Install it from a server's Modules page."
 msgstr "Instálalo desde la página de Módulos de un servidor."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:461
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:552
 #, elixir-autogen, elixir-format
 msgid "Learn from the history again"
 msgstr "Aprender del historial de nuevo"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:143
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:152
 #, elixir-autogen, elixir-format
 msgid "Learned from %{count} matches."
 msgstr "Aprendido de %{count} partidas."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:113
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:117
 #, elixir-autogen, elixir-format
 msgid "Learning from the match history in the background. It takes a few minutes; this page updates when it is done."
 msgstr "Aprendiendo del historial de partidas en segundo plano. Tarda unos minutos; esta página se actualiza cuando termine."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:348
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:385
 #, elixir-autogen, elixir-format
 msgid "Match by match"
 msgstr "Partida a partida"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:442
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:600
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:533
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:900
 #, elixir-autogen, elixir-format
 msgid "Matches in one squad to count as a group"
 msgstr "Partidas en el mismo escuadrón para ser grupo"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:289
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:326
 #, elixir-autogen, elixir-format
 msgid "Matches measured"
 msgstr "Partidas medidas"
@@ -24125,44 +24130,44 @@ msgstr "Partidas medidas"
 msgid "Measures how uneven each match was and which squads would change team to fix the next one. Simulation only."
 msgstr "Mide cuán desigual fue cada partida y qué escuadrones cambiarían de equipo para corregir la siguiente. Solo simulación."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:434
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:590
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:525
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:890
 #, elixir-autogen, elixir-format
 msgid "Most extra players on one team"
 msgstr "Máximo de jugadores de más en un equipo"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:426
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:540
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:517
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:830
 #, elixir-autogen, elixir-format
 msgid "Most players moved per match"
 msgstr "Máximo de jugadores movidos por partida"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:889
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1203
 #, elixir-autogen, elixir-format
 msgid "No group could be moved within the limits."
 msgstr "Ningún grupo pudo moverse dentro de los límites."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:363
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:400
 #, elixir-autogen, elixir-format
 msgid "No match measured yet"
 msgstr "Ninguna partida medida aún"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:249
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:276
 #, elixir-autogen, elixir-format
 msgid "No server runs the team balance"
 msgstr "Ningún servidor usa el balance de equipos"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:906
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1221
 #, elixir-autogen, elixir-format
 msgid "No squad"
 msgstr "Sin escuadrón"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:805
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1105
 #, elixir-autogen, elixir-format
 msgid "Nobody is playing."
 msgstr "Nadie está jugando."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:451
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:542
 #, elixir-autogen, elixir-format
 msgid "Post each unbalanced match on Discord"
 msgstr "Publicar en Discord cada partida desequilibrada"
@@ -24172,27 +24177,27 @@ msgstr "Publicar en Discord cada partida desequilibrada"
 msgid "Rates every player and, at the end of each match, works out which squads would change team to even the next one, never splitting players who play together. In simulation: nobody is moved."
 msgstr "Da una nota a cada jugador y, al final de cada partida, calcula qué escuadrones cambiarían de equipo para equilibrar la siguiente, sin separar nunca a quienes juegan juntos. En simulación: nadie se mueve."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:463
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:554
 #, elixir-autogen, elixir-format
 msgid "Ratings and groups are worked out again from the latest 500 matches of each server. Continue?"
 msgstr "Las notas y los grupos se recalculan desde las últimas 500 partidas de cada servidor. ¿Continuar?"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:325
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:362
 #, elixir-autogen, elixir-format
 msgid "Refresh"
 msgstr "Actualizar"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:318
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:355
 #, elixir-autogen, elixir-format
 msgid "Right now"
 msgstr "Ahora"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:244
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:271
 #, elixir-autogen, elixir-format
 msgid "Simulation: the plans are worked out, nobody is moved"
 msgstr "Simulación: se calculan los planes, nadie se mueve"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:309
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:346
 #, elixir-autogen, elixir-format
 msgid "Stronger team won again"
 msgstr "El equipo fuerte volvió a ganar"
@@ -24203,277 +24208,473 @@ msgstr "El equipo fuerte volvió a ganar"
 msgid "Team balance"
 msgstr "Balance de equipos"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:856
-#, elixir-autogen, elixir-format
-msgid "The stronger team, together again on the next map"
-msgstr "El equipo más fuerte, junto otra vez en el mapa siguiente"
-
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:294
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:354
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:331
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:391
 #, elixir-autogen, elixir-format
 msgid "Unbalanced"
 msgstr "Desequilibradas"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:417
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:530
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:466
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:820
 #, elixir-autogen, elixir-format
 msgid "Unbalanced from (points of gap)"
 msgstr "Desequilibrio desde (puntos de diferencia)"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:872
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1186
 #, elixir-autogen, elixir-format
 msgid "With the plan: %{gap} points."
 msgstr "Con el plan: %{gap} puntos."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:899
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1213
 #, elixir-autogen, elixir-format
 msgid "Would move %{count}"
 msgid_plural "Would move %{count}"
 msgstr[0] "Movería %{count}"
 msgstr[1] "Movería %{count}"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:881
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1195
 #, elixir-autogen, elixir-format
 msgid "from %{team} to the other team"
 msgstr "de %{team} al otro equipo"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:291
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:328
 #, elixir-autogen, elixir-format
 msgid "last 7 days"
 msgstr "últimos 7 días"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:860
-#, elixir-autogen, elixir-format
-msgid "lost the next one"
-msgstr "perdió la siguiente"
-
-#: lib/hll_conditional_actions/balance.ex:653
+#: lib/hll_conditional_actions/balance.ex:869
 #, elixir-autogen, elixir-format
 msgid "no squad"
 msgstr "sin escuadrón"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:311
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:348
 #, elixir-autogen, elixir-format
 msgid "on the next map, together again"
 msgstr "en el mapa siguiente, juntos otra vez"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:859
-#, elixir-autogen, elixir-format
-msgid "won again"
-msgstr "volvió a ganar"
-
-#: lib/hll_conditional_actions/balance.ex:660
+#: lib/hll_conditional_actions/balance.ex:876
 #, elixir-autogen, elixir-format
 msgid "⚖️ **%{server}** · %{map}: %{strong} stronger by %{gap} points. Simulation: moving %{count} players to the other team would leave %{after} points."
 msgstr "⚖️ **%{server}** · %{map}: %{strong} más fuertes por %{gap} puntos. Simulación: mover %{count} jugadores al otro equipo dejaría %{after} puntos."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:638
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:938
 #, elixir-autogen, elixir-format
 msgid "%{count} match, %{fast} of them over in 30 minutes or less."
 msgid_plural "%{count} matches, %{fast} of them over in 30 minutes or less."
 msgstr[0] "%{count} partida, %{fast} de ellas terminadas en 30 minutos o menos."
 msgstr[1] "%{count} partidas, %{fast} de ellas terminadas en 30 minutos o menos."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:762
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1062
 #, elixir-autogen, elixir-format
 msgid "%{count} time"
 msgid_plural "%{count} times"
 msgstr[0] "%{count} vez"
 msgstr[1] "%{count} veces"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:783
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1083
 #, elixir-autogen, elixir-format
 msgid "%{from}+ pts"
 msgstr "%{from}+ pts"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:784
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1084
 #, elixir-autogen, elixir-format
 msgid "%{from}-%{to} pts"
 msgstr "%{from} a %{to} pts"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:753
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1053
 #, elixir-autogen, elixir-format
 msgid "%{moved} moves of %{players} different players. The ones it would move most:"
 msgstr "%{moved} cambios de %{players} jugadores distintos. Los que movería más veces:"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:560
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:483
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:850
 #, elixir-autogen, elixir-format
 msgid "... or winner's points (% of the loser's)"
 msgstr "... o puntos del ganador (% de los del perdedor)"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:652
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:952
 #, elixir-autogen, elixir-format
 msgid "Acts on"
 msgstr "Actúa en"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:775
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1075
 #, elixir-autogen, elixir-format
 msgid "Both"
 msgstr "Ambas"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:660
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:960
 #, elixir-autogen, elixir-format
 msgid "Different players moved"
 msgstr "Jugadores distintos movidos"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:705
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1005
 #, elixir-autogen, elixir-format
 msgid "Does the rating predict?"
 msgstr "¿La nota predice?"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:550
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:475
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:840
 #, elixir-autogen, elixir-format
 msgid "Dominant previous match: winner's kills (% of the loser's)"
 msgstr "Partida anterior dominante: bajas del ganador (% de las del perdedor)"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:776
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1076
 #, elixir-autogen, elixir-format
 msgid "Either"
 msgstr "Cualquiera"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:580
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:499
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:870
 #, elixir-autogen, elixir-format
 msgid "Extra points for the previous winners"
 msgstr "Puntos extra para los ganadores anteriores"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:653
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:953
 #, elixir-autogen, elixir-format
 msgid "Fast matches caught"
 msgstr "Partidas rápidas alcanzadas"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:657
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:957
 #, elixir-autogen, elixir-format
 msgid "Favourite's chance before → after"
 msgstr "Probabilidad del favorito antes → después"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:708
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1008
 #, elixir-autogen, elixir-format
 msgid "For each band of gap: how often the stronger side won, and how often the match was over in 30 minutes."
 msgstr "Para cada franja de diferencia: cuántas veces ganó el lado más fuerte y cuántas veces la partida terminó en 30 minutos o menos."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:636
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:936
 #, elixir-autogen, elixir-format
 msgid "Four ways of deciding"
 msgstr "Cuatro formas de decidir"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:716
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1016
 #, elixir-autogen, elixir-format
 msgid "Gap"
 msgstr "Diferencia"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:655
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:955
 #, elixir-autogen, elixir-format
 msgid "Gap before → after"
 msgstr "Diferencia antes → después"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:617
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:917
 #, elixir-autogen, elixir-format
 msgid "History uses today's ratings, which already learned from these matches: the chances read higher than they will be. The live matches are honest, and grow every match."
 msgstr "El historial usa las notas de hoy, que ya aprendieron de esas partidas: las probabilidades salen más altas de lo que serán. Las partidas medidas en vivo son honestas y crecen con cada partida."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:508
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:798
 #, elixir-autogen, elixir-format
 msgid "History, today's ratings (optimistic)"
 msgstr "Historial, notas de hoy (optimista)"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:520
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:590
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:810
 #, elixir-autogen, elixir-format
 msgid "Last %{count} day"
 msgid_plural "Last %{count} days"
 msgstr[0] "Último %{count} día"
 msgstr[1] "Últimos %{count} días"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:627
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:927
 #, elixir-autogen, elixir-format
 msgid "Live matches start counting from the module's first measured match."
 msgstr "Las partidas en vivo empiezan a contar desde la primera partida medida por el módulo."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:509
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:799
 #, elixir-autogen, elixir-format
 msgid "Measured live, ratings of the time (honest)"
 msgstr "Medidas en vivo, notas de ese momento (honesto)"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:659
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:959
 #, elixir-autogen, elixir-format
 msgid "Moved per match"
 msgstr "Movidos por partida"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:626
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:926
 #, elixir-autogen, elixir-format
 msgid "No match in this period"
 msgstr "Ninguna partida en este período"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:719
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1019
 #, elixir-autogen, elixir-format
 msgid "Over in 30 min"
 msgstr "Terminó en 30 min o menos"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:774
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1074
 #, elixir-autogen, elixir-format
 msgid "Previous match"
 msgstr "Partida anterior"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:773
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1073
 #, elixir-autogen, elixir-format
 msgid "Rating gap"
 msgstr "Diferencia de nota"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:654
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:954
 #, elixir-autogen, elixir-format
 msgid "Repeated stomps caught"
 msgstr "Palizas repetidas alcanzadas"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:692
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:992
 #, elixir-autogen, elixir-format
 msgid "Repeated stomps: matches where the previous match's dominant winners, still together, won again. The favourite's chance is read from the table below."
 msgstr "Palizas repetidas: partidas en que los ganadores dominantes de la partida anterior, todavía juntos, volvieron a ganar. La probabilidad del favorito sale de la tabla de abajo."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:718
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1018
 #, elixir-autogen, elixir-format
 msgid "Stronger side won"
 msgstr "Ganó el lado más fuerte"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:489
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:779
 #, elixir-autogen, elixir-format
 msgid "The balance replayed over past Warfare matches with 60+ players, with the settings below, comparing four ways of deciding when to act. Nobody is moved."
 msgstr "El balance rehecho sobre partidas de Guerra pasadas con 60+ jugadores, con los ajustes de abajo, comparando cuatro formas de decidir cuándo actuar. Nadie se mueve."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:163
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:180
 #, elixir-autogen, elixir-format
 msgid "The simulation could not be run. Try a shorter period."
 msgstr "No se pudo ejecutar la simulación. Prueba un período más corto."
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:487
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:777
 #, elixir-autogen, elixir-format
 msgid "What if"
 msgstr "Y si"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:739
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1039
 #, elixir-autogen, elixir-format
 msgid "Who would pay for it"
 msgstr "Quién lo pagaría"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:570
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:491
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:860
 #, elixir-autogen, elixir-format
 msgid "Winners still together on one side (%)"
 msgstr "Ganadores todavía juntos en un lado (%)"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:779
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1079
 #, elixir-autogen, elixir-format
 msgid "a dominant group is together again"
 msgstr "un grupo dominante está junto otra vez"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:780
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1080
 #, elixir-autogen, elixir-format
 msgid "far apart and a dominant group"
 msgstr "equipos distantes y un grupo dominante"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:781
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1081
 #, elixir-autogen, elixir-format
 msgid "far apart or a dominant group"
 msgstr "equipos distantes o un grupo dominante"
 
-#: lib/hll_conditional_actions_web/live/balance_live/index.ex:778
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1078
 #, elixir-autogen, elixir-format
 msgid "the teams are far apart"
 msgstr "los equipos están distantes"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:610
+#, elixir-autogen, elixir-format
+msgid "%{count} Warfare and other matches, %{linked} followed by another."
+msgstr "%{count} partidas de Guerra y otros modos, %{linked} seguidas de otra."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:655
+#, elixir-autogen, elixir-format
+msgid "%{count} map holds under %{share}% of the matches each. Against the others:"
+msgid_plural "%{count} maps hold under %{share}% of the matches each. Against the others:"
+msgstr[0] "%{count} mapa tiene menos del %{share}% de las partidas. Contra los demás:"
+msgstr[1] "%{count} mapas tienen menos del %{share}% de las partidas cada uno. Contra los demás:"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1173
+#, elixir-autogen, elixir-format
+msgid "%{count} of the previous match's dominant winners are together again (%{together}% on one side)."
+msgstr "%{count} ganadores dominantes de la partida anterior están juntos otra vez (%{together}% en un lado)."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:682
+#, elixir-autogen, elixir-format
+msgid "%{delta} players in the next match"
+msgstr "%{delta} jugadores en la partida siguiente"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:467
+#, elixir-autogen, elixir-format
+msgid "35 by default. The plan aims for half of it."
+msgstr "35 por defecto. El plan apunta a la mitad."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:743
+#, elixir-autogen, elixir-format
+msgid "4-1 or 3-2"
+msgstr "4-1 o 3-2"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:741
+#, elixir-autogen, elixir-format
+msgid "5-0 in 30 minutes or less"
+msgstr "5-0 en 30 minutos o menos"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:742
+#, elixir-autogen, elixir-format
+msgid "5-0 in more than 30 minutes"
+msgstr "5-0 en más de 30 minutos"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:508
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:880
+#, elixir-autogen, elixir-format
+msgid "A moved player rests for (hours)"
+msgstr "Un jugador movido descansa por (horas)"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:759
+#, elixir-autogen, elixir-format
+msgid "Both: gap and dominant previous match"
+msgstr "Ambos: diferencia y partida anterior dominante"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1166
+#, elixir-autogen, elixir-format
+msgid "Decided in the preparation"
+msgstr "Decidido en la preparación"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:608
+#, elixir-autogen, elixir-format
+msgid "Do stomps cost players?"
+msgstr "¿Las palizas cuestan jugadores?"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:758
+#, elixir-autogen, elixir-format
+msgid "Dominant previous match (recommended)"
+msgstr "Partida anterior dominante (recomendado)"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:760
+#, elixir-autogen, elixir-format
+msgid "Either: gap or dominant previous match"
+msgstr "Cualquiera: diferencia o partida anterior dominante"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1215
+#, elixir-autogen, elixir-format
+msgid "End only"
+msgstr "Solo el final"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:578
+#, elixir-autogen, elixir-format
+msgid "For each match followed by another on the same server: how many of its players (ten minutes or more) were in the next one, and how many more or fewer players the next one had."
+msgstr "Para cada partida seguida de otra en el mismo servidor: cuántos de sus jugadores (diez minutos o más) estaban en la siguiente, y cuántos jugadores más o menos tuvo la siguiente."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:620
+#, elixir-autogen, elixir-format
+msgid "How it went"
+msgstr "Cómo fue"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:653
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:667
+#, elixir-autogen, elixir-format
+msgid "Less played maps"
+msgstr "Mapas menos jugados"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:693
+#, elixir-autogen, elixir-format
+msgid "Map by map"
+msgstr "Mapa por mapa"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:624
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:703
+#, elixir-autogen, elixir-format
+msgid "Next match's players"
+msgstr "Jugadores de la siguiente"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:509
+#, elixir-autogen, elixir-format
+msgid "Not moved again for so long, on any server."
+msgstr "No se mueve otra vez en ese tiempo, en ningún servidor."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:757
+#, elixir-autogen, elixir-format
+msgid "Rating gap only"
+msgstr "Solo la diferencia de nota"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:291
+#, elixir-autogen, elixir-format
+msgid "Report"
+msgstr "Retrato"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:500
+#, elixir-autogen, elixir-format
+msgid "So the plan breaks the group up, not only the averages."
+msgstr "Para que el plan separe al grupo, no solo iguale los promedios."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:623
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:702
+#, elixir-autogen, elixir-format
+msgid "Stayed for the next"
+msgstr "Se quedaron para la siguiente"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:704
+#, elixir-autogen, elixir-format
+msgid "Stomps"
+msgstr "Palizas"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:450
+#, elixir-autogen, elixir-format
+msgid "The decision is taken in the two minutes of preparation of each match, never after, from the analysis of the previous match. In simulation: it is recorded, nobody is moved."
+msgstr "La decisión se toma en los dos minutos de preparación de cada partida, nunca después, a partir del análisis de la partida anterior. En simulación: queda registrada, nadie se mueve."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:668
+#, elixir-autogen, elixir-format
+msgid "The other maps"
+msgstr "Los demás mapas"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1156
+#, elixir-autogen, elixir-format
+msgid "The previous match's dominant group, together again"
+msgstr "El grupo dominante de la partida anterior, junto otra vez"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:170
+#, elixir-autogen, elixir-format
+msgid "The report could not be built. Try a shorter period."
+msgstr "No se pudo armar el retrato. Prueba un período más corto."
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:576
+#, elixir-autogen, elixir-format
+msgid "What stomps and maps cost"
+msgstr "Lo que cuestan las palizas y los mapas"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:458
+#, elixir-autogen, elixir-format
+msgid "When a match gets a plan"
+msgstr "Cuándo una partida recibe un plan"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:764
+#, elixir-autogen, elixir-format
+msgid "by the gap and the previous match"
+msgstr "por la diferencia y la partida anterior"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:763
+#, elixir-autogen, elixir-format
+msgid "by the previous match"
+msgstr "por la partida anterior"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:762
+#, elixir-autogen, elixir-format
+msgid "by the rating gap"
+msgstr "por la diferencia de nota"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1160
+#, elixir-autogen, elixir-format
+msgid "group lost"
+msgstr "el grupo perdió"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1159
+#, elixir-autogen, elixir-format
+msgid "group won again"
+msgstr "el grupo ganó otra vez"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:717
+#, elixir-autogen, elixir-format
+msgid "less played"
+msgstr "menos jugado"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:680
+#, elixir-autogen, elixir-format
+msgid "stayed for the next match"
+msgstr "se quedaron para la partida siguiente"
+
+#: lib/hll_conditional_actions_web/live/balance_live/index.ex:1169
+#, elixir-autogen, elixir-format
+msgid "teams read from the previous match, swapped"
+msgstr "equipos leídos de la partida anterior, invertidos"

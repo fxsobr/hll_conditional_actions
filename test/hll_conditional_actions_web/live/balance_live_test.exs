@@ -40,7 +40,7 @@ defmodule HllConditionalActionsWeb.BalanceLiveTest do
       "x1" => %{"player_id" => "x1", "name" => "Xu", "team" => "axis", "unit_name" => "able"}
     }
 
-    plan = Balance.plan_match(server, players, %{"allied_score" => 5, "axis_score" => 0})
+    plan = Balance.close_match(server, players, %{"allied_score" => 5, "axis_score" => 0})
 
     {:ok, view, _html} = live(conn, ~p"/balance")
 
@@ -75,6 +75,32 @@ defmodule HllConditionalActionsWeb.BalanceLiveTest do
 
     render_async(view)
     assert has_element?(view, "#balance-simulator")
+  end
+
+  test "the report shows what stomps and maps cost", %{conn: conn} do
+    server_fixture(%{name: "EU #1"})
+
+    {:ok, view, _html} = live(conn, ~p"/balance?tab=report")
+    render_async(view)
+
+    assert has_element?(view, "#report-kinds")
+    assert has_element?(view, "#report-rare")
+    assert has_element?(view, "#report-maps")
+
+    view |> form("#report-form", days: "45") |> render_change()
+    render_async(view)
+    assert has_element?(view, "#report-maps")
+  end
+
+  test "the settings choose the rule and the rest of a moved player", %{conn: conn} do
+    server = server_fixture(%{name: "EU #1"})
+    {:ok, view, _html} = live(conn, ~p"/balance")
+
+    view
+    |> form("#balance-settings-form", settings: %{rule: "either", cooldown_hours: "6"})
+    |> render_submit()
+
+    assert %{rule: "either", cooldown_hours: 6} = Balance.get_settings(server.id)
   end
 
   test "the marketplace offers the module", %{conn: conn} do

@@ -12,9 +12,11 @@
 - [Why](#why)
 - [The balance rating](#the-balance-rating)
 - [Groups that move together](#groups-that-move-together)
-- [The plan at the end of a match](#the-plan-at-the-end-of-a-match)
+- [The decision in the preparation](#the-decision-in-the-preparation)
+- [Players who rest](#players-who-rest)
 - [The page](#the-page)
 - [The simulator](#the-simulator)
+- [The report](#the-report)
 - [Settings](#settings)
 - [First install](#first-install)
 
@@ -60,24 +62,47 @@ Moving a squad has a cost the game imposes: a switched player lands with no
 squad (RCON cannot put anybody in one), and the leader has to make it again.
 That is why the plan prefers small groups and players with no squad.
 
-## The plan at the end of a match
+## The decision in the preparation
 
-When a match ends, the module takes the two teams, their average ratings and
-the gap between them.
+Teams can only be switched in the **two minutes of preparation** of a
+match, never after. So the decision is taken then (45 seconds after the
+match starts), from what is known: **the previous match** and the teams as
+they stand.
 
-- Under the **trigger** (15 points by default) the match is *balanced*.
-- Above it, a plan moves or swaps groups — the one that closes the gap most
-  first — until the gap is under half the trigger, within the **most players
-  moved** and with the head counts at most **2** apart.
+When a match ends, the module records its result, each team's kills and
+points, and who won. In the next preparation it decides whether the match
+gets a plan, by one of four **rules**:
 
-Since the game swaps the factions on the next map, a plan says "from the
-Allies **to the other team**", not to a faction.
+| Rule | A plan when |
+| --- | --- |
+| **Dominant previous match** (default) | The previous match had a dominant winner — at least **150%** of the loser's kills or **130%** of its points — and at least **85%** of those winners are on one side again |
+| **Rating gap** | The teams' average ratings are at least *Unbalanced from* (**35** points) apart |
+| **Both** | Both of the above |
+| **Either** | Either of the above |
 
-When the next match ends, the plan is marked with whether the stronger team,
-together again, **won again** — what the balance is meant to stop.
+The previous match is the most reliable sign: on the real history, the
+dominant group, together again, won the next match 83–88% of the time,
+while a rating gap at the start of the warmup says much less.
 
-Replayed on 799 real matches, plans like these brought 85–91% of them under
-10 points, moving a median of 4–5 players.
+A plan then moves or swaps groups — the one that closes the gap most
+first — until the gap is under half the trigger, within the **most players
+moved** and with the head counts at most **2** apart. The previous winners
+count **30 points** stronger while planning, so the plan breaks the group up
+rather than only evening the averages.
+
+If CRCON does not show the teams yet in the preparation, the previous
+match's teams stand in, swapped (the game swaps the factions on the next
+map); the plan says so.
+
+When the match ends, the plan is marked with whether the group **won
+again** — what the balance is meant to stop.
+
+## Players who rest
+
+A player a plan moved is not moved again for **3 hours** (configurable,
+0 to turn it off), on any server. Without it, the simulator showed a few
+strong players paying for most plans — one would have been moved 26 times
+in two weeks.
 
 ## The page
 
@@ -87,7 +112,7 @@ Replayed on 799 real matches, plans like these brought 85–91% of them under
 | --- | --- |
 | **Numbers** | Matches measured in the last 7 days, how many were unbalanced, the average gap and with the plans, and how often the stronger team won again |
 | **Right now** | Each server's teams with their average rating and the gap, read from CRCON |
-| **Match by match** | Every match: map, result, both teams' ratings, *Balanced* or *Would move N*; open one for the groups and players |
+| **Match by match** | Every match: map, result, both teams' ratings, *Balanced* or *Would move N*, the rule that fired and whether the group won again; open one for the groups and players |
 | **Settings** | Per server — see below |
 
 Viewing it takes `view_progression`; changing the settings,
@@ -116,6 +141,8 @@ it moves. *Who would pay for it* lists the players a rule would move most.
 stronger side won and how often the match was over in 30 minutes — the
 table the chances are read from.
 
+It takes the same settings as the real decision, the rest time included.
+
 Two sources of matches:
 
 - **History** — CRCON's matches with today's ratings. Months of data, but
@@ -128,11 +155,31 @@ Two sources of matches:
 as that much stronger when planning, so the plan breaks the group up rather
 than only evening the averages.
 
+## The report
+
+**Community → Balance → Report** shows what stomps and maps cost the
+server, over the last 14, 30 or 45 days. For each match followed by another
+on the same server (starting within 10 minutes), it counts how many of its
+players (10 minutes or more) were in the next one, and how many more or
+fewer players the next one had.
+
+- **Do stomps cost players?** — fast 5-0s (30 minutes or less), slow 5-0s
+  and close matches (4-1, 3-2), side by side
+- **Less played maps** — maps with under 3% of the matches each, against
+  all the others
+- **Map by map** — every map and mode: matches, players, who stayed, the
+  next match's players, how many were stomps and the length
+
 ## Settings
 
 | Setting | Default | |
 | --- | --- | --- |
-| **Unbalanced from** | 15 points | The gap from which a match gets a plan; the plan aims for half |
+| **When a match gets a plan** | Dominant previous match | See [the rules](#the-decision-in-the-preparation) |
+| **Unbalanced from** | 35 points | The gap from which a match gets a plan; the plan aims for half |
+| **Winner's kills / points** | 150% / 130% of the loser's | What makes a previous match dominant |
+| **Winners still together** | 85% | On one side, for the rule to fire |
+| **Extra points for the previous winners** | 30 | |
+| **A moved player rests for** | 3 hours | |
 | **Most players moved per match** | 12 | |
 | **Most extra players on one team** | 2 | |
 | **Matches in one squad to count as a group** | 3 | |

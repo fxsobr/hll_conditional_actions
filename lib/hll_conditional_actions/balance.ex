@@ -353,36 +353,332 @@ defmodule HllConditionalActions.Balance do
 
   # ── Planning ───────────────────────────────────────────────────────────────
 
-  # CRCON can write MATCH ENDED twice; a second plan within this window is
-  # the same match.
+  # CRCON can write MATCH START or MATCH ENDED twice; a second one within
+  # this window is the same match.
   @same_match_minutes 10
+  # The previous match ended at most this long before the warmup.
+  @previous_window_minutes 20
+  # A warmup decision whose match never reported its end is left open no
+  # longer than this.
+  @open_hours 3
+  # Fewer of the previous winners than this in the warmup is not a group.
+  @min_stack 10
 
   @doc """
-  Plans the balance of a match that just ended, from the players CRCON
-  reports (`get_detailed_players` shape) and the final game state, and keeps
-  the plan. Also closes the previous plan of the server with this match's
-  result. Returns the plan, or nil when there was nothing to plan.
+  The decision, taken in the two minutes of preparation of a match - the
+  only time the balance may act. Reads the teams CRCON reports now (or,
+  while it reports none, the previous match's sides swapped), finds the
+  previous match's dominant group together again, applies the server's rule
+  and, when it fires, works out the groups to move. Nobody is moved: the
+  decision is kept and posted. Returns it, or nil when there was nothing to
+  decide.
   """
-  @spec plan_match(Server.t(), map(), map() | nil, keyword()) :: Plan.t() | nil
-  def plan_match(%Server{} = server, players, gamestate, opts \\ []) do
+  @spec decide_warmup(Server.t(), map(), map() | nil, keyword()) :: Plan.t() | nil
+  def decide_warmup(%Server{} = server, players, gamestate, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now(:second))
     settings = get_settings(server.id)
+    previous = previous_match(server.id, now)
+    {roster, source} = warmup_roster(players, previous)
+
+    cond do
+      length(roster) < 2 -> nil
+      recent_decision?(server.id, now) -> nil
+      true -> insert_decision(server, settings, roster, source, previous, gamestate, now)
+    end
+  end
+
+  defp insert_decision(server, settings, roster, source, previous, gamestate, now) do
+    players = rated(server.game, roster)
+    stack = stack(previous, players, settings)
+    gap = Planner.gap(Planner.units(players, MapSet.new()))
+    fired = fired(settings.rule, abs(gap) >= settings.trigger_gap, stack != nil)
+    strong = if gap >= 0, do: :allies, else: :axis
+
+    plan =
+      %Plan{
+        server_id: server.id,
+        map: map_name(gamestate || %{}),
+        started_at: now,
+        source: source,
+        previous_id: previous && previous.id,
+        players: length(players),
+        allies_rating: rounded(side_average(players, :allies)),
+        axis_rating: rounded(side_average(players, :axis)),
+        gap: round(abs(gap)),
+        gap_after: round(abs(gap)),
+        strong_team: to_string(strong),
+        strong_ids: for(p <- players, p.team == strong, do: p.id),
+        stack_ids: if(stack, do: MapSet.to_list(stack.ids), else: []),
+        stack_side: stack && to_string(stack.side),
+        stack_together: stack && stack.together,
+        roster: Enum.map(players, &roster_entry/1),
+        teams: team_totals(players),
+        status: "balanced"
+      }
+      |> with_decision(fired, server, settings, players, stack, now)
+      |> Repo.insert!()
+
+    announce(server, settings, plan)
+    Phoenix.PubSub.broadcast(HllConditionalActions.PubSub, @topic, {:balance_planned, plan})
+    plan
+  end
+
+  defp with_decision(plan, nil, _server, _settings, _players, _stack, _now), do: plan
+
+  defp with_decision(plan, fired, _server, settings, players, stack, now) do
+    resting = resting_players(settings.cooldown_hours, now)
+
+    planned =
+      Enum.map(players, fn p ->
+        boost = if stack && MapSet.member?(stack.ids, p.id), do: settings.stack_bonus, else: 0
+
+        %{
+          p
+          | rating: p.rating + boost,
+            movable?: p.movable? and not MapSet.member?(resting, p.id)
+        }
+      end)
+
+    result =
+      Planner.plan(planned, partners(Enum.map(players, & &1.id), settings.partner_matches),
+        target_gap: max(div(settings.trigger_gap, 2), 5),
+        max_moves: settings.max_moves,
+        max_count_gap: settings.max_count_gap
+      )
+
+    moved = result.moves |> Enum.flat_map(& &1.players) |> MapSet.new(& &1.id)
+
+    after_players =
+      Enum.map(players, fn p ->
+        if MapSet.member?(moved, p.id), do: %{p | team: other(p.team)}, else: p
+      end)
+
+    %{
+      plan
+      | status: "simulated",
+        rule_fired: fired,
+        gap_after: round(abs(Planner.gap(Planner.units(after_players, MapSet.new())))),
+        moves: Enum.map(result.moves, &move_entry(&1, players))
+    }
+  end
+
+  # Which test made the decision, or nil when the rule did not fire.
+  defp fired("gap", gap?, _previous?), do: if(gap?, do: "gap")
+  defp fired("previous", _gap?, previous?), do: if(previous?, do: "previous")
+  defp fired("both", gap?, previous?), do: if(gap? and previous?, do: "both")
+
+  defp fired(_either, gap?, previous?) do
+    cond do
+      gap? and previous? -> "both"
+      gap? -> "gap"
+      previous? -> "previous"
+      true -> nil
+    end
+  end
+
+  # The teams of the warmup; while CRCON reports none - the preparation can
+  # come before it does - the sides the players of the previous match ended
+  # on, swapped, since the game swaps the factions on a new map.
+  defp warmup_roster(players, previous) do
+    roster = roster(players)
+
+    present =
+      for {_id, p} <- players || %{}, is_map(p), is_binary(p["player_id"]), do: p["player_id"]
+
+    if length(roster) * 2 >= max(length(present), 2) or is_nil(previous) do
+      {roster, "warmup"}
+    else
+      here = MapSet.new(present)
+      by_id = Map.new(players || %{}, fn {_id, p} -> {p["player_id"], p} end)
+
+      swapped =
+        for entry <- previous_roster(previous),
+            MapSet.member?(here, entry["id"]),
+            team = team(entry["team"]),
+            do: %{
+              id: entry["id"],
+              name: entry["name"],
+              team: other(team),
+              squad: squad(entry["squad"]),
+              movable?: not commander?(by_id[entry["id"]] || %{}),
+              role: entry["role"],
+              level: entry["level"],
+              kills: 0,
+              points: 0
+            }
+
+      {swapped, "previous"}
+    end
+  end
+
+  defp previous_roster(%Plan{end_roster: [_ | _] = roster}), do: roster
+  defp previous_roster(%Plan{roster: roster}), do: roster || []
+
+  # The match that ended just before this warmup, if it was seen.
+  defp previous_match(server_id, now) do
+    since = DateTime.add(now, -@previous_window_minutes, :minute)
+
+    Plan
+    |> where([p], p.server_id == ^server_id and p.ended_at > ^since and p.ended_at <= ^now)
+    |> order_by(desc: :ended_at)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  # The previous match's winners, when they were dominant and stand together
+  # on one side again.
+  defp stack(nil, _players, _settings), do: nil
+
+  defp stack(%Plan{} = previous, players, settings) do
+    with true <- dominant?(previous, settings),
+         [_ | _] = winners <- previous.winner_ids do
+      winners = MapSet.new(winners)
+      here = Enum.filter(players, &MapSet.member?(winners, &1.id))
+
+      {side, count} =
+        here |> Enum.frequencies_by(& &1.team) |> Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
+
+      if length(here) >= @min_stack and count * 100 >= settings.together * length(here) do
+        %{
+          side: side,
+          together: round(count * 100 / length(here)),
+          ids: MapSet.new(for p <- here, p.team == side, do: p.id)
+        }
+      end
+    else
+      _not_dominant -> nil
+    end
+  end
+
+  defp dominant?(%Plan{kills_ratio: kills, points_ratio: points}, settings) do
+    (is_integer(kills) and kills >= settings.kills_ratio) or
+      (is_integer(points) and points >= settings.points_ratio)
+  end
+
+  # Players a decision moved within the cooldown, on any server.
+  defp resting_players(0, _now), do: MapSet.new()
+
+  defp resting_players(hours, now) do
+    since = DateTime.add(now, -hours, :hour)
+
+    Plan
+    |> where([p], p.status == "simulated" and p.started_at > ^since)
+    |> select([p], p.moves)
+    |> Repo.all()
+    |> Enum.flat_map(fn moves -> Enum.flat_map(moves, &Map.get(&1, "players", [])) end)
+    |> MapSet.new(& &1["id"])
+  end
+
+  defp recent_decision?(server_id, now) do
+    since = DateTime.add(now, -@same_match_minutes, :minute)
+    Repo.exists?(from p in Plan, where: p.server_id == ^server_id and p.started_at > ^since)
+  end
+
+  @doc """
+  The end of a match: its result, the roster as it finished, the winners
+  and how much they out-did the loser - what the next warmup reads. Completes
+  the match's warmup decision, or keeps the end alone (`"measured"`) when
+  the warmup was missed. Returns the row, or nil when there was nothing to
+  keep.
+  """
+  @spec close_match(Server.t(), map(), map() | nil, keyword()) :: Plan.t() | nil
+  def close_match(%Server{} = server, players, gamestate, opts \\ []) do
+    now = Keyword.get(opts, :now, DateTime.utc_now(:second))
+    gamestate = gamestate || %{}
     roster = roster(players)
 
     cond do
-      length(roster) < 2 ->
-        nil
-
-      recent_plan?(server.id, now) ->
-        nil
-
-      true ->
-        close_previous(server.id, roster, gamestate, now)
-        plan = build_plan(server, settings, roster, gamestate, now)
-        announce(server, settings, plan)
-        Phoenix.PubSub.broadcast(HllConditionalActions.PubSub, @topic, {:balance_planned, plan})
-        plan
+      length(roster) < 2 -> nil
+      recent_end?(server.id, now) -> nil
+      true -> record_end(server, rated(server.game, roster), gamestate, now)
     end
+  end
+
+  defp record_end(server, players, gamestate, now) do
+    winner = Scoring.winner(gamestate)
+    winner = if winner in [:allies, :axis], do: winner
+    end_fields = end_fields(players, gamestate, winner, now)
+
+    plan =
+      case open_decision(server.id, now) do
+        %Plan{} = open ->
+          open
+          |> Ecto.Changeset.change(
+            Map.merge(end_fields, %{
+              map: open.map || end_fields.map,
+              strong_won_again: stack_won(open, winner)
+            })
+          )
+          |> Repo.update!()
+
+        nil ->
+          gap = Planner.gap(Planner.units(players, MapSet.new()))
+
+          %Plan{
+            server_id: server.id,
+            status: "measured",
+            players: length(players),
+            allies_rating: rounded(side_average(players, :allies)),
+            axis_rating: rounded(side_average(players, :axis)),
+            gap: round(abs(gap)),
+            gap_after: round(abs(gap)),
+            strong_team: if(gap >= 0, do: "allies", else: "axis"),
+            roster: Enum.map(players, &roster_entry/1)
+          }
+          |> struct(end_fields)
+          |> Repo.insert!()
+      end
+
+    Phoenix.PubSub.broadcast(HllConditionalActions.PubSub, @topic, {:balance_planned, plan})
+    plan
+  end
+
+  defp end_fields(players, gamestate, winner, now) do
+    ratio = fn key ->
+      if winner do
+        won =
+          players |> Enum.filter(&(&1.team == winner)) |> Enum.sum_by(&(Map.get(&1, key) || 0))
+
+        lost =
+          players
+          |> Enum.filter(&(&1.team == other(winner)))
+          |> Enum.sum_by(&(Map.get(&1, key) || 0))
+
+        round(won * 100 / max(lost, 1))
+      end
+    end
+
+    %{
+      map: map_name(gamestate),
+      ended_at: now,
+      allied_score: gamestate["allied_score"],
+      axis_score: gamestate["axis_score"],
+      end_roster: Enum.map(players, &roster_entry/1),
+      teams: team_totals(players),
+      winner_ids: if(winner, do: for(p <- players, p.team == winner, do: p.id), else: []),
+      kills_ratio: ratio.(:kills),
+      points_ratio: ratio.(:points)
+    }
+  end
+
+  defp stack_won(%Plan{stack_side: side}, winner) when is_binary(side) and not is_nil(winner),
+    do: side == to_string(winner)
+
+  defp stack_won(_plan, _winner), do: nil
+
+  defp open_decision(server_id, now) do
+    since = DateTime.add(now, -@open_hours, :hour)
+
+    Plan
+    |> where([p], p.server_id == ^server_id and p.started_at > ^since and is_nil(p.ended_at))
+    |> order_by(desc: :started_at)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  defp recent_end?(server_id, now) do
+    since = DateTime.add(now, -@same_match_minutes, :minute)
+    Repo.exists?(from p in Plan, where: p.server_id == ^server_id and p.ended_at > ^since)
   end
 
   defp roster(players) do
@@ -408,51 +704,10 @@ defmodule HllConditionalActions.Balance do
   defp int(value) when is_integer(value), do: value
   defp int(_other), do: 0
 
-  defp build_plan(server, settings, roster, gamestate, now) do
-    ids = Enum.map(roster, & &1.id)
-    players = rated(server.game, roster)
-
-    result =
-      Planner.plan(players, partners(ids, settings.partner_matches),
-        target_gap: max(div(settings.trigger_gap, 2), 5),
-        max_moves: settings.max_moves,
-        max_count_gap: settings.max_count_gap
-      )
-
-    unbalanced? = abs(result.gap) >= settings.trigger_gap
-    strong = if result.gap >= 0, do: :allies, else: :axis
-    gamestate = gamestate || %{}
-
-    %Plan{
-      server_id: server.id,
-      map: map_name(gamestate),
-      ended_at: now,
-      players: length(players),
-      allies_rating: rounded(result.allies),
-      axis_rating: rounded(result.axis),
-      gap: round(abs(result.gap)),
-      strong_team: to_string(strong),
-      allied_score: gamestate["allied_score"],
-      axis_score: gamestate["axis_score"],
-      strong_ids: for(p <- players, p.team == strong, do: p.id),
-      roster: Enum.map(players, &roster_entry/1),
-      teams: team_totals(players)
-    }
-    |> with_outcome(unbalanced?, result)
-    |> Repo.insert!()
+  defp side_average(players, team) do
+    ratings = for p <- players, p.team == team, do: p.rating
+    if ratings != [], do: Enum.sum(ratings) / length(ratings)
   end
-
-  defp with_outcome(plan, true = _unbalanced?, result) do
-    %{
-      plan
-      | status: "simulated",
-        gap_after: round(abs(result.gap_after)),
-        moves: Enum.map(result.moves, &move_entry/1)
-    }
-  end
-
-  defp with_outcome(plan, false, _result),
-    do: %{plan | status: "balanced", gap_after: plan.gap, moves: []}
 
   defp rounded(nil), do: nil
   defp rounded(value), do: round(value)
@@ -480,10 +735,7 @@ defmodule HllConditionalActions.Balance do
       {to_string(team),
        %{
          "players" => length(members),
-         "rating" =>
-           if(members != [],
-             do: round(Enum.sum_by(members, & &1.rating) / length(members))
-           ),
+         "rating" => rounded(side_average(players, team)),
          "kills" => Enum.sum_by(members, &(&1[:kills] || 0)),
          "points" => Enum.sum_by(members, &(&1[:points] || 0))
        }}
@@ -504,56 +756,19 @@ defmodule HllConditionalActions.Balance do
     end)
   end
 
-  # The team a unit leaves is where it stood before the plan flipped it.
-  defp move_entry(unit) do
+  # The team a unit leaves is where it stood before the plan flipped it;
+  # ratings are the players' own, without the group's extra points.
+  defp move_entry(unit, players) do
+    own = Map.new(players, &{&1.id, &1.rating})
+
     %{
       "from" => to_string(other(unit.team)),
       "squad" => unit.squad,
       "players" =>
         Enum.map(unit.players, fn p ->
-          %{"id" => p.id, "name" => p[:name], "rating" => round(p.rating)}
+          %{"id" => p.id, "name" => p[:name], "rating" => round(own[p.id] || p.rating)}
         end)
     }
-  end
-
-  defp recent_plan?(server_id, now) do
-    since = DateTime.add(now, -@same_match_minutes, :minute)
-
-    Repo.exists?(from p in Plan, where: p.server_id == ^server_id and p.ended_at > ^since)
-  end
-
-  # Did the stronger team of the last match, together again on whichever
-  # side the game put them, win this one too?
-  defp close_previous(server_id, roster, gamestate, now) do
-    since = DateTime.add(now, -3, :hour)
-
-    previous =
-      Plan
-      |> where([p], p.server_id == ^server_id and p.ended_at > ^since)
-      |> where([p], is_nil(p.next_allied_score))
-      |> order_by(desc: :ended_at)
-      |> limit(1)
-      |> Repo.one()
-
-    with %Plan{} <- previous,
-         winner when winner in [:allies, :axis] <- Scoring.winner(gamestate) do
-      team_of = Map.new(roster, &{&1.id, &1.team})
-
-      strong_side =
-        previous.strong_ids
-        |> Enum.map(&team_of[&1])
-        |> Enum.reject(&is_nil/1)
-        |> Enum.frequencies()
-        |> Enum.max_by(&elem(&1, 1), fn -> nil end)
-
-      previous
-      |> Ecto.Changeset.change(
-        next_allied_score: gamestate["allied_score"],
-        next_axis_score: gamestate["axis_score"],
-        strong_won_again: strong_side && elem(strong_side, 0) == winner
-      )
-      |> Repo.update()
-    end
   end
 
   # ── Reading ────────────────────────────────────────────────────────────────
@@ -564,7 +779,7 @@ defmodule HllConditionalActions.Balance do
     Plan
     |> where([p], p.server_id in ^server_ids)
     |> filter_status(Keyword.get(opts, :status))
-    |> order_by(desc: :ended_at, desc: :id)
+    |> order_by([p], desc: coalesce(p.started_at, p.ended_at), desc: p.id)
     |> limit(^Keyword.get(opts, :limit, 50))
     |> preload(:server)
     |> Repo.all()
@@ -584,7 +799,8 @@ defmodule HllConditionalActions.Balance do
 
     row =
       Plan
-      |> where([p], p.server_id in ^server_ids and p.ended_at > ^since)
+      |> where([p], p.server_id in ^server_ids)
+      |> where([p], coalesce(p.started_at, p.ended_at) > ^since)
       |> select([p], %{
         matches: count(p.id),
         unbalanced: filter(count(p.id), p.status == "simulated"),

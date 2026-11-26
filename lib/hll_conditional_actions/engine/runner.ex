@@ -137,6 +137,10 @@ defmodule HllConditionalActions.Engine.Runner do
     {:noreply, %{state | rules: active_rules(state.server, state.features)}}
   end
 
+  def handle_info(:balance_warmup, state) do
+    {:noreply, guarded(state, "balance warmup", &decide_balance/1)}
+  end
+
   def handle_info(:tick, state) do
     schedule_tick()
     {:noreply, guarded(state, "tick", &(&1 |> watch_vehicles() |> run_periodic_rules()))}
@@ -186,11 +190,14 @@ defmodule HllConditionalActions.Engine.Runner do
   # rules or not. It is read from a fresh snapshot, the match's final
   # numbers, and only once per match: CRCON can repeat the line.
   defp handle_event(%{type: :match_end} = event, state) do
-    state = state |> record_progression() |> plan_balance()
+    state = state |> record_progression() |> close_balance()
     run_match_rules(event, state)
   end
 
-  defp handle_event(%{type: :match_start} = event, state), do: run_match_rules(event, state)
+  defp handle_event(%{type: :match_start} = event, state) do
+    schedule_balance_decision(state)
+    run_match_rules(event, state)
+  end
 
   # A connect is worth nothing until the player exists in CRCON's view, so it
   # is deferred rather than evaluated against a snapshot that predates them.
@@ -269,24 +276,48 @@ defmodule HllConditionalActions.Engine.Runner do
       else: state
   end
 
-  # The team balance measures the match that just ended, from its final
-  # numbers (`HllConditionalActions.Balance`); in simulation it moves nobody.
-  defp plan_balance(state) do
+  # The team balance keeps how the match that just ended went, from its
+  # final numbers: what the next warmup's decision reads
+  # (`HllConditionalActions.Balance.close_match/3`).
+  defp close_balance(state) do
+    with_balance_snapshot(state, &HllConditionalActions.Balance.close_match/3)
+  end
+
+  # The balance may only act in the two minutes of preparation of a match.
+  # MATCH START opens them; the decision is taken a little later, once the
+  # players of the previous map have loaded in, and well inside the window.
+  defp schedule_balance_decision(state) do
+    if MapSet.member?(state.features, :balance) do
+      Process.send_after(self(), :balance_warmup, balance_warmup_delay_ms())
+    end
+  end
+
+  defp decide_balance(state) do
+    with_balance_snapshot(state, &HllConditionalActions.Balance.decide_warmup/3)
+  end
+
+  defp with_balance_snapshot(state, fun) do
     if MapSet.member?(state.features, :balance) do
       state = refresh_snapshot(state)
 
       if state.snapshot && not state.snapshot.stale? do
-        HllConditionalActions.Balance.plan_match(
-          state.server,
-          state.snapshot.players,
-          state.snapshot.gamestate
-        )
+        fun.(state.server, state.snapshot.players, state.snapshot.gamestate)
       end
 
       state
     else
       state
     end
+  end
+
+  @default_balance_warmup_delay_ms :timer.seconds(45)
+
+  defp balance_warmup_delay_ms do
+    Application.get_env(
+      :hll_conditional_actions,
+      :balance_warmup_delay_ms,
+      @default_balance_warmup_delay_ms
+    )
   end
 
   defp do_record_progression(state) do
