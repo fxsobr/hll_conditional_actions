@@ -10,6 +10,11 @@ defmodule HllConditionalActions.Balance.Plan do
   factions on the next map, a group moves "to the other team", not to a
   faction.
 
+  `roster` and `teams` keep what the balance saw, so a plan can be replayed
+  with other settings (`HllConditionalActions.Balance.Analysis`), and the
+  gap stays an honest prediction: it was measured before the ratings
+  learned from the match.
+
   `strong_ids` are the players of the stronger team; when the next match
   ends, `strong_won_again` says whether most of them, together again, won
   it - the stack the balance is meant to break up.
@@ -38,6 +43,11 @@ defmodule HllConditionalActions.Balance.Plan do
     field :next_allied_score, :integer
     field :next_axis_score, :integer
     field :strong_won_again, :boolean
+    # The players as the balance saw them: "id", "name", "team", "squad",
+    # "rating" (as counted), "matches", "role", "level", "kills", "points".
+    field :roster, {:array, :map}, default: []
+    # Per team ("allies", "axis"): "players", "rating", "kills", "points".
+    field :teams, :map, default: %{}
 
     timestamps(type: :utc_datetime, updated_at: false)
   end

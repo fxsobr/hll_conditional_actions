@@ -61,6 +61,22 @@ defmodule HllConditionalActionsWeb.BalanceLiveTest do
     assert error =~ "Team balance"
   end
 
+  test "the simulator compares the rules over the history", %{conn: conn} do
+    server_fixture(%{name: "EU #1"})
+
+    {:ok, view, _html} = live(conn, ~p"/balance?tab=simulator")
+    render_async(view)
+
+    assert has_element?(view, "#simulator-form")
+
+    view
+    |> form("#simulator-form", sim: %{trigger_gap: "50", source: "live"})
+    |> render_change()
+
+    render_async(view)
+    assert has_element?(view, "#balance-simulator")
+  end
+
   test "the marketplace offers the module", %{conn: conn} do
     server = server_fixture(%{features: []})
     {:ok, _view, html} = live(conn, ~p"/servers/#{server.id}/marketplace")

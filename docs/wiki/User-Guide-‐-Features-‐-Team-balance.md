@@ -14,6 +14,7 @@
 - [Groups that move together](#groups-that-move-together)
 - [The plan at the end of a match](#the-plan-at-the-end-of-a-match)
 - [The page](#the-page)
+- [The simulator](#the-simulator)
 - [Settings](#settings)
 - [First install](#first-install)
 
@@ -91,6 +92,41 @@ Replayed on 799 real matches, plans like these brought 85–91% of them under
 
 Viewing it takes `view_progression`; changing the settings,
 `manage_progression`.
+
+## The simulator
+
+**Community → Balance → Simulator** replays the balance over past matches
+with settings you pick, to choose them on evidence. It compares four ways of
+deciding when a match gets a plan:
+
+| Rule | Acts when |
+| --- | --- |
+| **Rating gap** | The teams' average ratings are at least *Unbalanced from* apart |
+| **Previous match** | The match before had a dominant winner — at least the set share of the loser's kills or points — and enough of those winners are on one side again |
+| **Both** | Both of the above |
+| **Either** | Either of the above |
+
+For each it shows how many matches it acts on, how many of the fast
+matches (over in 30 minutes) and of the **repeated stomps** (the previous
+match's dominant winners, together again, winning again) it catches, the
+gap and the stronger side's chance before and after, and how many players
+it moves. *Who would pay for it* lists the players a rule would move most.
+
+*Does the rating predict?* shows, for each band of gap, how often the
+stronger side won and how often the match was over in 30 minutes — the
+table the chances are read from.
+
+Two sources of matches:
+
+- **History** — CRCON's matches with today's ratings. Months of data, but
+  optimistic: the ratings already learned from those results.
+- **Measured live** — the plans the module recorded, with the ratings they
+  had then (every plan keeps the roster it saw since 0.5.0). Honest, and
+  growing with every match.
+
+*Extra points for the previous winners* counts the previous dominant group
+as that much stronger when planning, so the plan breaks the group up rather
+than only evening the averages.
 
 ## Settings
 
