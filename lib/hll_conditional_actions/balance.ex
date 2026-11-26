@@ -395,9 +395,18 @@ defmodule HllConditionalActions.Balance do
           name: player["name"],
           team: team,
           squad: squad(player["unit_name"]),
-          movable?: not commander?(player)
+          movable?: not commander?(player),
+          role: player["role"],
+          level: player["level"],
+          kills: int(player["kills"]),
+          points:
+            int(player["combat"]) + int(player["offense"]) + int(player["defense"]) +
+              int(player["support"])
         }
   end
+
+  defp int(value) when is_integer(value), do: value
+  defp int(_other), do: 0
 
   defp build_plan(server, settings, roster, gamestate, now) do
     ids = Enum.map(roster, & &1.id)
@@ -425,7 +434,9 @@ defmodule HllConditionalActions.Balance do
       strong_team: to_string(strong),
       allied_score: gamestate["allied_score"],
       axis_score: gamestate["axis_score"],
-      strong_ids: for(p <- players, p.team == strong, do: p.id)
+      strong_ids: for(p <- players, p.team == strong, do: p.id),
+      roster: Enum.map(players, &roster_entry/1),
+      teams: team_totals(players)
     }
     |> with_outcome(unbalanced?, result)
     |> Repo.insert!()
@@ -446,13 +457,50 @@ defmodule HllConditionalActions.Balance do
   defp rounded(nil), do: nil
   defp rounded(value), do: round(value)
 
+  defp roster_entry(player) do
+    %{
+      "id" => player.id,
+      "name" => player[:name],
+      "team" => to_string(player.team),
+      "squad" => player[:squad],
+      "rating" => round(player.rating),
+      "matches" => player[:matches] || 0,
+      "role" => player[:role],
+      "level" => player[:level],
+      "kills" => player[:kills] || 0,
+      "points" => player[:points] || 0,
+      "movable" => Map.get(player, :movable?, true)
+    }
+  end
+
+  defp team_totals(players) do
+    Map.new([:allies, :axis], fn team ->
+      members = Enum.filter(players, &(&1.team == team))
+
+      {to_string(team),
+       %{
+         "players" => length(members),
+         "rating" =>
+           if(members != [],
+             do: round(Enum.sum_by(members, & &1.rating) / length(members))
+           ),
+         "kills" => Enum.sum_by(members, &(&1[:kills] || 0)),
+         "points" => Enum.sum_by(members, &(&1[:points] || 0))
+       }}
+    end)
+  end
+
   # Each player with the rating the balance counts for them.
   defp rated(game, roster) do
     stored = ratings(game, Enum.map(roster, & &1.id))
 
     Enum.map(roster, fn player ->
       r = stored[player.id]
-      Map.put(player, :rating, effective_rating(r && r.rating, (r && r.matches) || 0))
+      matches = (r && r.matches) || 0
+
+      player
+      |> Map.put(:rating, effective_rating(r && r.rating, matches))
+      |> Map.put(:matches, matches)
     end)
   end
 

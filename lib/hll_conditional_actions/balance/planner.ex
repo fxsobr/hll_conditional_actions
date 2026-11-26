@@ -160,14 +160,20 @@ defmodule HllConditionalActions.Balance.Planner do
   end
 
   # The move or swap that leaves the smallest gap, among those that shrink
-  # it, fit the budget and keep the head counts close.
+  # it, fit the budget and keep the head counts close. Each candidate is
+  # judged from the teams' running totals, so a step costs one pass over the
+  # pairs of units, not a recount of both teams for every pair.
   defp best_step(units, spent, budget, count_gap, current) do
-    indexed = Enum.with_index(units)
-    candidates = for {u, i} <- indexed, u.movable? and not u.moved?, do: {u, i}
-    {_counts, count_now} = counts(units)
-    allowed_count = max(count_gap, count_now)
+    totals = totals(units)
+    allowed_count = max(count_gap, abs(totals.allies.n - totals.axis.n))
 
-    singles = for {u, i} <- candidates, spent + u.size <= budget, do: {[i], u.size}
+    candidates =
+      for {u, i} <- Enum.with_index(units), u.movable? and not u.moved?, do: {u, i}
+
+    singles =
+      for {u, i} <- candidates,
+          spent + u.size <= budget,
+          do: {[i], u.size, after_moving(totals, [u])}
 
     pairs =
       for {u, i} <- candidates,
@@ -175,26 +181,44 @@ defmodule HllConditionalActions.Balance.Planner do
           i < j,
           u.team != v.team,
           spent + u.size + v.size <= budget,
-          do: {[i, j], u.size + v.size}
+          do: {[i, j], u.size + v.size, after_moving(totals, [u, v])}
 
     (singles ++ pairs)
-    |> Enum.map(fn {indexes, cost} ->
-      flipped = flip(units, indexes)
-      {_counts, count_gap_after} = counts(flipped)
-      {abs(gap(flipped)), count_gap_after, indexes, cost}
-    end)
-    |> Enum.filter(fn {gap_after, count_gap_after, _indexes, _cost} ->
+    |> Enum.filter(fn {_indexes, _cost, {gap_after, count_gap_after}} ->
       count_gap_after <= allowed_count and gap_after < abs(current) - 0.5
     end)
     # Smallest gap first; at a tie, fewer players moved.
     |> Enum.min_by(
-      fn {gap_after, _count, _indexes, cost} -> {Float.round(gap_after, 1), cost} end,
+      fn {_indexes, cost, {gap_after, _count}} -> {Float.round(gap_after, 1), cost} end,
       fn -> nil end
     )
     |> case do
       nil -> nil
-      {_gap, _count, indexes, cost} -> {indexes, cost}
+      {indexes, cost, _after} -> {indexes, cost}
     end
+  end
+
+  defp totals(units) do
+    Enum.reduce(units, %{allies: %{n: 0, sum: 0}, axis: %{n: 0, sum: 0}}, fn u, acc ->
+      update_in(acc[u.team], &%{n: &1.n + u.size, sum: &1.sum + u.sum})
+    end)
+  end
+
+  # |gap| and head count gap once these units changed team.
+  defp after_moving(totals, moving) do
+    totals =
+      Enum.reduce(moving, totals, fn u, acc ->
+        acc
+        |> update_in([u.team], &%{n: &1.n - u.size, sum: &1.sum - u.sum})
+        |> update_in([other(u.team)], &%{n: &1.n + u.size, sum: &1.sum + u.sum})
+      end)
+
+    %{allies: a, axis: x} = totals
+
+    gap =
+      if a.n > 0 and x.n > 0, do: abs(a.sum / a.n - x.sum / x.n), else: 0.0
+
+    {gap, abs(a.n - x.n)}
   end
 
   defp flip(units, indexes) do
@@ -223,12 +247,6 @@ defmodule HllConditionalActions.Balance.Planner do
     members = Enum.filter(units, &(&1.team == team))
     size = Enum.sum_by(members, & &1.size)
     if size > 0, do: Enum.sum_by(members, & &1.sum) / size
-  end
-
-  defp counts(units) do
-    allies = units |> Enum.filter(&(&1.team == :allies)) |> Enum.sum_by(& &1.size)
-    axis = units |> Enum.filter(&(&1.team == :axis)) |> Enum.sum_by(& &1.size)
-    {{allies, axis}, abs(allies - axis)}
   end
 
   defp other(:allies), do: :axis
