@@ -121,13 +121,14 @@ Viewing it takes `view_progression`; changing the settings,
 ## The simulator
 
 **Community → Balance → Simulator** replays the balance over past matches
-with settings you pick, to choose them on evidence. It compares four ways of
+with settings you pick, to choose them on evidence. It compares five ways of
 deciding when a match gets a plan:
 
 | Rule | Acts when |
 | --- | --- |
 | **Rating gap** | The teams' average ratings are at least *Unbalanced from* apart |
 | **Previous match** | The match before had a dominant winner — at least the set share of the loser's kills or points — and enough of those winners are on one side again |
+| **Two in a row** | *Previous match*, and that dominant group had already won the match before it: two dominant wins in a row by the same players (the rule of Squad's TeamBalancer). Acts less often, on surer cases |
 | **Both** | Both of the above |
 | **Either** | Either of the above |
 
@@ -151,6 +152,29 @@ Two sources of matches:
   had then (every plan keeps the roster it saw since 0.5.0). Honest, and
   growing with every match.
 
+### Which measure predicts best?
+
+The average rating hides a team of a few stars and many beginners: it reads
+as even with a team of steady players. The simulator reads the same matches
+five ways:
+
+- **Average rating** — what the balance uses
+- **Average and the 15 best of each side** — half and half (Squad's
+  TeamBalancer)
+- **Players above 1000 count 50, 100 or 200% more** — a player rated 1300
+  counts 1450, 1600 or 1900 (Battlefield's AdKats weighs its stars far more
+  than linearly)
+
+For each: how often the stronger side won; among the quarter of matches it
+reads as most uneven, how often the stronger side won and how many were over
+in 30 minutes; how many of all the fast matches fall in that quarter; and the
+gap that flags as many matches as your trigger does on the average, since
+weighing the stars makes every gap bigger.
+
+*Players above 1000 count more (%)* replays the balance with that weight:
+the gaps, the trigger and the plans all use it, so the plans break the stars
+up. Only in the simulator; the real decision keeps the average.
+
 *Extra points for the previous winners* counts the previous dominant group
 as that much stronger when planning, so the plan breaks the group up rather
 than only evening the averages.
@@ -161,7 +185,15 @@ than only evening the averages.
 server, over the last 14, 30 or 45 days. For each match followed by another
 on the same server (starting within 10 minutes), it counts how many of its
 players (10 minutes or more) were in the next one, and how many more or
-fewer players the next one had.
+fewer players the next one had **at a time** (the playtime over the
+length, so a long match with players coming and going does not read fuller
+than it was).
+
+Both are also shown **against the same hour**: compared with the other
+matches of that server that ended at the same hour of the day. A stomp at
+the end of the night is followed by an emptier server whatever the stomp
+did; against the same hour, that part is taken out. Who stayed still leans
+on length: in a long match more players leave on their own.
 
 - **Do stomps cost players?** — fast 5-0s (30 minutes or less), slow 5-0s
   and close matches (4-1, 3-2), side by side
