@@ -12,14 +12,23 @@ defmodule HllConditionalActions.Balance.Analysis do
     * `:live` - the plans the module recorded at the end of each match, with
       the ratings they had then (`Plan.roster`). Honest, and growing.
 
-  Four rules decide whether a match B gets a plan:
+  Five rules decide whether a match B gets a plan:
 
     * `:gap` - the teams' average ratings are `trigger_gap` or more apart
     * `:previous` - the match before B on the server (A, ended at most ten
       minutes before B started) had a dominant winner - `kills_ratio`x the
       loser's kills or `points_ratio`x its points - and at least `together`%
       of those winners who play B are on one side
-    * `:both` and `:either` of those
+    * `:streak` - `:previous`, and A itself was won by the dominant group of
+      the match before it: two dominant wins in a row by the same players
+      (the rule Squad's TeamBalancer uses)
+    * `:both` and `:either` of `:gap` and `:previous`
+
+  With `strong_weight` above 0, every player above 1000 counts that much
+  more (`strength/2`): a team of a few stars and many beginners then reads
+  stronger than a team of steady players with the same average, and the
+  plans break the stars up. `prediction/2` compares how well each way of
+  measuring a team foresees the result.
 
   A triggered match is planned the way the module plans
   (`Balance.Planner`), with A's winners counted `stack_bonus` points
@@ -40,7 +49,9 @@ defmodule HllConditionalActions.Balance.Analysis do
   alias HllConditionalActions.Players.MatchStat
   alias HllConditionalActions.Repo
 
-  @rules [:gap, :previous, :both, :either]
+  @rules [:gap, :previous, :streak, :both, :either]
+  # Ways of measuring a team, compared by `prediction/2`.
+  @measures [{:mean, 0}, {:top, 15}, {:weight, 50}, {:weight, 100}, {:weight, 200}]
   @buckets [{0, 10}, {10, 20}, {20, 35}, {35, 50}, {50, 70}, {70, nil}]
   # Under ten minutes played, a player says little about a team.
   @min_seconds 600
@@ -60,7 +71,8 @@ defmodule HllConditionalActions.Balance.Analysis do
     "points_ratio" => 130,
     "together" => 85,
     "stack_bonus" => 30,
-    "cooldown_hours" => 3
+    "cooldown_hours" => 3,
+    "strong_weight" => 0
   }
 
   @doc "The rules compared, in display order."
@@ -95,7 +107,8 @@ defmodule HllConditionalActions.Balance.Analysis do
       "points_ratio" => int(params["points_ratio"], @defaults["points_ratio"], 100, 400),
       "together" => int(params["together"], @defaults["together"], 50, 100),
       "stack_bonus" => int(params["stack_bonus"], @defaults["stack_bonus"], 0, 200),
-      "cooldown_hours" => int(params["cooldown_hours"], @defaults["cooldown_hours"], 0, 48)
+      "cooldown_hours" => int(params["cooldown_hours"], @defaults["cooldown_hours"], 0, 48),
+      "strong_weight" => int(params["strong_weight"], @defaults["strong_weight"], 0, 300)
     }
   end
 
@@ -127,12 +140,14 @@ defmodule HllConditionalActions.Balance.Analysis do
   @spec replay([map()], MapSet.t(), map()) :: map()
   def replay(matches, partners, params) do
     params = normalize(params)
+    prediction = prediction(matches, params["trigger_gap"])
+    matches = weigh(matches, params["strong_weight"])
     calibration = calibration(matches)
 
     # In time order, so each rule's cooldown sees the moves it already made.
     {judged, _moved_at} =
       matches
-      |> link_previous()
+      |> link_previous(params)
       |> Enum.sort_by(&(&1.started_at || &1.ended_at), DateTime)
       |> Enum.map_reduce(Map.new(@rules, &{&1, %{}}), &judge(&1, &2, partners, params))
 
@@ -141,9 +156,93 @@ defmodule HllConditionalActions.Balance.Analysis do
       matches: length(matches),
       fast: Enum.count(matches, &fast?/1),
       calibration: calibration,
+      prediction: prediction,
       rules: Map.new(@rules, &{&1, summarize(judged, &1, calibration)})
     }
   end
+
+  # ── Measuring a team ───────────────────────────────────────────────────────
+
+  @doc """
+  A rating with the part above 1000 counted `weight`% more.
+
+      iex> alias HllConditionalActions.Balance.Analysis
+      iex> {Analysis.strength(1300, 100), Analysis.strength(900, 100), Analysis.strength(1300, 0)}
+      {1600.0, 900, 1300}
+  """
+  @spec strength(number(), number()) :: number()
+  def strength(rating, 0), do: rating
+  def strength(rating, weight) when rating > 1000, do: rating + (rating - 1000) * weight / 100
+  def strength(rating, _weight), do: rating
+
+  defp weigh(matches, 0), do: matches
+
+  defp weigh(matches, weight) do
+    Enum.map(matches, fn match ->
+      %{match | players: Enum.map(match.players, &%{&1 | rating: strength(&1.rating, weight)})}
+    end)
+  end
+
+  @doc """
+  How well each way of measuring the teams foresees the matches: the mean
+  rating, the mean blended half and half with the mean of each side's 15
+  best (Squad's TeamBalancer), and the mean with the players above 1000
+  weighed 50, 100 and 200% more (Battlefield's AdKats counts its stars far
+  more than linearly).
+
+  For each: how often the stronger side won; among the quarter of matches
+  it reads as most uneven, how often the stronger side won and how many
+  were over in 30 minutes; the share of all fast matches inside that
+  quarter; and the gap that flags as many matches as `trigger` points do
+  on the mean, since the scales differ.
+  """
+  @spec prediction([map()], number()) :: [map()]
+  def prediction(matches, trigger) do
+    flagged = Enum.count(matches, &(abs(gap(&1.players)) >= trigger))
+    fast_total = Enum.count(matches, &fast?/1)
+
+    for measure <- @measures, do: predict(measure, matches, flagged, fast_total)
+  end
+
+  defp predict({kind, value} = measure, matches, flagged, fast_total) do
+    scored =
+      matches
+      |> Enum.map(&{&1, measure_gap(measure, &1.players)})
+      |> Enum.sort_by(&abs(elem(&1, 1)), :desc)
+
+    quarter = Enum.take(scored, div(length(scored) + 3, 4))
+    fast_in_quarter = Enum.count(quarter, &fast?(elem(&1, 0)))
+
+    %{
+      kind: kind,
+      value: value,
+      favourite_won: share(decided(scored), &favourite_won?/1),
+      top_won: share(decided(quarter), &favourite_won?/1),
+      top_fast: if(quarter != [], do: fast_in_quarter / length(quarter)),
+      fast_caught: if(fast_total > 0, do: fast_in_quarter / fast_total),
+      trigger: if(flagged > 0, do: scored |> Enum.at(flagged - 1) |> elem(1) |> abs() |> round())
+    }
+  end
+
+  defp decided(scored), do: Enum.filter(scored, &(elem(&1, 0).winner != nil))
+
+  defp favourite_won?({match, gap}),
+    do: match.winner == if(gap >= 0, do: :allies, else: :axis)
+
+  defp measure_gap({:mean, _}, players), do: gap(players)
+
+  defp measure_gap({:top, n}, players) do
+    top = fn team ->
+      ratings = for p <- players, p.team == team, do: p.rating
+      best = ratings |> Enum.sort(:desc) |> Enum.take(n)
+      if best == [], do: 0, else: Enum.sum(best) / length(best)
+    end
+
+    (gap(players) + top.(:allies) - top.(:axis)) / 2
+  end
+
+  defp measure_gap({:weight, weight}, players),
+    do: gap(Enum.map(players, &%{&1 | rating: strength(&1.rating, weight)}))
 
   # ── Calibration ────────────────────────────────────────────────────────────
 
@@ -185,21 +284,38 @@ defmodule HllConditionalActions.Balance.Analysis do
 
   # ── Judging one match ──────────────────────────────────────────────────────
 
-  # Each match with the one that ended just before it on the same server.
-  defp link_previous(matches) do
+  # Each match with the one that ended just before it on the same server,
+  # the previous match's dominant group found in it (`stack`), and whether
+  # that group had already won the match before (`streak?`).
+  defp link_previous(matches, params) do
     matches
     |> Enum.group_by(& &1.server_id)
-    |> Enum.flat_map(fn {_server, list} -> link_server(list) end)
+    |> Enum.flat_map(fn {_server, list} -> link_server(list, params) end)
   end
 
-  defp link_server(list) do
-    list = Enum.sort_by(list, & &1.ended_at, DateTime)
-
-    [nil | list]
-    |> Enum.zip(list)
-    |> Enum.map(fn {previous, match} ->
-      Map.put(match, :previous, if(follows?(previous, match), do: previous))
+  defp link_server(list, params) do
+    list
+    |> Enum.sort_by(& &1.ended_at, DateTime)
+    |> Enum.map_reduce(nil, fn match, previous ->
+      match = Map.put(match, :previous, if(follows?(previous, match), do: previous))
+      match = Map.put(match, :stack, stack(match, params))
+      match = Map.put(match, :streak?, streak?(match))
+      # The chain stops one match back: the next one only needs this stack.
+      {match, Map.delete(match, :previous)}
     end)
+    |> elem(0)
+  end
+
+  # Two dominant wins in a row by the same players: the group dominant in
+  # A (found in B) is mostly the group that won A after dominating the match
+  # before it.
+  defp streak?(%{stack: nil}), do: false
+  defp streak?(%{previous: %{stack: nil}}), do: false
+
+  defp streak?(%{stack: stack, previous: previous}) do
+    previous.winner == previous.stack.side and
+      MapSet.size(MapSet.intersection(stack.ids, previous.stack.ids)) * 2 >=
+        MapSet.size(stack.ids)
   end
 
   defp follows?(nil, _match), do: false
@@ -213,13 +329,13 @@ defmodule HllConditionalActions.Balance.Analysis do
   # `moved_at` holds, per rule, when each player was last moved by it.
   defp judge(match, moved_at, partners, params) do
     gap = gap(match.players)
-    stack = stack(match, params)
+    stack = match.stack
     at = match.started_at || match.ended_at
     cooldown = params["cooldown_hours"] * 3600
 
     fired =
       Map.new(@rules, fn rule ->
-        {rule, fires?(rule, abs(gap) >= params["trigger_gap"], stack != nil)}
+        {rule, fires?(rule, abs(gap) >= params["trigger_gap"], stack != nil, match.streak?)}
       end)
 
     plans =
@@ -250,10 +366,11 @@ defmodule HllConditionalActions.Balance.Analysis do
      }, moved_at}
   end
 
-  defp fires?(:gap, gap?, _previous?), do: gap?
-  defp fires?(:previous, _gap?, previous?), do: previous?
-  defp fires?(:both, gap?, previous?), do: gap? and previous?
-  defp fires?(:either, gap?, previous?), do: gap? or previous?
+  defp fires?(:gap, gap?, _previous?, _streak?), do: gap?
+  defp fires?(:previous, _gap?, previous?, _streak?), do: previous?
+  defp fires?(:streak, _gap?, _previous?, streak?), do: streak?
+  defp fires?(:both, gap?, previous?, _streak?), do: gap? and previous?
+  defp fires?(:either, gap?, previous?, _streak?), do: gap? or previous?
 
   # A's winners, when A was dominant and they are together in B.
   defp stack(%{previous: nil}, _params), do: nil

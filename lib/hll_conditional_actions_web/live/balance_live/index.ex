@@ -576,7 +576,7 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
           <h2 class="font-display text-lg font-semibold">{gettext("What stomps and maps cost")}</h2>
           <p class="text-sm text-subtle">
             {gettext(
-              "For each match followed by another on the same server: how many of its players (ten minutes or more) were in the next one, and how many more or fewer players the next one had."
+              "For each match followed by another on the same server: how many of its players (ten minutes or more) were in the next one, and how many more or fewer players the next one had at a time. Against the same hour: compared with the other matches of the server that ended at that hour of the day, so the night filling up or emptying does not count as the stomp's doing."
             )}
           </p>
         </header>
@@ -619,9 +619,11 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
                 <tr>
                   <th class="py-2 pr-3 font-medium">{gettext("How it went")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Matches")}</th>
-                  <th class="py-2 pr-3 font-medium">{gettext("Players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Players at a time")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Stayed for the next")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("against the same hour")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Next match's players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("against the same hour")}</th>
                   <th class="py-2 font-medium">{gettext("Length")}</th>
                 </tr>
               </thead>
@@ -635,8 +637,12 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
                   <td class="py-2.5 pr-3">{kind.matches}</td>
                   <td class="py-2.5 pr-3">{num(kind.population)}</td>
                   <td class="py-2.5 pr-3">{pct(kind.retention)}</td>
-                  <td class={["py-2.5 pr-3", delta_class(kind.next_delta)]}>
-                    {signed(kind.next_delta)}
+                  <td class={["py-2.5 pr-3", delta_class(points_of(kind.retention_vs))]}>
+                    {pp(kind.retention_vs)}
+                  </td>
+                  <td class="py-2.5 pr-3">{signed(kind.next_delta)}</td>
+                  <td class={["py-2.5 pr-3", delta_class(kind.delta_vs)]}>
+                    {signed(kind.delta_vs)}
                   </td>
                   <td class="py-2.5">{minutes_label(kind.minutes)}</td>
                 </tr>
@@ -678,8 +684,14 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
                 {pct(stats.retention)}
               </span>
               <span class="text-xs text-subtle">{gettext("stayed for the next match")}</span>
-              <span class={["text-sm tabular-nums", delta_class(stats.next_delta)]}>
+              <span class="text-sm tabular-nums">
                 {gettext("%{delta} players in the next match", delta: signed(stats.next_delta))}
+              </span>
+              <span class={["text-sm tabular-nums", delta_class(stats.delta_vs)]}>
+                {gettext("%{delta} players against the same hour", delta: signed(stats.delta_vs))}
+              </span>
+              <span class="text-xs text-subtle">
+                {gettext("%{points} stayed against the same hour", points: pp(stats.retention_vs))}
               </span>
             </div>
           </div>
@@ -698,9 +710,10 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
                 <tr>
                   <th class="py-2 pr-3 font-medium">{gettext("Map")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Matches")}</th>
-                  <th class="py-2 pr-3 font-medium">{gettext("Players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Players at a time")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Stayed for the next")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Next match's players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("against the same hour")}</th>
                   <th class="py-2 pr-3 font-medium">{gettext("Stomps")}</th>
                   <th class="py-2 font-medium">{gettext("Length")}</th>
                 </tr>
@@ -723,8 +736,9 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
                   </td>
                   <td class="py-2 pr-3">{num(map.population)}</td>
                   <td class="py-2 pr-3">{pct(map.retention)}</td>
-                  <td class={["py-2 pr-3", delta_class(map.next_delta)]}>
-                    {signed(map.next_delta)}
+                  <td class="py-2 pr-3">{signed(map.next_delta)}</td>
+                  <td class={["py-2 pr-3", delta_class(map.delta_vs)]}>
+                    {signed(map.delta_vs)}
                   </td>
                   <td class="py-2 pr-3">{pct(map.stomps)}</td>
                   <td class="py-2">{minutes_label(map.minutes)}</td>
@@ -745,6 +759,12 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
   defp signed(nil), do: "–"
   defp signed(value) when value >= 0, do: "+#{round(value)}"
   defp signed(value), do: "#{round(value)}"
+
+  defp pp(nil), do: "–"
+  defp pp(value), do: gettext("%{value} pp", value: signed(value * 100))
+
+  defp points_of(nil), do: nil
+  defp points_of(value), do: value * 100
 
   defp delta_class(nil), do: nil
   defp delta_class(value) when value <= -5, do: "font-semibold text-error"
@@ -777,7 +797,7 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
           <h2 class="font-display text-lg font-semibold">{gettext("What if")}</h2>
           <p class="text-sm text-subtle">
             {gettext(
-              "The balance replayed over past Warfare matches with 60+ players, with the settings below, comparing four ways of deciding when to act. Nobody is moved."
+              "The balance replayed over past Warfare matches with 60+ players, with the settings below, comparing ways of deciding when to act. Nobody is moved."
             )}
           </p>
         </header>
@@ -882,6 +902,16 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
             no_margin
           />
           <.input
+            name="sim[strong_weight]"
+            type="number"
+            min="0"
+            max="300"
+            value={@params["strong_weight"]}
+            label={gettext("Players above 1000 count more (%)")}
+            phx-debounce="400"
+            no_margin
+          />
+          <.input
             name="sim[max_count_gap]"
             type="number"
             min="0"
@@ -933,7 +963,7 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
           class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 p-4 sm:p-5"
         >
           <header class="flex flex-col gap-1">
-            <h2 class="font-display text-lg font-semibold">{gettext("Four ways of deciding")}</h2>
+            <h2 class="font-display text-lg font-semibold">{gettext("Ways of deciding")}</h2>
             <p class="text-sm text-subtle">
               {ngettext(
                 "%{count} match, %{fast} of them over in 30 minutes or less.",
@@ -991,6 +1021,68 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
           <p class="text-xs text-muted">
             {gettext(
               "Repeated stomps: matches where the previous match's dominant winners, still together, won again. The favourite's chance is read from the table below."
+            )}
+          </p>
+        </section>
+
+        <section
+          :if={@sim.matches > 0}
+          id="simulator-prediction"
+          class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 p-4 sm:p-5"
+        >
+          <header class="flex flex-col gap-1">
+            <h2 class="font-display text-lg font-semibold">
+              {gettext("Which measure predicts best?")}
+            </h2>
+            <p class="text-sm text-subtle">
+              {gettext(
+                "The same matches read by different ways of measuring a team. The most uneven quarter is the 25% of matches each measure reads as furthest apart: the better measure finds more of the stomps and fast matches there."
+              )}
+            </p>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[48rem] text-sm tabular-nums">
+              <thead class="text-left text-xs text-muted">
+                <tr>
+                  <th class="py-2 pr-3 font-medium">{gettext("Measure")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Stronger side won")}</th>
+                  <th class="py-2 pr-3 font-medium">
+                    {gettext("Most uneven quarter: stronger side won")}
+                  </th>
+                  <th class="py-2 pr-3 font-medium">{gettext("... over in 30 min")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Fast matches in that quarter")}</th>
+                  <th class="py-2 font-medium">
+                    {gettext("Gap like %{points} on the average", points: @params["trigger_gap"])}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  :for={m <- @sim.prediction}
+                  id={"sim-measure-#{m.kind}-#{m.value}"}
+                  class="border-t border-base-300"
+                >
+                  <td class="py-2.5 pr-3">
+                    <span class="font-semibold">{measure_label(m)}</span>
+                    <span
+                      :if={measure_in_use?(m, @sim.params["strong_weight"])}
+                      class="ml-1 rounded-full bg-primary/15 px-2 py-0.5 text-[0.6875rem] text-primary"
+                    >
+                      {gettext("in use")}
+                    </span>
+                  </td>
+                  <td class="py-2.5 pr-3">{pct(m.favourite_won)}</td>
+                  <td class="py-2.5 pr-3">{pct(m.top_won)}</td>
+                  <td class="py-2.5 pr-3">{pct(m.top_fast)}</td>
+                  <td class="py-2.5 pr-3">{pct(m.fast_caught)}</td>
+                  <td class="py-2.5">{if m.trigger, do: points(m.trigger), else: "–"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-muted">
+            {gettext(
+              "With players above 1000 counting more, the gaps grow: the last column is the trigger that flags as many matches as yours does on the average."
             )}
           </p>
         </section>
@@ -1072,13 +1164,27 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
 
   defp rule_label(:gap), do: gettext("Rating gap")
   defp rule_label(:previous), do: gettext("Previous match")
+  defp rule_label(:streak), do: gettext("Two in a row")
   defp rule_label(:both), do: gettext("Both")
   defp rule_label(:either), do: gettext("Either")
 
   defp rule_hint(:gap), do: gettext("the teams are far apart")
   defp rule_hint(:previous), do: gettext("a dominant group is together again")
+  defp rule_hint(:streak), do: gettext("the same group won the last two, dominant")
   defp rule_hint(:both), do: gettext("far apart and a dominant group")
   defp rule_hint(:either), do: gettext("far apart or a dominant group")
+
+  defp measure_label(%{kind: :mean}), do: gettext("Average rating")
+
+  defp measure_label(%{kind: :top, value: n}),
+    do: gettext("Average and the %{count} best of each side", count: n)
+
+  defp measure_label(%{kind: :weight, value: w}),
+    do: gettext("Players above 1000 count %{weight}% more", weight: w)
+
+  defp measure_in_use?(%{kind: :mean}, 0), do: true
+  defp measure_in_use?(%{kind: :weight, value: w}, w), do: true
+  defp measure_in_use?(_measure, _weight), do: false
 
   defp band_label(%{from: from, to: nil}), do: gettext("%{from}+ pts", from: from)
   defp band_label(%{from: from, to: to}), do: gettext("%{from}-%{to} pts", from: from, to: to - 1)

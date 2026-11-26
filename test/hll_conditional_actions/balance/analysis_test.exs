@@ -93,6 +93,75 @@ defmodule HllConditionalActions.Balance.AnalysisTest do
     assert result.rules.both.fired == 0
   end
 
+  test "two dominant wins in a row by the same group make a streak" do
+    # The group is "allies-1".."allies-32": allies in match 1, axis in match
+    # 2 (the game swapped the factions), allies again in match 3.
+    swapped =
+      for i <- 1..32, into: %{} do
+        {{:axis, i}, "allies-#{i}"}
+      end
+      |> Map.merge(for i <- 1..32, into: %{}, do: {{:allies, i}, "axis-#{i}"})
+
+    matches = [
+      match("1", 0, 40, :allies, players(0, 0, kills: {20, 10})),
+      match("2", 45, 40, :axis, players(0, 0, ids: swapped, kills: {10, 20})),
+      match("3", 90, 40, :allies, players(0, 0))
+    ]
+
+    result = Analysis.replay(matches, MapSet.new(), %{})
+
+    # Matches 2 and 3 follow a dominant win; only 3 follows two in a row.
+    assert result.rules.previous.fired == 2
+    assert result.rules.streak.fired == 1
+    assert result.rules.streak.repeat_share == 0.5
+  end
+
+  # Allies: 4 stars at 1600, one in each of 4 squads, and 28 at 914, an
+  # average of about 1000. Axis:
+  # 32 steady players at 1001. The allies win.
+  defp stars do
+    allies =
+      for i <- 1..32 do
+        %{
+          id: "a#{i}",
+          name: "a#{i}",
+          team: :allies,
+          squad: "s#{div(i - 1, 4)}",
+          rating: if(i in [1, 5, 9, 13], do: 1600, else: 914),
+          kills: 10,
+          points: 100
+        }
+      end
+
+    axis =
+      for i <- 1..32 do
+        %{id: "x#{i}", name: "x#{i}", team: :axis, squad: "s#{div(i - 1, 4)}"}
+        |> Map.merge(%{rating: 1001, kills: 10, points: 100})
+      end
+
+    allies ++ axis
+  end
+
+  test "weighing the stars finds the team the average misses" do
+    matches = [match("1", 0, 25, :allies, stars())]
+
+    prediction = Analysis.prediction(matches, 35)
+    by = &Enum.find(prediction, fn m -> {m.kind, m.value} == &1 end)
+
+    assert by.({:mean, 0}).favourite_won == 0.0
+    assert by.({:top, 15}).favourite_won == 1.0
+    assert by.({:weight, 100}).favourite_won == 1.0
+    assert by.({:weight, 100}).fast_caught == 1.0
+
+    # On the average the match is even; with the stars weighed, a plan.
+    assert Analysis.replay(matches, MapSet.new(), %{}).rules.gap.fired == 0
+
+    weighed = Analysis.replay(matches, MapSet.new(), %{"strong_weight" => "100"}).rules.gap
+    assert weighed.fired == 1
+    assert weighed.moved > 0
+    assert weighed.gap_after < weighed.gap_before
+  end
+
   test "calibration counts how often the stronger side won" do
     matches = [
       match("1", 0, 25, :allies, players(16, 0)),
