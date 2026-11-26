@@ -166,7 +166,7 @@ defmodule HllConditionalActionsWeb.AuthLayout do
   defp alt(map, :dusk), do: gettext("%{map} at dusk", map: map)
   defp alt(map, :day), do: gettext("%{map} during the day", map: map)
 
-  # `mix.exs` says "0.6.0"; a Docker build stamps "v0.6.0-3-gabc123".
+  # `mix.exs` says "0.7.0"; a Docker build stamps "v0.7.0-3-gabc123".
   defp version do
     case Updates.current_version() do
       "v" <> _rest = version -> version
