@@ -59,7 +59,8 @@ defmodule HllConditionalActions.Balance.Analysis do
     "kills_ratio" => 150,
     "points_ratio" => 130,
     "together" => 85,
-    "stack_bonus" => 30
+    "stack_bonus" => 30,
+    "cooldown_hours" => 3
   }
 
   @doc "The rules compared, in display order."
@@ -93,7 +94,8 @@ defmodule HllConditionalActions.Balance.Analysis do
       "kills_ratio" => int(params["kills_ratio"], @defaults["kills_ratio"], 100, 400),
       "points_ratio" => int(params["points_ratio"], @defaults["points_ratio"], 100, 400),
       "together" => int(params["together"], @defaults["together"], 50, 100),
-      "stack_bonus" => int(params["stack_bonus"], @defaults["stack_bonus"], 0, 200)
+      "stack_bonus" => int(params["stack_bonus"], @defaults["stack_bonus"], 0, 200),
+      "cooldown_hours" => int(params["cooldown_hours"], @defaults["cooldown_hours"], 0, 48)
     }
   end
 
@@ -127,10 +129,12 @@ defmodule HllConditionalActions.Balance.Analysis do
     params = normalize(params)
     calibration = calibration(matches)
 
-    judged =
+    # In time order, so each rule's cooldown sees the moves it already made.
+    {judged, _moved_at} =
       matches
       |> link_previous()
-      |> Enum.map(&judge(&1, partners, params))
+      |> Enum.sort_by(&(&1.started_at || &1.ended_at), DateTime)
+      |> Enum.map_reduce(Map.new(@rules, &{&1, %{}}), &judge(&1, &2, partners, params))
 
     %{
       params: params,
@@ -206,27 +210,44 @@ defmodule HllConditionalActions.Balance.Analysis do
     seconds >= -60 and seconds <= @link_seconds + if(match.started_at, do: 0, else: 3 * 3600)
   end
 
-  defp judge(match, partners, params) do
+  # `moved_at` holds, per rule, when each player was last moved by it.
+  defp judge(match, moved_at, partners, params) do
     gap = gap(match.players)
     stack = stack(match, params)
+    at = match.started_at || match.ended_at
+    cooldown = params["cooldown_hours"] * 3600
 
     fired =
       Map.new(@rules, fn rule ->
         {rule, fires?(rule, abs(gap) >= params["trigger_gap"], stack != nil)}
       end)
 
-    plan =
-      if Enum.any?(Map.values(fired)),
-        do: plan(match, stack, partners, params)
+    plans =
+      for {rule, true} <- fired, into: %{} do
+        resting =
+          for {id, time} <- moved_at[rule],
+              DateTime.diff(at, time) < cooldown,
+              into: MapSet.new(),
+              do: id
 
-    %{
-      match: match,
-      gap: abs(gap),
-      stack: stack,
-      fired: fired,
-      plan: plan,
-      repeat?: stack != nil and stack_won?(match, stack)
-    }
+        {rule, plan(match, stack, resting, partners, params)}
+      end
+
+    moved_at =
+      Enum.reduce(plans, moved_at, fn {rule, plan}, acc ->
+        update_in(acc[rule], fn times ->
+          Enum.reduce(plan.moved, times, &Map.put(&2, &1.id, at))
+        end)
+      end)
+
+    {%{
+       match: match,
+       gap: abs(gap),
+       stack: stack,
+       fired: fired,
+       plans: plans,
+       repeat?: stack != nil and stack_won?(match, stack)
+     }, moved_at}
   end
 
   defp fires?(:gap, gap?, _previous?), do: gap?
@@ -267,13 +288,21 @@ defmodule HllConditionalActions.Balance.Analysis do
 
   defp stack_won?(match, stack), do: match.winner == stack.side
 
-  defp plan(match, stack, partners, params) do
+  defp plan(match, stack, resting, partners, params) do
     bonus = params["stack_bonus"]
 
     players =
       Enum.map(match.players, fn p ->
         boost = if stack && MapSet.member?(stack.ids, p.id), do: bonus, else: 0
-        %{id: p.id, name: p.name, team: p.team, squad: p.squad, rating: p.rating + boost}
+
+        %{
+          id: p.id,
+          name: p.name,
+          team: p.team,
+          squad: p.squad,
+          rating: p.rating + boost,
+          movable?: not MapSet.member?(resting, p.id)
+        }
       end)
 
     result =
@@ -316,7 +345,7 @@ defmodule HllConditionalActions.Balance.Analysis do
     fired = Enum.filter(judged, & &1.fired[rule])
     fast = Enum.filter(judged, &fast?(&1.match))
     repeats = Enum.filter(judged, & &1.repeat?)
-    moved = Enum.flat_map(fired, & &1.plan.moved)
+    moved = Enum.flat_map(fired, & &1.plans[rule].moved)
     per_player = Enum.frequencies_by(moved, & &1.id)
     names = Map.new(moved, &{&1.id, &1.name})
 
@@ -327,11 +356,11 @@ defmodule HllConditionalActions.Balance.Analysis do
       repeat_share: share(repeats, & &1.fired[rule]),
       repeat_rate: share(Enum.filter(fired, & &1.stack), & &1.repeat?),
       gap_before: mean(fired, & &1.gap),
-      gap_after: mean(fired, & &1.plan.gap_after),
+      gap_after: mean(fired, & &1.plans[rule].gap_after),
       chance_before: mean_of(fired, &expected(&1.gap, calibration)),
-      chance_after: mean_of(fired, &expected(&1.plan.gap_after, calibration)),
+      chance_after: mean_of(fired, &expected(&1.plans[rule].gap_after, calibration)),
       moved: length(moved),
-      moved_median: median(Enum.map(fired, &length(&1.plan.moved))),
+      moved_median: median(Enum.map(fired, &length(&1.plans[rule].moved))),
       players_moved: map_size(per_player),
       most_moved:
         per_player
@@ -420,7 +449,7 @@ defmodule HllConditionalActions.Balance.Analysis do
 
     Plan
     |> where([p], p.server_id in ^server_ids and p.ended_at > ^since)
-    |> where([p], fragment("cardinality(?) > 0", p.roster))
+    |> where([p], fragment("cardinality(?) > 0 OR cardinality(?) > 0", p.roster, p.end_roster))
     |> Repo.all()
     |> Enum.map(fn plan ->
       %{
@@ -433,7 +462,7 @@ defmodule HllConditionalActions.Balance.Analysis do
         minutes: nil,
         winner: winner(plan.allied_score, plan.axis_score),
         players:
-          Enum.map(plan.roster, fn p ->
+          Enum.map(if(plan.end_roster != [], do: plan.end_roster, else: plan.roster), fn p ->
             %{
               id: p["id"],
               name: p["name"],

@@ -47,6 +47,8 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
      |> assign(:sim, nil)
      |> assign(:sim_loading?, false)
      |> assign(:sim_rule, :either)
+     |> assign(:report_days, 30)
+     |> assign(:report, nil)
      |> load()
      |> fetch_strength()}
   end
@@ -54,7 +56,7 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
   @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     server = pick_server(socket.assigns.servers, params["server"])
-    tab = if params["tab"] == "simulator", do: "simulator", else: "overview"
+    tab = if params["tab"] in ~w(simulator report), do: params["tab"], else: "overview"
 
     socket =
       socket
@@ -63,9 +65,11 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
       |> assign_form()
 
     socket =
-      if tab == "simulator" and is_nil(socket.assigns.sim),
-        do: simulate(socket),
-        else: socket
+      cond do
+        tab == "simulator" and is_nil(socket.assigns.sim) -> simulate(socket)
+        tab == "report" and is_nil(socket.assigns.report) -> run_report(socket)
+        true -> socket
+      end
 
     {:noreply, socket}
   end
@@ -125,6 +129,11 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
     {:noreply, socket |> assign(:sim_params, Analysis.normalize(params)) |> simulate()}
   end
 
+  def handle_event("report", %{"days" => days}, socket) do
+    days = Enum.find([14, 30, 45], 30, &(to_string(&1) == days))
+    {:noreply, socket |> assign(:report_days, days) |> run_report()}
+  end
+
   def handle_event("sim_rule", %{"rule" => rule}, socket) do
     rule = Enum.find(Analysis.rules(), :either, &(to_string(&1) == rule))
     {:noreply, assign(socket, :sim_rule, rule)}
@@ -152,6 +161,14 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
     do: {:noreply, assign(socket, :strength, strength)}
 
   def handle_async(:strength, {:exit, _reason}, socket), do: {:noreply, socket}
+
+  def handle_async(:report, {:ok, report}, socket),
+    do: {:noreply, assign(socket, :report, report)}
+
+  def handle_async(:report, {:exit, _reason}, socket) do
+    {:noreply,
+     put_flash(socket, :error, gettext("The report could not be built. Try a shorter period."))}
+  end
 
   def handle_async(:simulate, {:ok, result}, socket),
     do: {:noreply, assign(socket, sim: result, sim_loading?: false)}
@@ -214,6 +231,16 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
     end
   end
 
+  defp run_report(socket) do
+    if connected?(socket) and socket.assigns.servers != [] do
+      ids = Enum.map(socket.assigns.servers, & &1.id)
+      days = socket.assigns.report_days
+      start_async(socket, :report, fn -> Balance.Report.run(ids, days) end)
+    else
+      socket
+    end
+  end
+
   defp pick_server([], _id), do: nil
 
   defp pick_server(servers, id),
@@ -258,7 +285,11 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
       >
         <.link
           :for={
-            {tab, label} <- [{"overview", gettext("Overview")}, {"simulator", gettext("Simulator")}]
+            {tab, label} <- [
+              {"overview", gettext("Overview")},
+              {"simulator", gettext("Simulator")},
+              {"report", gettext("Report")}
+            ]
           }
           id={"balance-tab-#{tab}"}
           patch={~p"/balance?#{[tab: tab]}"}
@@ -274,6 +305,12 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
           {label}
         </.link>
       </nav>
+
+      <.report
+        :if={@servers != [] and @tab == "report"}
+        days={@report_days}
+        report={@report}
+      />
 
       <.simulator
         :if={@servers != [] and @tab == "simulator"}
@@ -409,13 +446,67 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
             phx-submit="save"
             class="grid gap-4 sm:grid-cols-2"
           >
+            <p class="text-sm text-subtle sm:col-span-2">
+              {gettext(
+                "The decision is taken in the two minutes of preparation of each match, never after, from the analysis of the previous match. In simulation: it is recorded, nobody is moved."
+              )}
+            </p>
+            <.input
+              field={@form[:rule]}
+              type="select"
+              options={for r <- Balance.Settings.rules(), do: {setting_rule_label(r), r}}
+              label={gettext("When a match gets a plan")}
+              no_margin
+            />
             <.input
               field={@form[:trigger_gap]}
               type="number"
               min="5"
               max="200"
               label={gettext("Unbalanced from (points of gap)")}
-              help_text={gettext("15 by default. The plan aims for half of it.")}
+              help_text={gettext("35 by default. The plan aims for half of it.")}
+              no_margin
+            />
+            <.input
+              field={@form[:kills_ratio]}
+              type="number"
+              min="100"
+              max="400"
+              label={gettext("Dominant previous match: winner's kills (% of the loser's)")}
+              no_margin
+            />
+            <.input
+              field={@form[:points_ratio]}
+              type="number"
+              min="100"
+              max="400"
+              label={gettext("... or winner's points (% of the loser's)")}
+              no_margin
+            />
+            <.input
+              field={@form[:together]}
+              type="number"
+              min="50"
+              max="100"
+              label={gettext("Winners still together on one side (%)")}
+              no_margin
+            />
+            <.input
+              field={@form[:stack_bonus]}
+              type="number"
+              min="0"
+              max="200"
+              label={gettext("Extra points for the previous winners")}
+              help_text={gettext("So the plan breaks the group up, not only the averages.")}
+              no_margin
+            />
+            <.input
+              field={@form[:cooldown_hours]}
+              type="number"
+              min="0"
+              max="48"
+              label={gettext("A moved player rests for (hours)")}
+              help_text={gettext("Not moved again for so long, on any server.")}
               no_margin
             />
             <.input
@@ -473,6 +564,205 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
     </Layouts.app>
     """
   end
+
+  attr :days, :integer, required: true
+  attr :report, :map, default: nil
+
+  defp report(assigns) do
+    ~H"""
+    <div id="balance-report" class="flex flex-col gap-5">
+      <section class="flex flex-wrap items-end gap-4 rounded-[1.75rem] bg-base-100 p-4 sm:p-5">
+        <header class="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 class="font-display text-lg font-semibold">{gettext("What stomps and maps cost")}</h2>
+          <p class="text-sm text-subtle">
+            {gettext(
+              "For each match followed by another on the same server: how many of its players (ten minutes or more) were in the next one, and how many more or fewer players the next one had."
+            )}
+          </p>
+        </header>
+        <form id="report-form" phx-change="report">
+          <.input
+            name="days"
+            type="select"
+            value={@days}
+            label={gettext("Period")}
+            options={
+              for d <- [14, 30, 45], do: {ngettext("Last %{count} day", "Last %{count} days", d), d}
+            }
+            no_margin
+          />
+        </form>
+      </section>
+
+      <div :if={is_nil(@report)} class="flex flex-col gap-3">
+        <.skeleton_block class="h-40 w-full" />
+        <.skeleton_block class="h-64 w-full" />
+      </div>
+
+      <div :if={@report} class="flex flex-col gap-5">
+        <section
+          id="report-kinds"
+          class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 p-4 sm:p-5"
+        >
+          <header class="flex flex-col gap-1">
+            <h2 class="font-display text-lg font-semibold">{gettext("Do stomps cost players?")}</h2>
+            <p class="text-sm text-subtle">
+              {gettext("%{count} Warfare and other matches, %{linked} followed by another.",
+                count: @report.matches,
+                linked: @report.linked
+              )}
+            </p>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[40rem] text-sm tabular-nums">
+              <thead class="text-left text-xs text-muted">
+                <tr>
+                  <th class="py-2 pr-3 font-medium">{gettext("How it went")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Matches")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Stayed for the next")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Next match's players")}</th>
+                  <th class="py-2 font-medium">{gettext("Length")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  :for={kind <- @report.kinds}
+                  id={"report-kind-#{kind.kind}"}
+                  class="border-t border-base-300"
+                >
+                  <td class="py-2.5 pr-3 font-semibold">{kind_label(kind.kind)}</td>
+                  <td class="py-2.5 pr-3">{kind.matches}</td>
+                  <td class="py-2.5 pr-3">{num(kind.population)}</td>
+                  <td class="py-2.5 pr-3">{pct(kind.retention)}</td>
+                  <td class={["py-2.5 pr-3", delta_class(kind.next_delta)]}>
+                    {signed(kind.next_delta)}
+                  </td>
+                  <td class="py-2.5">{minutes_label(kind.minutes)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section
+          id="report-rare"
+          class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 p-4 sm:p-5"
+        >
+          <header class="flex flex-col gap-1">
+            <h2 class="font-display text-lg font-semibold">{gettext("Less played maps")}</h2>
+            <p class="text-sm text-subtle">
+              {ngettext(
+                "%{count} map holds under %{share}% of the matches each. Against the others:",
+                "%{count} maps hold under %{share}% of the matches each. Against the others:",
+                @report.rare.maps,
+                share: round(@report.rare.threshold * 100)
+              )}
+            </p>
+          </header>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div
+              :for={
+                {label, stats} <- [
+                  {gettext("Less played maps"), @report.rare.rare},
+                  {gettext("The other maps"), @report.rare.common}
+                ]
+              }
+              class="flex flex-col gap-1 rounded-[1.25rem] bg-secondary p-4"
+            >
+              <span class="text-sm font-semibold">{label}</span>
+              <span class="text-xs text-muted">
+                {ngettext("%{count} match", "%{count} matches", stats.matches)}
+              </span>
+              <span class="mt-1 font-display text-2xl font-semibold tabular-nums">
+                {pct(stats.retention)}
+              </span>
+              <span class="text-xs text-subtle">{gettext("stayed for the next match")}</span>
+              <span class={["text-sm tabular-nums", delta_class(stats.next_delta)]}>
+                {gettext("%{delta} players in the next match", delta: signed(stats.next_delta))}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="report-maps"
+          class="flex flex-col gap-3 rounded-[1.75rem] bg-base-100 p-4 sm:p-5"
+        >
+          <header class="flex flex-col gap-1">
+            <h2 class="font-display text-lg font-semibold">{gettext("Map by map")}</h2>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[48rem] text-sm tabular-nums">
+              <thead class="text-left text-xs text-muted">
+                <tr>
+                  <th class="py-2 pr-3 font-medium">{gettext("Map")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Matches")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Stayed for the next")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Next match's players")}</th>
+                  <th class="py-2 pr-3 font-medium">{gettext("Stomps")}</th>
+                  <th class="py-2 font-medium">{gettext("Length")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={map <- @report.maps} class="border-t border-base-300">
+                  <td class="py-2 pr-3">
+                    <span class="font-semibold">{map.map || "?"}</span>
+                    <span class="text-xs text-muted">{map.mode}</span>
+                    <span
+                      :if={map.share && map.share < @report.rare.threshold}
+                      class="ml-1 rounded-full bg-warning/15 px-2 py-0.5 text-[0.6875rem] text-warning"
+                    >
+                      {gettext("less played")}
+                    </span>
+                  </td>
+                  <td class="py-2 pr-3">
+                    {map.matches}
+                    <span class="text-xs text-muted">({pct(map.share)})</span>
+                  </td>
+                  <td class="py-2 pr-3">{num(map.population)}</td>
+                  <td class="py-2 pr-3">{pct(map.retention)}</td>
+                  <td class={["py-2 pr-3", delta_class(map.next_delta)]}>
+                    {signed(map.next_delta)}
+                  </td>
+                  <td class="py-2 pr-3">{pct(map.stomps)}</td>
+                  <td class="py-2">{minutes_label(map.minutes)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+    """
+  end
+
+  defp kind_label(:fast_stomp), do: gettext("5-0 in 30 minutes or less")
+  defp kind_label(:stomp), do: gettext("5-0 in more than 30 minutes")
+  defp kind_label(:close), do: gettext("4-1 or 3-2")
+
+  defp signed(nil), do: "–"
+  defp signed(value) when value >= 0, do: "+#{round(value)}"
+  defp signed(value), do: "#{round(value)}"
+
+  defp delta_class(nil), do: nil
+  defp delta_class(value) when value <= -5, do: "font-semibold text-error"
+  defp delta_class(value) when value < 0, do: "text-warning"
+  defp delta_class(_value), do: "text-success"
+
+  defp minutes_label(nil), do: "–"
+  defp minutes_label(value), do: gettext("%{minutes} min", minutes: round(value))
+
+  defp setting_rule_label("gap"), do: gettext("Rating gap only")
+  defp setting_rule_label("previous"), do: gettext("Dominant previous match (recommended)")
+  defp setting_rule_label("both"), do: gettext("Both: gap and dominant previous match")
+  defp setting_rule_label(_either), do: gettext("Either: gap or dominant previous match")
+
+  defp fired_label("gap"), do: gettext("by the rating gap")
+  defp fired_label("previous"), do: gettext("by the previous match")
+  defp fired_label("both"), do: gettext("by the gap and the previous match")
+  defp fired_label(_other), do: nil
 
   attr :params, :map, required: true
   attr :sim, :map, default: nil
@@ -578,6 +868,16 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
             max="200"
             value={@params["stack_bonus"]}
             label={gettext("Extra points for the previous winners")}
+            phx-debounce="400"
+            no_margin
+          />
+          <.input
+            name="sim[cooldown_hours]"
+            type="number"
+            min="0"
+            max="48"
+            value={@params["cooldown_hours"]}
+            label={gettext("A moved player rests for (hours)")}
             phx-debounce="400"
             no_margin
           />
@@ -831,7 +1131,7 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
     <details class="group rounded-[1.125rem] p-3 transition-colors open:bg-secondary hover:bg-secondary">
       <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1">
         <span class="w-24 font-mono text-[0.6875rem] text-muted">
-          <.local_time id={"plan-#{@plan.id}-at"} at={@plan.ended_at} />
+          <.local_time id={"plan-#{@plan.id}-at"} at={@plan.started_at || @plan.ended_at} />
         </span>
         <span class="min-w-0 flex-1 truncate text-sm">
           <span class="font-semibold">{@plan.map || "?"}</span>
@@ -853,15 +1153,29 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
         <span
           :if={not is_nil(@plan.strong_won_again)}
           class="text-xs text-muted"
-          title={gettext("The stronger team, together again on the next map")}
+          title={gettext("The previous match's dominant group, together again")}
         >
           {if @plan.strong_won_again,
-            do: gettext("won again"),
-            else: gettext("lost the next one")}
+            do: gettext("group won again"),
+            else: gettext("group lost")}
         </span>
       </summary>
 
       <div class="mt-3 flex flex-col gap-2 pl-1 text-sm">
+        <p :if={@plan.started_at} class="text-xs text-muted">
+          {gettext("Decided in the preparation")}
+          <span :if={fired_label(@plan.rule_fired)}>· {fired_label(@plan.rule_fired)}</span>
+          <span :if={@plan.source == "previous"}>
+            · {gettext("teams read from the previous match, swapped")}
+          </span>
+        </p>
+        <p :if={@plan.stack_ids != []} class="text-subtle">
+          {gettext(
+            "%{count} of the previous match's dominant winners are together again (%{together}% on one side).",
+            count: length(@plan.stack_ids),
+            together: @plan.stack_together
+          )}
+        </p>
         <p class="text-subtle">
           {gettext("%{team} stronger by %{gap} points, %{count} players.",
             team: team_label(@plan.strong_team),
@@ -898,6 +1212,7 @@ defmodule HllConditionalActionsWeb.BalanceLive.Index do
   defp status_label(%Plan{status: "simulated"} = plan),
     do: ngettext("Would move %{count}", "Would move %{count}", Plan.moved(plan))
 
+  defp status_label(%Plan{status: "measured"}), do: gettext("End only")
   defp status_label(_plan), do: gettext("Balanced")
 
   defp team_label("allies"), do: gettext("Allies")
